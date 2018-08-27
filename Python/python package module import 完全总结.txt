@@ -1,0 +1,196 @@
+python package module import 完全总结
+ 
+总结这个python中 package以及module的导入，是遵循下面的文档结构进行的：
+sound/                          Top-level package
+      __init__.py               Initialize the sound package
+      formats/                  Subpackage for file format conversions
+              __init__.py
+              wavread.py
+              wavwrite.py
+              aiffread.py
+              aiffwrite.py
+              auread.py
+              auwrite.py
+              ...
+      effects/                  Subpackage for sound effects
+              __init__.py
+              echo.py
+              surround.py
+              reverse.py
+              ...
+      filters/                  Subpackage for filters
+              __init__.py
+              equalizer.py
+              vocoder.py
+              karaoke.py
+              ...
+
+.  
+├── effects  
+│   ├── echo.py  
+│   ├── __init__.py  
+│   ├── reverse.py  
+│   ├── surround.py  
+├── filters  
+│   ├── equalizer.py  
+│   ├── __init__.py  
+│   ├── karaoke.py  
+│   ├── vocoder.py  
+├── formats  
+│   ├── aiffread.py  
+│   ├── aiffwrite.py  
+│   ├── auread.py  
+│   ├── auwrite.py  
+│   ├── __init__.py  
+│   ├── wavread.py  
+│   ├── wavwrite.py  
+├── __init__.py  
+└── sound.py  
+
+
+1.导入子目录的模块 
+这里导入子目录的某块，要保证子目录也是一个package (一个软件包)， 如果一个目录要想成为一个 package 的话，那个这个目录中必须包含 __init__.py 这个文件，最简单的就让这个文件为空就可以了。
+
+加入当前在sound这个文件夹中，包含一个叫sound.py的文件， 如果在sound.py 中想要导入 子目录 filters 中的模块，那么filters必须要保证是一个 package ， 也就是要有 __init__.py这个文件。
+然后可以使用目录 点号进行导入：
+from filters import equalizer
+from filters.equalizer import fun
+如果在sound文件夹外面：
+from sound.filter import equalizer
+from sound.filter.equalizer import fun
+
+在sound.py中导入的代码：
+import os  
+print 'current file:'  
+print os.path.realpath(__file__)  
+  
+print 'working dir:'  
+print os.getcwd()  
+  
+from filters import equalizer  
+equalizer.fun()  
+在sound文件夹外，加入有一个文件叫main.py:
+from sound.filters import equalizer  
+equalizer.fun()  
+
+
+2 . from module import *
+如果想使用 from module import *, 那么必须保证这个module中定义了  __init__.py这个文件，并且，__init__.py文件中定义了 __all__ = [] 这个变量。
+如果没有定义 __all__这个变量，那个from module import * 能够工作，但是不能导入这个package 中的所有的module，只能导入在 __init__.py 中声明的变量，以及已经通过 路径导入的模块，例如:
+from filters import equalizer
+from filters import *
+这个时候，只能通过 from filters import * 导入  __init__.py 中声明的变量和已经导入了的equalizer
+
+如果没有使用 __all__ 定义 from module import * 需要导入的模块，那么默认的什么都不导入，如果你想使用某个模块就会报错：
+
+import os  
+print 'current file:'  
+print os.path.realpath(__file__)  
+  
+print 'working dir:'  
+print os.getcwd()  
+  
+from filters import *  
+print type(vocoder) 
+
+然后运行 python sound/sound.py, 得到以下的运行结果：
+songwei@songwei-ThinkPad-T410:~/WeiSONG/python/sound$ python sound.py   
+current file:  
+/home/songwei/WeiSONG/python/sound/sound.py  
+working dir:  
+/home/songwei/WeiSONG/python/sound  
+Traceback (most recent call last):  
+  File "sound.py", line 9, in <module>  
+    print type(vocoder)  
+NameError: name 'vocoder' is not defined  
+
+
+3. 子模块间的相互导入
+如果在filters这个package的模块中需要使用这个package兄弟package的模块，那么可以使用相对路径导入。
+对于文件sound/filters/equalizer.py 来说，如果要导入兄弟package的模块，那么可以这样使用：
+from . import vocoder  
+from .. import formats  
+from ..effects import surround  
+
+但是，这是要保证这个模块不是入口文件，只是作为被导入的模块才可以以这样使用。并且，导入这个模块的文件要在sound这个文件夹之外，也就是不能在sound文件夹内，例如：
+在main.py中：
+from sound.filters import equalizer  
+equalizer.fun()
+
+如果是在sound/sound.py中导入equalizer.py，那么这样使用就会出错，因为sound/sound.py在导入 equalizer.py的时候，当前目录就不能当作package了，因为sound.py就运行在当前目录，这样在使用 .. 进入上一级package的时候，就会报错。“ValueError: Attempted relative import beyond toplevel package”
+
+如果在sound/sound.py中导入equalizer:
+import os  
+print 'current file:'  
+print os.path.realpath(__file__)  
+
+print 'working dir:'  
+print os.getcwd()  
+
+from filte  rs import equalizer  
+
+这样的导入，当前文件 sound/sound.py 作为入口文件， 入口文件总是“__main__  ”，但是当使用sound.py作为入口文件的时候，就不能把sound这个文件夹作为一个完整的package来对待，因为你的入口文件在这个包的里面。 所以在equalizer.py 中进行相对导入的时候，使用 .. 运算符进入上一层的package, 然后发现入口文件就在上一层，所以不会把上一层当作一个package, 这样就会出现 下面这种错误。
+ValueError: Attempted relative import beyond toplevel package
+
+python 中只能在package中使用相对导入，不能在用户的应用程序中使用相对导入，因为不论是相对导入还是绝对导入，都是相当于当前模块来说的，对于用户的主应用程序，也就是入口文件，模块名总是为“ __main__  ”, 所以用户的应用程序必须使用绝对导入，而package中的导入可以使用相对导入。
+
+在这里，相对导入 ., .., 应该理解为在：
+. : 在当前的package中进行查找
+.. : 在上一层的package中进行查找
+不能理解为在当前目录中查找，也不能理解为在上一层目录中查找。
+
+其他例子：
+
+目录树
+
+case2/
+├── cat
+│   ├── __init__.py
+│   ├── cat.py
+│   └── cat.pyc
+├── dog
+│   ├── __init__.py
+│   └── dog.py
+├── __init__.py
+└── main.py
+代码
+ 
+# case2/cat/cat.py from .. import dog # case2/main.py import cat.cat
+执行
+
+# python case2/main.py
+ValueError: Attempted relative import beyond toplevel package
+错误原因
+这里的 case2 是一个包，但当你直接执行 main.py 的时候，就没有把完整的 case2 当作一个包来处理了，可想而知，下层的 cat.py 自然找不到上层包了。即想要相对导入成功，必须让下层的被导入对象是上层包或上层包内的对象。
+
+
+
+
+4. 模块导入，工作目录的变化
+使用import 以及from module import * 的时候，会将import进来的变量或者函数添加到当前的命名空间，也就是说from module import * 改变了原来被导入模块的变量的工作空间，将它们添加到当前的命名空间了。
+例如： from sound.filters import equalizer 
+把equalizer的变量添加到当前的命名空间，这样，即使是在equalizer.py代码中打印当前的工作目录，也不是equalizer.py文件所在的工作目录了。
+
+在 main.py:
+from sound.filters import equalizer  
+equalizer.fun()  
+
+运行结果：
+songwei@songwei-ThinkPad-T410:~/WeiSONG/python$ python main.py   
+current file:  
+/home/songwei/WeiSONG/python/sound/filters/equalizer.pyc  
+working dir:  
+/home/songwei/WeiSONG/python  
+in filters/equalizer.py  
+current file:  
+/home/songwei/WeiSONG/python/sound/filters/vocoder.pyc  
+working dir:  
+/home/songwei/WeiSONG/python  
+current file:  
+/home/songwei/WeiSONG/python/sound/effects/surround.pyc  
+working dir:  
+/home/songwei/WeiSONG/python  
+in equalizer  
+
+这里每个显示的“current file” 都是被导入的文件。
+可见，所有的工作目录都为：/home/songwei/WeiSONG/python，即便是被导入的文件在不同的目录，有不同的文件名。

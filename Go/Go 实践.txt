@@ -1,0 +1,317 @@
+Go 实践
+
+	Go Rand小结
+		　　对于Random的使用，在业务中使用频率是非常高的，本文就小结下常用的方法：
+
+		在Golang中，有两个包提供了rand，分别为 "math/rand" 和 "crypto/rand",  对应两种应用场景。
+
+		一、"math/rand" 包实现了伪随机数生成器。也就是生成 整形和浮点型。
+
+		　　 该包中根据生成伪随机数是是否有种子(可以理解为初始化伪随机数)，可以分为两类：
+
+		　　1、有种子。通常以时钟，输入输出等特殊节点作为参数，初始化。该类型生成的随机数相比无种子时重复概率较低。
+
+		　　2、无种子。可以理解为此时种子为1， Seek(1)。
+
+		import (
+			"fmt"
+			"math/rand"
+			"time"
+		)
+
+		func main() {
+			for i := 0; i < 10; i++ {
+				r := rand.New(rand.NewSource(time.Now().UnixNano()))
+				fmt.Printf("%d ", r.Int31())
+			}
+
+			fmt.Println("")
+			for i := 0; i < 10; i++ {
+				fmt.Printf("%d ", rand.Int31())
+			}
+		}
+
+		// 1278610617 1508223627 2035989429 921556381 1472325922 1058000409 246974909 2131355695 160634752 1895791427 
+		// 1298498081 2019727887 1427131847 939984059 911902081 1474941318 140954425 336122540 208240456 646203300
+
+		　　常用的方法有：(以有种子的为例，无种子的直接通过 rand 报名调用对应的方法)
+
+		　　　　1> 按类型随机类：
+
+		func (r *Rand) Int() int
+		func (r *Rand) Int31() int32
+		func (r *Rand) Int63() int64
+		func (r *Rand) Uint32() uint32
+		func (r *Rand) Float32() float32  // 返回一个取值范围在[0.0, 1.0)的伪随机float32值
+		func (r *Rand) Float64() float64  // 返回一个取值范围在[0.0, 1.0)的伪随机float64值
+		　　　　2>指定随机范围类：
+
+		func (r *Rand) Intn(n int) int
+		func (r *Rand) Int31n(n int32) int32
+		func (r *Rand) Int63n(n int64) int64
+		　　拓展：对于需要随机指定位数的，当位数不够是，可以通过前边补0达到长度一致，如：
+
+		import (
+			"fmt"
+			"math/rand"
+			"time"
+		)
+
+		func main() {
+
+		　　// 随机产生4位长度伪随机数
+			for i := 0; i < 10; i++ {
+				fmt.Printf("%.4d ", rand.Int31()%10000)
+			}
+		}
+
+		// 8081 7887 1847 4059 2081 1318 4425 2540 0456 3300
+
+		二、”crypto/rand“ 包实现了用于加解密的更安全的随机数生成器。
+
+		　　该包中常用的是 func Read(b []byte) (n int, err error) 这个方法， 将随机的byte值填充到b 数组中，以供b使用。示例如下：
+
+		import (
+			"crypto/rand"
+			"fmt"
+		)
+
+		func main() {
+			b := make([]byte, 20)
+			fmt.Println(b)       //
+
+			_, err := rand.Read(b)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			fmt.Println(b)
+		}
+
+		// [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+		// [68 221 145 73 115 224 13 110 218 130 19 139 38 170 145 58 251 188 126 197]
+		
+	Go 类型转换
+		package main
+
+		import (
+
+		"fmt"
+
+		"time"
+
+		)
+
+		func main() {
+
+		//获取时间戳
+
+		timestamp := time.Now().Unix()
+
+		fmt.Println(timestamp)
+
+		//格式化为字符串,tm为Time类型
+
+		tm := time.Unix(timestamp, 0)
+
+		fmt.Println(tm.Format("2006-01-02 03:04:05 PM"))
+
+		fmt.Println(tm.Format("02/01/2006 15:04:05 PM"))
+
+
+		//从字符串转为时间戳，第一个参数是格式，第二个是要转换的时间字符串
+
+		tm2, _ := time.Parse("01/02/2006", "02/08/2015")
+
+		fmt.Println(tm2.Unix())
+
+		}
+		
+		var stamptime = time.Now().String()  // 自己搞定^______^!
+		
+		#string到int
+		int,err:=strconv.Atoi(string)
+		#string到int64
+		int64, err := strconv.ParseInt(string, 10, 64)
+		#int到string
+		string:=strconv.Itoa(int)
+		#int64到string
+	
+	Go语言包名冲突问题：math/rand 和 crypto/rand 导入与引用
+	
+		import (
+			...
+			math_rand "math/rand"
+			crypt_rand "crypto/rand"
+			...
+		)
+
+		func main() {
+			...
+			math_rand.Seed(time.Now().Unix())
+			...
+			key, err := rsa.GenerateKey(crypt_rand.Reader, bits)
+			...
+		}
+	
+	golang要请求远程网页，可以使用net/http包中的client提供的方法实现。查看了官方网站有一些示例，没有太全面的例子，于是自己整理了一下。
+
+		get请求
+		get请求可以直接http.Get方法，非常简单。
+
+		func httpGet() {
+			resp, err := http.Get("http://www.01happy.com/demo/accept.php?id=1")
+			if err != nil {
+				// handle error
+			}
+		 
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				// handle error
+			}
+		 
+			fmt.Println(string(body))
+		}
+		post请求
+		一种是使用http.Post方式
+		
+		func httpPost() {
+			resp, err := http.Post("http://www.01happy.com/demo/accept.php",
+				"application/x-www-form-urlencoded",
+				strings.NewReader("name=cjb"))
+			if err != nil {
+				fmt.Println(err)
+			}
+		 
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				// handle error
+			}
+		 
+			fmt.Println(string(body))
+		}
+		Tips：使用这个方法的话，第二个参数要设置成”application/x-www-form-urlencoded”，否则post参数无法传递。
+
+		一种是使用http.PostForm方法
+
+		func httpPostForm() {
+			resp, err := http.PostForm("http://www.01happy.com/demo/accept.php",
+				url.Values{"key": {"Value"}, "id": {"123"}})
+		 
+			if err != nil {
+				// handle error
+			}
+		 
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				// handle error
+			}
+		 
+			fmt.Println(string(body))
+		 
+		}
+		复杂的请求
+		有时需要在请求的时候设置头参数、cookie之类的数据，就可以使用http.Do方法。
+
+		func httpDo() {
+			client := &http.Client{}
+		 
+			req, err := http.NewRequest("POST", "http://www.01happy.com/demo/accept.php", strings.NewReader("name=cjb"))
+			if err != nil {
+				// handle error
+			}
+		 
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Cookie", "name=anny")
+		 
+			resp, err := client.Do(req)
+		 
+			defer resp.Body.Close()
+		 
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				// handle error
+			}
+		 
+			fmt.Println(string(body))
+		}
+		同上面的post请求，必须要设定Content-Type为application/x-www-form-urlencoded，post参数才可正常传递。
+
+		如果要发起head请求可以直接使用http client的head方法，比较简单，这里就不再说明。
+
+	
+	QA:
+		string byte rune转换
+		Go原生支持Unicode，字符集与编码的问题在编程语言中是很重要的，尤其对于CJK(中日韩)开发者来说。以前很多开发推荐使用GBK编码，现在更加推荐使用UTF-8，虽然UTF-8编码需要更大的存储空间，但是它带来的便利性实在远超过那一些存储空间。现代语言一般都支持Unicode了。着一篇争取对Unicode，UTF-8，UTF-16，ISO-8859有一个系统的了解。
+
+		介绍
+		最早的计算机系统都是使用 EBCDIC(扩展的二进制的十进制转换码) 和 ASCII 编码，因为那时候只是用一些英文字母数字，加减号和其他一些字符，字符并不多，但是随着Internet的发展，网络遍布全球。全球有大概6000种语言（其中3000种在巴布亚新几内亚…） ，为了更好地服务更多的人，我们需要为不同语言的用户提供不同的语言支持。
+
+		如果世界只需要 ASCII 编码，那样将会简单很多。但事实却是非常复杂的，现代项目都应该考虑 i18n 和 l10n, 分别代表 internationalisation 和 localisation。i18n指应用能处理各种各样不同的语言和文化， l10n 则是为某个特定的文化团体定制你的国际化应用。
+
+		更广泛的i8n不仅仅是文字编码的区别，还要考虑诸如颜色、音乐在不同语言文化中的不同代表意义。但这个领域太过复杂，暂时一般不考虑。
+
+		定义
+		Character
+		Character 就是字符，
+
+		“the smallest component of written language that has a semantic
+		value
+
+		当然字符也包括自然语言符号之外的一些控制字符。关于字符的内容，可以查看 维基百科
+
+		字符集，character code 字符编码就是将一个字符映射到一个整数，比如最常见的 ASCII编码，将 a 编码为 97（编码点,code point）， A编码为65.编码仍然是抽象的，它仍不是我们在文本或者TCP包中多见到的。
+
+		Character encoding 注意code和encoding是不同的。字符编码（encoding）表示的是其二进制编码。诸如补码，反码等。代表字符 A 在二进制上是怎么存储的。
+
+		字符编码（英语：Character encoding）、字集码是把字符集中的字符编码为指定集合中某一对象（例如：比特模式、自然数序列、8位组或者电脉冲），以便文本在计算机中存储和通过通信网络的传递。常见的例子包括将拉丁字母表编码成摩斯电码和ASCII。其中，ASCII将字母、数字和其它符号编号，并用7比特的二进制来表示这个整数。通常会额外使用一个扩充的比特，以便于以1个字节的方式存储。
+
+		按照惯例，人们认为字符集和字符编码是同义词。
+
+		传输编码/Transport encoding对一段在网络传输的数据需要如何确认它的字符集和编码呢？可以在传输的头部包含一段内容编码信息的内容，就像HTTP头那样。
+
+		Content-Type: text/html; charset=ISO-8859-4
+		Content-Encoding: gzip
+		但是我们要怎么读到这一段内容呢？因为它们也是要编码的，这就是一个现有鸡还是先有蛋的问题了。但是我们可以做一个约定，这些信息都使用 ASCII 编码，更明确一点就是 US ASCII。因为这一部分信息的内容的功能使用ASCII就能搞定了。
+
+		常用编码
+		ASCII
+		ASCII 编码大家都很熟悉了，大一的时候专业基础课接触到的就是这些内容。作为最常用的编码，ASCII使用的编码点使用7-bit。
+
+		ISO 8859
+		现在一个字节的标准是8个比特位，作为ASCII的扩展多出来128个编码点。一些列不同的编码集使用了这128个编码点，它们被一些欧洲语言使用，合起来就是 ISO-8859系列。 ISO-8859-1也就是常说的Latin-1，它涵盖了大部分的欧洲语言。
+		ISO-8859是一个系列，系列中所有的低128个编码点就是ASCII编码，以实现兼容。
+
+		早期的HTML标准推荐使用ISO-8859-1字符集。不过在 HTML 4 之后就推荐使用 Unicode了。
+
+		Unicode
+		像ASCII和ISO8859这样的编码在象形文字（中日韩）语言面前显得就太小气了。中文常用的字多大几千个，至少需要两个字节才能涵括。最初没有统一的国际标准，因此出现了很多的2字节编码方案，比如台湾的Big5，国内的GB2312，BGK；再考虑日本的JIS X 0208等等，字符集简直是一个大乱斗。
+
+		Unicode是一个包含所有主要当前在用字符的新的标准，它包括了欧洲，亚洲，印度等等各种语言，Unicode的好处是它是可扩展的。到5.2版本，一共有超过 107000个字符。
+
+		Unicode编码点是兼容ISO8859的，也就是说它的前256个编码点就是ISO 8859-1.
+
+		要在计算机系统表示一个Unicode字符，需要使用一种编码方式。UCS（通用编码方式）使用两个字节进行编码，然而随着Unicod囊括的字符越来越多，UCS不再使用，而是使用 UTF-*的编码。UTF即 Unicode Transformation format.常见的编码方式如下：
+
+		UTF-32 试用4字节编码，不常用，尤其是 HTML5 规范明确反对使用它
+		UTF-16 将最常用的字符编码到2字节，应该也不常用
+		UTF-8 一个字符使用1-4字节，不定长度，最常用的，对英文字符基本和ISO-8859对应，中文编码为3字符，相比GBK多一个字节
+		UTF-7 有时使用，但不常用
+		要理解Unicode和UTF-8之间的区别和联系。知道UTF的名字是Unicode转换格式就可以了。Unicode是一个字符集，UTF-8是这个字符集的一种编码方式。
+
+		Go与字符集
+		UTF-8
+		UTF-8 是当前最常用的字符编码，据Google统计50%的网页使用UTF-8编码。我们知道UTF-8的发明者就是Go的作者，也就是Unix的作者Ken。Go使用UTF-8编码的字符组成其字符串。Go的字符串的每一个字符称为一个 rune，它是 int32的别名，因为一个Unicode字符的长度可能是1，2，3，4个字节，如果要统计字符数，就需要计算的是rune的个数而不是字节数了。字符数和字节数只有在是字符串只由ASCII字符组成时才是一样的。
+
+		下面是一个中文字符串的示例，它表示出Go中字符串中不同字符占用长度不一样。
+
+		str := "百度一下，你就知道"
+		fmt.Println("string len:", len([]rune(str)))    // 9
+		fmt.Println("Byte len", len(str))				// 27
+		Go默认就是utf-8编码，所以如果你的项目要使用UTF-8的话，不需要做额外的字符集处理就可以了。
+
+		UTF-16
+		ISO 8859

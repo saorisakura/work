@@ -1,0 +1,206 @@
+logging简单使用
+看下面的代码就可以对logging的使用有一个基本的认识
+
+# 亭子
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+'''
+记录了logging的简单使用方式，主要怎么配置logging
+'''
+import logging
+
+def simple_example():
+    #默认过滤级别为warning，默认输出到控制台
+    logging.warning("warning")
+    logging.info("info")
+
+#logging:配置日志级别，输出位置
+def logging_to_file():
+    '''
+    #参数：filename：用指定的文件名创建filedhandler，这样日志会被存储到指定的文件中，如果不指定，则默认输出到控制台
+    #参数：filemode默认filemode的默认值"a"，表示append，当然你也可以指定为"w"
+    #参数：level，一共5个级别，critical(50)>error(40)>warning(30)>info(20)>debug(10),默认级别为Warning,这里可以用对应的数值表示level
+    '''
+
+    #将日志信息只输入到指定的文件
+    logging.basicConfig(filename="example.log", level=logging.DEBUG)
+    # logging.basicConfig(filename="example.log", level=logging.DEBUG, filemode="w")
+    # logging.basicConfig(filename="example.log", level=10, filemode="w")
+    logging.debug("debu1g")
+    logging.info("info")
+    logging.warning("info")
+    logging.error("error")
+    logging.critical("critical")
+
+    # logging variable data:打印变量
+    logging.error("logging variable date： %s,%s,%s","var01","var02","var03")
+
+#logging:配置日志格式
+def displaying_format_massages():
+    '''
+    format参数中可能用到的格式化串
+    %(name)s Logger的名字
+    %(levelno)s 数字形式的日志级别
+    %(levelname)s 文本形式的日志级别
+    %(pathname)s 调用日志输出函数的模块的完整路径名，可能没有
+    %(filename)s 调用日志输出函数的模块的文件名
+    %(module)s 调用日志输出函数的模块名
+    %(funcName)s 调用日志输出函数的函数名
+    %(lineno)d 调用日志输出函数的语句所在的代码行
+    %(created)f 当前时间，用UNIX标准的表示时间的浮 点数表示
+    %(relativeCreated)d 输出日志信息时的，自Logger创建以 来的毫秒数
+    %(asctime)s 字符串形式的当前时间。默认格式是 “2003-07-08 16:49:45,896”。逗号后面的是毫秒
+    %(thread)d 线程ID。可能没有
+    %(threadName)s 线程名。可能没有
+    %(process)d 进程ID。可能没有
+    %(message)s用户输出的消息
+    '''
+
+    # format：指定handler使用的日志显示格式。
+    logging.basicConfig(format="%(asctime)s %(filename)s[line:%(lineno)d]%(levelname)s - %(message)s")
+    logging.warning("warning")
+
+#logging:配置日志时间格式
+def displaying_date_message():
+    # datefmt：指定日期时间格式,也就是“%(asctime)s”的格式
+    logging.basicConfig(format="%(asctime)s %(filename)s[line:%(lineno)d]%(levelname)s - %(message)s",datefmt="%m/%d/%Y %I:%M:%S %p")
+    logging.warning("warning")
+
+if __name__ == "__main__":
+    #test
+    displaying_date_message()
+logging高级进阶
+我们直接上代码了，先对logging的高级应用做一个简单的流程梳理，具体仔细的东西，后面慢慢看。代码中也有很多注释，所以看起来应该不是很费劲。
+
+##亭子
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+'''
+对logging进行更加灵活的控制：需要了解Logger,Handler,Formatter,Filter
+
+步骤
+1. 创建logger实例并配置
+2. 创建formatter对象
+3. 创建你需要的handler对象并配置
+4. 将handler加载到logger实例中
+5. 写日志
+
+这个模块主要包含了几个内容
+1. 输出日志到控制台中
+2. 输出日志到指定的日志文件中
+3. 输出的日志按照指定的大小来自动管理，当文件达到指定的大小后，自动创建新文件
+4. 输出的文件按照时间来自动管理，当文件达到指定的时候后，自动创建新文件
+'''
+
+import logging
+from logging import handlers
+import time
+
+if __name__ =="__main__":
+    #初始化logger
+    logger = logging.getLogger()
+    # 配置日志级别，如果不显示配置，默认为Warning，表示所有warning级别已下的其他level直接被省略，
+    # 内部绑定的handler对象也只能接收到warning级别以上的level，你可以理解为总开关
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(fmt="%(asctime)s %(filename)s[line:%(lineno)d]%(levelname)s - %(message)s",
+                                  datefmt="%m/%d/%Y %I:%M:%S %p")  # 创建一个格式化对象
+
+    console = logging.StreamHandler() # 配置日志输出到控制台
+    console.setLevel(logging.WARNING) # 设置输出到控制台的最低日志级别
+    console.setFormatter(formatter)  # 设置格式
+    logger.addHandler(console)
+
+    # file_logging = logging.FileHandler("example.log") # 配置日志输出到文件
+    # file_logging.setLevel(logging.WARNING)
+    # file_logging.setFormatter(formatter)
+    # logger.addHandler(file_logging)
+
+    # 和上面的FIleHandler差不多，只是handler对象可以管理文件大小，当文件大于指定的大小后，会自动将当前文件改名，然后重新创建一个新的同名文件继续输出
+    # file_rotating_file = handlers.RotatingFileHandler("cat.log",maxBytes=1024,backupCount=3)
+    # file_rotating_file.setLevel(logging.INFO)
+    # file_rotating_file.setFormatter(formatter)
+    # logger.addHandler(file_rotating_file)
+
+    # 和上面的handler有点类似，不过，它是通过判断文件大小来决定何时重新创建日志文件，而是间隔一定的时候自动创建日志文件。
+    # 代表每7天备份文件
+    file_time_rotating = handlers.TimedRotatingFileHandler("app.log",when="s",interval=10,backupCount=5)
+    file_time_rotating.setLevel(logging.INFO)
+    file_time_rotating.setFormatter(formatter)
+    logger.addHandler(file_time_rotating)
+
+    #use logger
+    logger.debug("debug")
+    logger.info("info")
+    logger.warning("warning")
+    logger.error("error")
+    logger.critical("critical message")
+
+    time.sleep(12)
+
+    logger.debug("debug")
+    logger.info("info")
+    logger.warning("warning")
+    logger.error("error")
+    logger.critical("critical message")
+
+首先，这里说几个概念，是我们代码里面涉及到的，也是我们这个章节里面比较重要的。那就是“Logger”，“Handler”，“Formatter”，“Filter”,下面做简单的解释
+
+logger提供了应用程序可以直接使用的接口；
+handler将(logger创建的)日志记录发送到合适的目的输出；
+filter提供了细度设备来决定输出哪条日志记录；（这里我就先不涉及了，为什么，因为我也不懂，后面如果涉及到，再慢慢补充）
+formatter决定日志记录的最终输出格式。
+Logger
+每个程序在输出信息之前都要获得一个Logger。Logger通常对应了程序的模块名，比如聊天工具的图形界面模块可以这样获得它的Logger：
+LOG=logging.getLogger(”chat.gui”)
+而核心模块可以这样：
+LOG=logging.getLogger(”chat.kernel”)
+
+Logger.setLevel(lel):指定最低的日志级别，低于lel的级别将被忽略。debug是最低的内置级别，critical为最高
+Logger.addFilter(filt)、Logger.removeFilter(filt):添加或删除指定的filter
+Logger.addHandler(hdlr)、Logger.removeHandler(hdlr)：增加或删除指定的handler
+Logger.debug()、Logger.info()、Logger.warning()、Logger.error()、Logger.critical()：可以设置的日志级别
+
+Handler
+handler对象负责发送相关的信息到指定目的地。Python的日志系统有多种Handler可以使用。有些Handler可以把信息输出到控制台，有些Logger可以把信息输出到文件，还有些Handler可以把信息发送到网络上。如果觉得不够用，还可以编写自己的Handler。可以通过addHandler()方法添加多个多handler
+Handler.setLevel(lel):指定被处理的信息级别，低于lel级别的信息将被忽略
+Handler.setFormatter()：给这个handler选择一个格式
+Handler.addFilter(filt)、Handler.removeFilter(filt)：新增或删除一个filter对象
+
+每个Logger可以附加多个Handler。接下来我们就来介绍一些常用的Handler：
+
+1) logging.StreamHandler
+使用这个Handler可以向类似与sys.stdout或者sys.stderr的任何文件对象(file object)输出信息。它的构造函数是:StreamHandler([strm])
+其中strm参数是一个文件对象。默认是sys.stderr
+
+2) logging.FileHandler
+和StreamHandler类似，用于向一个文件输出日志信息。不过FileHandler会帮你打开这个文件。它的构造函数是：FileHandler(filename[,mode])
+filename是文件名，必须指定一个文件名。
+mode是文件的打开方式。参见Python内置函数open()的用法。默认是’a'，即添加到文件末尾。
+
+3) logging.handlers.RotatingFileHandler
+这个Handler类似于上面的FileHandler，但是它可以管理文件大小。当文件达到一定大小之后，它会自动将当前日志文件改名，然后创建 一个新的同名日志文件继续输出。比如日志文件是chat.log。当chat.log达到指定的大小之后，RotatingFileHandler自动把文件改名为chat.log.1。不过，如果chat.log.1已经存在，会先把chat.log.1重命名为chat.log.2。。。最后重新创建 chat.log，继续输出日志信息。它的构造函数是：
+RotatingFileHandler( filename[, mode[, maxBytes[, backupCount]]])
+其中filename和mode两个参数和FileHandler一样。
+maxBytes用于指定日志文件的最大文件大小。如果maxBytes为0，意味着日志文件可以无限大，这时上面描述的重命名过程就不会发生。
+backupCount用于指定保留的备份文件的个数。比如，如果指定为2，当上面描述的重命名过程发生时，原有的chat.log.2并不会被更名，而是被删除。
+
+4) logging.handlers.TimedRotatingFileHandler
+这个Handler和RotatingFileHandler类似，不过，它没有通过判断文件大小来决定何时重新创建日志文件，而是间隔一定时间就 自动创建新的日志文件。重命名的过程与RotatingFileHandler类似，不过新的文件不是附加数字，而是当前时间。它的构造函数是：
+TimedRotatingFileHandler( filename [,when [,interval [,backupCount]]])
+其中filename参数和backupCount参数和RotatingFileHandler具有相同的意义。
+interval是时间间隔。
+when参数是一个字符串。表示时间间隔的单位，不区分大小写。它有以下取值：
+S 秒
+M 分
+H 小时
+D 天
+W 每星期（interval==0时代表星期一）
+midnight 每天凌晨
+
+作者：亭子青年
+链接：https://www.jianshu.com/p/4993b49b6888
+來源：简书
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。

@@ -1,0 +1,341 @@
+Golang interface接口深入理解
+interface 介绍
+如果说goroutine和channel是Go并发的两大基石，那么接口是Go语言编程中数据类型的关键。在Go语言的实际编程中，几乎所有的数据结构都围绕接口展开，接口是Go语言中所有数据结构的核心。
+
+Go不是一种典型的OO语言，它在语法上不支持类和继承的概念。
+
+没有继承是否就无法拥有多态行为了呢？答案是否定的，Go语言引入了一种新类型—Interface，它在效果上实现了类似于C++的“多态”概念，虽然与C++的多态在语法上并非完全对等，但至少在最终实现的效果上，它有多态的影子。
+
+虽然Go语言没有类的概念，但它支持的数据类型可以定义对应的method(s)。本质上说，所谓的method(s)其实就是函数，只不过与普通函数相比，这类函数是作用在某个数据类型上的，所以在函数签名中，会有个receiver(接收器)来表明当前定义的函数会作用在该receiver上。
+
+Go语言支持的除Interface类型外的任何其它数据类型都可以定义其method（而并非只有struct才支持method），只不过实际项目中，method(s)多定义在struct上而已。 从这一点来看，我们可以把Go中的struct看作是不支持继承行为的轻量级的“类”。
+
+从语法上看，Interface定义了一个或一组method(s)，这些method(s)只有函数签名，没有具体的实现代码（有没有联想起C++中的虚函数？）。若某个数据类型实现了Interface中定义的那些被称为"methods"的函数，则称这些数据类型实现（implement）了interface。这是我们常用的OO方式，如下是一个简单的示例
+
+   type MyInterface interface{
+       Print()
+   }
+   
+   func TestFunc(x MyInterface) {}
+   type MyStruct struct {}
+   func (me MyStruct) Print() {}
+   
+   func main() {
+       var me MyStruct
+       TestFunc(me)
+   }
+
+Why Interface
+为什么要用接口呢？在Gopher China 上的分享中，有大神给出了下面的理由：
+
+writing generic algorithm （泛型编程）
+
+hiding implementation detail （隐藏具体实现）
+
+providing interception points
+
+下面大体再介绍下这三个理由
+
+writing generic algorithm （泛型编程）
+严格来说，在 Golang 中并不支持泛型编程。在 C++ 等高级语言中使用泛型编程非常的简单，所以泛型编程一直是 Golang 诟病最多的地方。但是使用 interface 我们可以实现泛型编程，如下是一个参考示例
+
+    package sort
+
+    // A type, typically a collection, that satisfies sort.Interface can be
+    // sorted by the routines in this package.  The methods require that the
+    // elements of the collection be enumerated by an integer index.
+    type Interface interface {
+        // Len is the number of elements in the collection.
+        Len() int
+        // Less reports whether the element with
+        // index i should sort before the element with index j.
+        Less(i, j int) bool
+        // Swap swaps the elements with indexes i and j.
+        Swap(i, j int)
+    }
+    
+    ...
+    
+    // Sort sorts data.
+    // It makes one call to data.Len to determine n, and O(n*log(n)) calls to
+    // data.Less and data.Swap. The sort is not guaranteed to be stable.
+    func Sort(data Interface) {
+        // Switch to heapsort if depth of 2*ceil(lg(n+1)) is reached.
+        n := data.Len()
+        maxDepth := 0
+        for i := n; i > 0; i >>= 1 {
+            maxDepth++
+        }
+        maxDepth *= 2
+        quickSort(data, 0, n, maxDepth)
+    }
+    
+
+Sort 函数的形参是一个 interface，包含了三个方法：Len()，Less(i,j int)，Swap(i, j int)。使用的时候不管数组的元素类型是什么类型（int, float, string…），只要我们实现了这三个方法就可以使用 Sort 函数，这样就实现了“泛型编程”。
+
+这种方式，我在闪聊项目里面也有实际应用过，具体案例就是对消息排序。
+
+下面给一个具体示例，代码能够说明一切，一看就懂：
+
+   type Person struct {
+   Name string
+   Age  int
+   }
+   
+   func (p Person) String() string {
+       return fmt.Sprintf("%s: %d", p.Name, p.Age)
+   }
+   
+   // ByAge implements sort.Interface for []Person based on
+   // the Age field.
+   type ByAge []Person //自定义
+   
+   func (a ByAge) Len() int           { return len(a) }
+   func (a ByAge) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+   func (a ByAge) Less(i, j int) bool { return a[i].Age < a[j].Age }
+   
+   func main() {
+       people := []Person{
+           {"Bob", 31},
+           {"John", 42},
+           {"Michael", 17},
+           {"Jenny", 26},
+       }
+   
+       fmt.Println(people)
+       sort.Sort(ByAge(people))
+       fmt.Println(people)
+   }
+   
+
+hiding implementation detail （隐藏具体实现）
+隐藏具体实现，这个很好理解。比如我设计一个函数给你返回一个 interface，那么你只能通过 interface 里面的方法来做一些操作，但是内部的具体实现是完全不知道的。
+
+例如我们常用的context包，就是这样的，context 最先由 google 提供，现在已经纳入了标准库，而且在原有 context 的基础上增加了：cancelCtx，timerCtx，valueCtx。
+
+刚好前面我们有专门说过context，现在再来回顾一下
+
+    func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
+        c := newCancelCtx(parent)
+        propagateCancel(parent, &c)
+        return &c, func() { c.cancel(true, Canceled) }
+    }
+    
+
+表明上 WithCancel 函数返回的还是一个 Context interface，但是这个 interface 的具体实现是 cancelCtx struct。
+
+   
+       // newCancelCtx returns an initialized cancelCtx.
+       func newCancelCtx(parent Context) cancelCtx {
+           return cancelCtx{
+               Context: parent,
+               done:    make(chan struct{}),
+           }
+       }
+       
+       // A cancelCtx can be canceled. When canceled, it also cancels any children
+       // that implement canceler.
+       type cancelCtx struct {
+           Context     //注意一下这个地方
+       
+           done chan struct{} // closed by the first cancel call.
+           mu       sync.Mutex
+           children map[canceler]struct{} // set to nil by the first cancel call
+           err      error                 // set to non-nil by the first cancel call
+       }
+       
+       func (c *cancelCtx) Done() <-chan struct{} {
+           return c.done
+       }
+       
+       func (c *cancelCtx) Err() error {
+           c.mu.Lock()
+           defer c.mu.Unlock()
+           return c.err
+       }
+       
+       func (c *cancelCtx) String() string {
+           return fmt.Sprintf("%v.WithCancel", c.Context)
+       }
+
+尽管内部实现上下面三个函数返回的具体 struct （都实现了 Context interface）不同，但是对于使用者来说是完全无感知的。
+
+    func WithCancel(parent Context) (ctx Context, cancel CancelFunc)    //返回 cancelCtx
+    func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc) //返回 timerCtx
+    func WithValue(parent Context, key, val interface{}) Context    //返回 valueCtx
+
+
+providing interception points
+暂无更多，待补充
+
+interface 源码分析
+说了这么多， 然后可以再来瞧瞧具体源码的实现
+
+interface 底层结构
+根据 interface 是否包含有 method，底层实现上用两种 struct 来表示：iface 和 eface。eface表示不含 method 的 interface 结构，或者叫 empty interface。对于 Golang 中的大部分数据类型都可以抽象出来 _type 结构，同时针对不同的类型还会有一些其他信息。
+
+    type eface struct {
+        _type *_type
+        data  unsafe.Pointer
+    }
+    
+    type _type struct {
+        size       uintptr // type size
+        ptrdata    uintptr // size of memory prefix holding all pointers
+        hash       uint32  // hash of type; avoids computation in hash tables
+        tflag      tflag   // extra type information flags
+        align      uint8   // alignment of variable with this type
+        fieldalign uint8   // alignment of struct field with this type
+        kind       uint8   // enumeration for C
+        alg        *typeAlg  // algorithm table
+        gcdata    *byte    // garbage collection data
+        str       nameOff  // string form
+        ptrToThis typeOff  // type for pointer to this type, may be zero
+    }
+    
+
+iface 表示 non-empty interface 的底层实现。相比于 empty interface，non-empty 要包含一些 method。method 的具体实现存放在 itab.fun 变量里。
+
+    type iface struct {
+        tab  *itab
+        data unsafe.Pointer
+    }
+    
+    // layout of Itab known to compilers
+    // allocated in non-garbage-collected memory
+    // Needs to be in sync with
+    // ../cmd/compile/internal/gc/reflect.go:/^func.dumptypestructs.
+    type itab struct {
+        inter  *interfacetype
+        _type  *_type
+        link   *itab
+        bad    int32
+        inhash int32      // has this itab been added to hash?
+        fun    [1]uintptr // variable sized
+    }
+
+
+试想一下，如果 interface 包含多个 method，这里只有一个 fun 变量怎么存呢？ 其实，通过反编译汇编是可以看出的，中间过程编译器将根据我们的转换目标类型的 empty interface 还是 non-empty interface，来对原数据类型进行转换（转换成 <*_type, unsafe.Pointer> 或者 <*itab, unsafe.Pointer>）。这里对于 struct 满不满足 interface 的类型要求（也就是 struct 是否实现了 interface 的所有 method），是由编译器来检测的。
+
+iface 之 itab
+iface 结构中最重要的是 itab 结构。itab 可以理解为 pair<interface type, concrete type> 。当然 itab 里面还包含一些其他信息，比如 interface 里面包含的 method 的具体实现。下面细说。itab 的结构如下。
+
+    type itab struct {
+        inter  *interfacetype
+        _type  *_type
+        link   *itab
+        bad    int32
+        inhash int32      // has this itab been added to hash?
+        fun    [1]uintptr // variable sized
+    }
+
+其中 interfacetype 包含了一些关于 interface 本身的信息，比如 package path，包含的 method。上面提到的 iface 和 eface 是数据类型（built-in 和 type-define）转换成 interface 之后的实体的 struct 结构，而这里的 interfacetype 是我们定义 interface 时候的一种抽象表示。
+
+    type interfacetype struct {
+        typ     _type
+        pkgpath name
+        mhdr    []imethod
+    }
+    
+    type imethod struct {   //这里的 method 只是一种函数声明的抽象，比如  func Print() error
+        name nameOff
+        ityp typeOff
+    }
+    
+
+_type 表示 concrete type。fun 表示的 interface 里面的 method 的具体实现。比如 interface type 包含了 method A, B，则通过 fun 就可以找到这两个 method 的具体实现。
+
+interface的内存布局
+了解interface的内存结构是非常有必要的，只有了解了这一点，我们才能进一步分析诸如类型断言等情况的效率问题。先看一个例子：
+
+    type Stringer interface {
+        String() string
+    }
+    
+    type Binary uint64
+    
+    func (i Binary) String() string {
+        return strconv.Uitob64(i.Get(), 2)
+    }
+    
+    func (i Binary) Get() uint64 {
+        return uint64(i)
+    }
+    
+    func main() {
+        b := Binary{}
+        s := Stringer(b)
+        fmt.Print(s.String())
+    }
+    
+
+根据上面interface的源码实现，可以知道，interface在内存上实际由两个成员组成，如下图，tab指向虚表，data则指向实际引用的数据。虚表描绘了实际的类型信息及该接口所需要的方法集
+
+![Uploading interface内存布局_731644.png]
+
+观察itable的结构，首先是描述type信息的一些元数据，然后是满足Stringger接口的函数指针列表（注意，这里不是实际类型Binary的函数指针集哦）。因此我们如果通过接口进行函数调用，实际的操作其实就是s.tab->fun0。是不是和C++的虚表很像？接下来我们要看看golang的虚表和C++的虚表区别在哪里。
+
+先看C++，它为每种类型创建了一个方法集，而它的虚表实际上就是这个方法集本身或是它的一部分而已，当面临多继承时（或者叫实现多个接口时，这是很常见的），C++对象结构里就会存在多个虚表指针，每个虚表指针指向该方法集的不同部分，因此，C++方法集里面函数指针有严格的顺序。许多C++新手在面对多继承时就变得蛋疼菊紧了，因为它的这种设计方式，为了保证其虚表能够正常工作，C++引入了很多概念，什么虚继承啊，接口函数同名问题啊，同一个接口在不同的层次上被继承多次的问题啊等等……就是老手也很容易因疏忽而写出问题代码出来。
+
+我们再来看golang的实现方式，同C++一样，golang也为每种类型创建了一个方法集，不同的是接口的虚表是在运行时专门生成的。可能细心的同学能够发现为什么要在运行时生成虚表。因为太多了，每一种接口类型和所有满足其接口的实体类型的组合就是其可能的虚表数量，实际上其中的大部分是不需要的，因此golang选择在运行时生成它，例如，当例子中当首次遇见s := Stringer(b)这样的语句时，golang会生成Stringer接口对应于Binary类型的虚表，并将其缓存。
+
+理解了golang的内存结构，再来分析诸如类型断言等情况的效率问题就很容易了，当判定一种类型是否满足某个接口时，golang使用类型的方法集和接口所需要的方法集进行匹配，如果类型的方法集完全包含接口的方法集，则可认为该类型满足该接口。例如某类型有m个方法，某接口有n个方法，则很容易知道这种判定的时间复杂度为O(mXn)，不过可以使用预先排序的方式进行优化，实际的时间复杂度为O(m+n)。
+
+interface 与 nil 的比较
+引用公司内部同事的讨论议题，觉得之前自己也没有理解明白，为此，单独罗列出来，例子是最好的说明，如下
+
+package main
+
+import (
+	"fmt"
+	"reflect"
+)
+
+type State struct{}
+
+func testnil1(a, b interface{}) bool {
+	return a == b
+}
+
+func testnil2(a *State, b interface{}) bool {
+	return a == b
+}
+
+func testnil3(a interface{}) bool {
+	return a == nil
+}
+
+func testnil4(a *State) bool {
+	return a == nil
+}
+
+func testnil5(a interface{}) bool {
+	v := reflect.ValueOf(a)
+	return !v.IsValid() || v.IsNil()
+}
+
+func main() {
+	var a *State
+	fmt.Println(testnil1(a, nil))
+	fmt.Println(testnil2(a, nil))
+	fmt.Println(testnil3(a))
+	fmt.Println(testnil4(a))
+	fmt.Println(testnil5(a))
+}
+
+返回结果如下
+
+false
+false
+false
+true
+true
+
+为啥呢？
+
+一个interface{}类型的变量包含了2个指针，一个指针指向值的类型，另外一个指针指向实际的值 对一个interface{}类型的nil变量来说，它的两个指针都是0；但是var a *State传进去后，指向的类型的指针不为0了，因为有类型了， 所以比较为false。 interface 类型比较， 要是 两个指针都相等， 才能相等。
+
+常用技巧
+待补充
+
+func的参数处理: 返回具体的类型，接收interfaces参数

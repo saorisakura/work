@@ -1,0 +1,2026 @@
+Go语言fmt包详解
+格式化输出函数
+
+func Print(a ...interface{}) (n int, err error)
+Print采用默认格式将其参数格式化并写入标准输出。如果两个相邻的参数都不是字符串，会在它们的输出之间添加空格，返回写入的字节数和遇到的任何错误。
+
+func Printf(format string, a ...interface{}) (n int, err error)
+Printf根据format参数生成格式化的字符串并写入标准输出，返回写入的字节数和遇到的任何错误。
+
+func Println(a ...interface{}) (n int, err error)
+Println采用默认格式将其参数格式化并写入标准输出。总是会在相邻参数的输出之间添加空格并在输出结束后添加换行符，返回写入的字节数和遇到的任何错误。
+
+常用的格式化
+
+Go语言的标准输出流在打印到屏幕时有些参数跟别的语言（比如C#和Java）不同，下面是我整理的一些常用的格式化操作。
+
+普通占位符
+
+占位符	说明	举例
+%v	以默认的方式打印变量的值	fmt.Printf("%v", site)
+%+v	在打印结构体时，会添加字段名	fmt.Printf("%+v", site)
+%#v	在打印结构体时，会添加字段名和包名	fmt.Printf("%#v", site)
+%T	打印变量的类型	fmt.Printf("%T", site)
+%%	字面上的百分号，并非值的占位符	fmt.Printf("%%")
+布尔占位符
+
+占位符	说明	举例
+%t	打印true或false	fmt.Printf("%t", true)
+整数占位符
+
+占位符	说明	举例
+%b	表示为二进制	fmt.Printf("%b", 100)
+%c	该值对应的unicode码值	fmt.Printf("%c", 0x4E2D)
+%d	表示为十进制	fmt.Printf("%d", 0x12)
+%o	表示为八进制	fmt.Printf("%d", 10)
+%q	该值对应的单引号括起来的go语法字符字面值，必要时会采用安全的转义表示	fmt.Printf("%q", 0x4E2D)
+%x	十六进制表示，字母形式为小写 a-f	fmt.Printf("%x", 13)
+%X	十六进制表示，字母形式为大写 A-F	fmt.Printf("%x", 13)
+%U	表示为Unicode格式：U+1234，等价于"U+%04X"	fmt.Printf("%U", 0x4E2D)
+浮点数和复数的组成部分（实部和虚部）
+
+占位符	说明	举例
+%e	(=%.6e) 6位小数点
+科学计数法，例如 -1234.456e+78	fmt.Printf("%e", 10.2)
+%E	科学计数法，例如 -1234.456E+78	fmt.Printf("%e", 10.2)
+%f	(=%.6f) 6位小数点
+有小数点而无指数，例如 123.456	fmt.Printf("%f", 10.2)
+%g	根据情况选择 %e 或 %f 以产生更紧凑的（无末尾的0）输出	fmt.Printf("%g", 10.20)
+%G	根据情况选择 %E 或 %f 以产生更紧凑的（无末尾的0）输出	fmt.Printf("%G", 10.20+2i)
+字符串与字节切片
+
+占位符	说明	举例
+%s	输出字符串表示（string类型或[]byte)	fmt.Printf("%s", []byte("oldboy"))
+%10s	输出字符串最小宽度为10(右对齐)	fmt.Printf("%10s", "oldboy")
+%-10s	输出字符串最小宽度为10(左对齐)	fmt.Printf("%-10s", "oldboy")
+%.5s	输出字符串最大宽度为5	fmt.Printf("%.5s", "oldboy")
+%5.10s	输出字符串最小宽度为5，最大宽度为10	fmt.Printf("%5.10s", "oldboy")
+%-5.10s	输出字符串最小宽度为5，最大宽度为10(左对齐)	fmt.Printf("%-5.10s", "oldboy")
+%5.3s	输出字符串宽度为5,如果原字符串宽度大于3,则截断	fmt.Printf("%5.3s", "oldboy")
+%010s	如果宽度小于10，就会在字符串前面补零	fmt.Printf("%010s", "oldboy")
+%q	双引号围绕的字符串，由Go语法安全地转义	fmt.Printf("%q", "oldboy")
+%x	十六进制，小写字母，每字节两个字符	fmt.Printf("%x", "oldboy")
+%X	十六进制，大写字母，每字节两个字符	fmt.Printf("%X", "oldboy")
+指针
+
+占位符	说明	举例
+%p	十六进制表示，前缀 0x	fmt.Printf("%p", &site)
+%#p	不带前缀 0x	fmt.Printf("%#p", &site)
+
+Go语言string包详解
+strings包实现了用于操作字符的简单函数。
+
+查找操作
+
+判断给定字符串s中是否包含子串substr, 找到返回true, 找不到返回false
+
+func Contains(s, substr string) bool
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println("包含子串返回：", strings.Contains("oldboy", "boy"))
+    fmt.Println("不包含子串返回：", strings.Contains("oldboy", "girl"))
+    fmt.Println("子字符串是空字符串返回：", strings.Contains("oldboy", ""))
+    fmt.Println("原字符串、子字符串都是空字符串返回：", strings.Contains("", ""))
+    fmt.Println("中文字符串包含子串返回：", strings.Contains("老男孩", "男孩"))
+}
+运行结果：
+
+包含子串返回： true
+不包含子串返回： false
+子字符串是空字符串返回： true
+原字符串、子字符串都是空字符串返回： true
+中文字符串包含子串返回： true
+在字符串s中查找sep所在的位置, 返回位置值, 找不到返回-1
+
+func Index(s, sep string) int
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println("存在返回第一个匹配字符的位置：", strings.Index("oldboy", "boy"))
+    fmt.Println("不存在返回：", strings.Index("oldboy", "girl"))
+    fmt.Println("中文字符串存在返回：", strings.Index("老男孩", "男孩"))
+}
+运行结果：
+
+存在返回第一个匹配字符的位置： 3
+不存在返回： -1
+中文字符串存在返回： 3
+统计给定子串sep的出现次数, sep为空时, 返回字符串的长度 + 1
+
+func Count(s, sep string) int
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println("子字符串出现次数：", strings.Count("oldboy", "o"))
+    fmt.Println("子字符串为空时, 返回：", strings.Count("oldboy", ""))
+}
+运行结果：
+
+子字符串出现次数： 2
+子字符串为空时, 返回： 7
+重复操作
+重复s字符串count次, 最后返回新生成的重复的字符串
+
+func Repeat(s string, count int) string
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println(strings.Repeat("嘀嗒", 4), "时针它不停在转动")
+}
+运行结果：
+
+嘀嗒嘀嗒嘀嗒嘀嗒 时针它不停在转动
+替换操作
+在s字符串中, 把old字符串替换为new字符串，n表示替换的次数，如果n<0会替换所有old子串。
+
+func Replace(s, old, new string, n int) string
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println(strings.Replace("luck luck luck", "k", "ky", 2))
+    fmt.Println(strings.Replace("luck luck luck", "k", "ky", -1))
+}
+
+运行结果：
+
+lucky lucky luck
+lucky lucky lucky
+删除操作
+删除在s字符串的头部和尾部中由cutset指定的字符, 并返回删除后的字符串
+
+func Trim(s string, cutset string) string
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println(strings.Trim("   oldboy   ", " "))
+}
+运行结果：
+
+oldboy
+大小写转换
+给定字符串转换为英文标题的首字母大写的格式(不能正确处理unicode标点)
+
+func Title(s string) string
+返回将所有字母都转为对应的小写版本的拷贝
+
+func ToLower(s string) string
+返回将所有字母都转为对应的大写版本的拷贝
+
+func ToUpper(s string) string
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println(strings.Title("It is never too late to learn."))
+    fmt.Println(strings.ToLower("It Is Never Too Late To Learn."))
+    fmt.Println(strings.ToUpper("It is never too late to learn."))
+}
+运行结果：
+
+It Is Never Too Late To Learn.
+it is never too late to learn.
+IT IS NEVER TOO LATE TO LEARN.
+字符串前缀后缀
+判断字符串是否包含前缀prefix，大小写敏感
+
+func HasPrefix(s, prefix string) bool
+判断s是否有后缀字符串suffix，大小写敏感
+
+func HasSuffix(s, suffix string) bool
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println("前缀是以old开头的：", strings.HasPrefix("oldboy", "old"))
+    fmt.Println("后缀是以boy开头的：", strings.HasSuffix("oldboy", "boy"))
+}
+运行结果：
+
+前缀是以old开头的： true
+后缀是以boy开头的： true
+字符串分割
+用去掉s中出现的sep的方式进行分割，会分割到结尾，并返回生成的所有片段组成的切片（每一个sep都会进行一次切割，即使两个sep相邻，也会进行两次切割）。如果sep为空字符，Split会将s切分成每一个unicode码值一个字符串。
+
+func Split(s, sep string) []string
+返回将字符串按照空白（unicode.IsSpace确定，可以是一到多个连续的空白字符）分割的多个字符串。如果字符串全部是空白或者是空字符串的话，会返回空切片。
+
+func Fields(s string) []string
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    fmt.Println("Split 函数的用法")
+    fmt.Printf("%q\n", strings.Split("Linux,Python,Golang,Java", ","))
+    fmt.Printf("%q\n", strings.Split("a mountain a temple", "a "))
+    fmt.Printf("%q\n", strings.Split(" abc ", ""))
+    fmt.Printf("%q\n", strings.Split("", "oldboy"))
+    fmt.Println("Fields 函数的用法")
+    fmt.Printf("Fields are: %q\n", strings.Fields(" Linux Python Golang  Java "))   --- 只识别空格
+}
+运行结果：
+
+Split 函数的用法
+["Linux" "Python" "Golang" "Java"]
+["" "mountain " "temple"]
+[" " "a" "b" "c" " "]
+[""]
+Fields 函数的用法
+Fields are: ["Linux" "Python" "Golang" "Java"]
+
+
+Go语言数组
+数组是具有相同唯一类型的一组已编号且长度固定的数据项序列，这种类型可以是任意的原始类型例如整形、字符串或者自定义类型。
+
+在Go语言中数组是固定长度的数据类型，它包含相同类型的连续的元素，这些元素可以是内建类型，像数字和字符串，也可以是结构类型，元素可以通过唯一的索引值访问，从0开始。
+
+数组是很有价值的数据结构，因为它的内存分配是连续的，内存连续意味着可以让它在CPU缓存中待更久，所以迭代数组和移动元素都会非常迅速。
+
+数组定义
+
+第一种，通过指定数据类型和元素个数（数组长度）来声明数组。
+
+声明一个长度为5的整数数组：
+
+var array [5]int
+声明一个长度为5的整数数组并初始化：
+
+var array [5]int = [5]int{1, 2, 3, 4, 5}
+第二种，一种快速创建和初始化数组的方法是使用数组字面值。数组字面值允许我们声明我们需要的元素个数并指定数据类型。
+
+声明一个长度为5的字符串数组并初始化每个元素：
+
+array := [5]string{"Linux", "Python", "Java", "Golang", "DBA"}
+第三种，如果你把长度写成…，Go编译器将会根据你的元素来推导出长度。
+
+通过初始化值的个数来推导出数组容量：
+
+array := [...]int{1, 2, 3, 4, 5}
+第四种，如果我们知道想要数组的长度，但是希望对指定位置元素初始化。
+
+声明一个长度为5的整数数组，为索引为1和3的位置指定元素初始化，剩余元素为该元素类型的默认值：
+
+array := [5]int{1: 1, 3: 3}
+注意：当一个数组被声明时，它里面包含的每个元素都会被初始化为该元素类型的默认值。一旦数组被声明了，那么它的数据类型跟长度都不能再被改变。如果你需要更多的元素，那么只能创建一个你想要长度的新的数组，然后把原有数组的元素拷贝过去。
+
+数组操作
+
+使用内置函数len()和cap()返回数组长度和数组容量。实例如下：
+
+package main
+
+import "fmt"
+
+func main() {
+    array := [2]int{}
+    fmt.Printf("数组长度：%d，数组容量：%d\n", len(array), cap(array))
+}
+运行结果：
+
+数组长度：2，数组容量：2
+使用 [] 操作符来访问数组元素：
+
+改变索引为2的元素的值：
+
+array := [5]int{1, 2, 3, 4, 5}
+array[2] = 100
+注意：数组可以通过下标进行访问，数组下标是从0开始，最后一个元素下标是：len(array)-1。如果下标在数组合法范围之外，则触发访问越界。实例如下：
+
+package main
+
+func main() {
+    array := [5]int{1, 2, 3, 4, 5}
+    array[5] = 100
+}
+编译错误：
+
+./main.go:5:7: invalid array index 5 (out of bounds for 5-element array)
+数组赋值操作，一个数组可以被赋值给任意相同类型的数组：
+
+var arr1 [5]string
+arr2 := [5]string{"Linux", "Python", "Java", "Golang", "DBA"}
+arr1 = arr2
+注意：
+
+数组的类型同时包括数组的长度和可以被存储的元素类型，数组类型完全相同才可以互相赋值，实例如下：
+
+package main
+
+import "fmt"
+
+func main() {
+    var arr1 [3]string
+    arr2 := [5]string{"Linux", "Python", "Java", "Golang", "DBA"}
+    arr1 = arr2
+    fmt.Println(arr1)
+}
+编译错误：
+
+./main.go:8:7: cannot use arr2 (type [5]string) as type [3]string in assignment
+多维数组
+
+数组总是一维的，但是可以组合成多维的。多维数组通常用于有父子关系的数据或者是坐标系数据：
+
+声明一个二维数组
+
+var array [3][6]int
+使用数组字面值声明并初始化
+
+array := [4][2]int{{10, 11}, {20, 21}, {30, 31}, {40, 41}}
+指定外部数组索引位置初始化
+
+array := [4][2]int{1: {20, 21}, 3: {40, 41}}
+同时指定内外部数组索引位置初始化
+
+array := [4][2]int{1: {20, 21}, 3: {40, 41}}
+使用内置函数len()和cap()返回多维数组长度和多维数组容量。实例如下：
+
+package main
+
+import "fmt"
+
+func main() {
+    array := [3][6]int{}
+    fmt.Printf("数组长度：%d，数组容量：%d\n", len(array), cap(array))
+}
+运行结果：
+
+数组长度：3，数组容量：3
+通过 [] 操作符来访问数组元素：
+
+var array [2][2]int
+array[0][0] = 0
+array[0][1] = 1
+array[1][0] = 2
+array[1][1] = 3
+相同类型的多维数组相互赋值：
+
+var arr1 [2][2]int
+var arr2 [2][2]int
+arr2[0][0] = 0
+arr2[0][1] = 1
+arr2[1][0] = 2
+arr2[1][1] = 3
+arr1 = arr2
+
+
+Go语言类型转换
+类型转换用于将一种数据类型的变量转换为另外一种类型的变量。
+
+Go语言类型转换基本格式如下：
+表达式 T(v) 将值 v 转换为类型 T 。
+
+Go语言各种类型转换及函数的高级用法：
+strconv包实现了基本数据类型和其字符串表示的相互转换。
+
+转字节
+
+字符串转字节
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var str string = "oldboy"
+    result := []byte(str)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+32位整形转字节
+
+package main
+
+import (
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var x int32
+    x = 100
+    bytesBuffer := bytes.NewBuffer([]byte{})
+    binary.Write(bytesBuffer, binary.BigEndian, x)
+    result := bytesBuffer.Bytes()
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+转字符串
+
+字节转字符串
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var b []byte = []byte{111, 108, 100, 98, 111, 121}
+    result := string(b)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+整形转字符串
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    var x int
+    x = 100
+    result := strconv.Itoa(x)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+FormatInt 将 int 型整数 i 转换为字符串形式 
+base：进位制（2 进制到 36 进制） 大于 10 进制的数，返回值使用小写字母 ‘a’ 到 ‘z’
+
+func FormatInt(i int64, base int) string
+Itoa 相当于 FormatInt(i, 10)
+
+64位整形转字符串
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    var i int64
+    i = 0x100
+    result := strconv.FormatInt(i, 10)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+布尔值转字符串
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    t := strconv.FormatBool(true)
+    f := strconv.FormatBool(false)
+    fmt.Printf("t is %v , t type is %v\n", t, reflect.TypeOf(t))
+    fmt.Printf("f is %v , f type is %v\n", f, reflect.TypeOf(f))
+}
+浮点数转字符串
+
+strconv.FormatFloat(f,fmt,prec,bitSize)
+f：要转换的浮点数 
+fmt：格式标记（b、e、E、,f、g、G） 
+prec：精度（数字部分的长度，不包括指数部分） 
+bitSize：指定浮点类型（32:float32、64:float64）
+
+格式标记： 
+‘b’ (-ddddp±ddd，二进制指数) 
+‘e’ (-d.dddde±dd，十进制指数) 
+‘E’ (-d.ddddE±dd，十进制指数) 
+‘f’ (-ddd.dddd，没有指数) 
+‘g’ (‘e’:大指数，’f’:其它情况) 
+‘G’ (‘E’:大指数，’f’:其它情况)
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    f := 100.12345678901234567890123456789
+    result := strconv.FormatFloat(f, 'e', 30, 32)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+转整形
+
+int转int64
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var x int = 100
+    result := int64(x)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+字符串转整形
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    var str string
+    str = "100"
+    result, _ := strconv.Atoi(str)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+字节转32位整形
+
+package main
+
+import (
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    b := []byte{0x00, 0x00, 0x03, 0xe8}
+    bytesBuffer := bytes.NewBuffer(b)
+
+    var result int32
+    binary.Read(bytesBuffer, binary.BigEndian, &result)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+转浮点型
+
+float32转float64
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var x float32 = 100
+    result := float64(x)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+整型转浮点型
+
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+func main() {
+    var x int = 100
+    result := float32(x)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+字符串转浮点数
+
+strconv.ParseFloat(str,bitSize)
+str：要转换的字符串
+bitSize：指定浮点类型（32:float32、64:float64）
+如果 str 是合法的格式，而且接近一个浮点值，
+则返回浮点数的四舍五入值（依据 IEEE754 的四舍五入标准）
+如果 str 不是合法的格式，则返回“语法错误”
+如果转换结果超出 bitSize 范围，则返回“超出范围”
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    var str string = "0.12345678901234567890"
+    result, _ := strconv.ParseFloat(str, 32)
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+转布尔值
+
+字符串转布尔值
+
+ParseBool 将字符串转换为布尔值 
+它接受真值：1, t, T, TRUE, true, True 
+它接受假值：0, f, F, FALSE, false, False. 
+其它任何值都返回一个错误
+package main
+
+import (
+    "fmt"
+    "reflect"
+    "strconv"
+)
+
+func main() {
+    result, _ := strconv.ParseBool("1")
+    fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+}
+注意：Go语言不能将其他类型当 bool 值使用。
+
+package main
+
+func main() {
+    a := 100
+    if a {
+    }
+}
+编译错误：
+
+./main.go:5:2: non-bool a (type int) used as if condition
+
+
+Go语言切片
+
+Go语言切片是对数组的抽象。数组的长度不可改变，在特定场景中这样的集合就不太适用，Go中提供了一种灵活，功能强悍的内置类型切片（"动态数组"），与数组相比切片的长度是不固定的，可以追加元素，在追加时可能使切片的容量增大。
+
+需要说明，slice 并不是数组或数组指针。它通过内部指针和相关属性引用数组片段，以实现变长方案。
+
+切片定义
+
+第一种，声明一个切片：
+
+var slice []int
+
+切片定义并初始化
+
+var slice0 []int = []int{1, 2, 3}
+var slice1 = []int{1, 2, 3}
+
+第二种，通过make来创建切片
+
+var slice0 []int = make([]int, 10)
+var slice1 = make([]int, 10)
+var slice2 = make([]int, 10, 10)
+
+第三种，通过 := 语法来定义切片
+
+slice0 := []int{}
+slice1 := make([]int, 10)
+slice2 := make([]int, 10, 10)
+
+第四种，通过操作数组来创建切片
+
+var array = [...]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+var slice0 []int = array[2:8]
+
+// 可以简写为 var slice []int = array[:end]
+var slice1 []int = array[0:6]
+
+// 可以简写为 var slice[]int = array[start:]
+var slice2 []int = array[5:10]
+
+// 可以简写为var slice []int = array[:]
+var slice3 []int = array[0:len(array)]
+
+// 去掉切片的最后一个元素
+var slice4 = array[:len(array)-1]
+第五种，通过两个冒号创建切片，slice[x:y:z]切片实体[x:y]，切片长度len = y-x，切片容量cap = z-x
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    slice := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+    slice1 := slice[6:8]
+    fmt.Printf("slice1 : %v , len : %d , cap : %d\n", slice1, len(slice1), cap(slice1))
+    slice2 := slice[2:6:8]
+    fmt.Printf("slice2 : %v , len : %d , cap : %d\n", slice2, len(slice2), cap(slice2))
+}
+
+slice1[6:8]，从第6位到第8位（返回[6 7]），长度len为2，最大可扩充长度cap为4
+
+slice2[2:6:8]，从第2位到第6位（返回[2 3 4 5]），长度len为4，最大可扩充长度cap为6
+
+切片操作
+
+切片长度，可以由 len() 函数获取切片长度。
+切片容量，可以由 cap() 函数获取切片最长可以达到多少。
+
+package main
+
+import "fmt"
+
+func main() {
+    // 通过初始化表达式构造，可使用索引号。
+    s1 := []int{0, 1, 2, 3, 8: 100}
+    fmt.Println(s1, len(s1), cap(s1))
+
+    // 使用 make 创建，指定 len 和 cap 值。
+    s2 := make([]int, 6, 8)
+    fmt.Println(s2, len(s2), cap(s2))
+
+    // 省略 cap，相当于 cap = len。
+    s3 := make([]int, 6)
+    fmt.Println(s3, len(s3), cap(s3))
+}
+
+如果 slice == nil，那么 len、cap 结果都等于 0。
+
+  var ss []string;
+  fmt.Printf("[ local print ]\t:\t length:%v\taddr:%p\tisnil:%v\n",len(ss),ss, ss==nil)  
+  print("func print",ss)
+  //切片尾部追加元素append elemnt
+  for i:=0;i<10;i++{
+    ss=append(ss,fmt.Sprintf("s%d",i));
+  }
+  fmt.Printf("[ local print ]\t:\tlength:%v\taddr:%p\tisnil:%v\n",len(ss),ss, ss==nil)  
+  print("after append",ss)
+  //删除切片元素remove element at index
+  index:=5;
+  ss=append(ss[:index],ss[index+1:]...)
+  print("after delete",ss)
+  //在切片中间插入元素insert element at index;
+  //注意：保存后部剩余元素，必须新建一个临时切片
+  rear:=append([]string{},ss[index:]...) 
+  ss=append(ss[0:index],"inserted")
+  ss=append(ss,rear...)
+  print("after insert",ss)
+
+切片追加，使用append() 函数向 slice 尾部添加数据，返回新的 slice
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+
+    var a = []int{1, 2, 3}
+
+    // 一次 append 一个值
+    b := append(a, 4)
+
+    // 一次 append 多个值
+    c := append(b, 5, 6, 7)
+
+    // 一次 append 一个切片
+    var d = []int{8, 9, 10}
+    e := append(c, d...)
+
+    fmt.Println(a, b, c, d, e)
+}
+
+切片拷贝，使用copy() 函数 copy 在两个 slice 间复制数据，复制长度以 len 小的为准。两个 slice 可指向同一底层数组，允许元素区间重叠。
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var a = []int{1, 2, 3, 4, 5}
+    b := []int{100, 200}
+    copy(a, b)
+    fmt.Println(a, b)
+}
+
+运行结果：
+
+[100 200 3 4 5] [100 200]
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var a = []int{1, 2, 3, 4, 5}
+    b := []int{100, 200}
+    copy(b, a)
+    fmt.Println(a, b)
+}
+
+运行结果：
+
+[1 2 3 4 5] [1 2]
+
+slice中cap重新分配规律：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+
+    s := make([]int, 0, 1)
+    c := cap(s)
+
+    for i := 0; i < 50; i++ {
+        s = append(s, i)
+        if n := cap(s); n > c {
+            fmt.Printf("cap: %d -> %d\n", c, n)
+            c = n
+        }
+    }
+
+}
+运行结果：
+
+cap: 1 -> 2
+cap: 2 -> 4
+cap: 4 -> 8
+cap: 8 -> 16
+cap: 16 -> 32
+cap: 32 -> 64
+
+
+Go语言容器
+Map 是一种无序的键值对的集合。Map 最重要的一点是通过 key 来快速检索数据，key 类似于索引，指向数据的值。
+
+Map 是一种集合，所以我们可以像迭代数组和切片那样迭代它。不过，Map 是无序的，我们无法决定它的返回顺序，这是因为 Map 是使用 hash 表来实现的。
+
+键必须是支持相等运算符 ("=="、"!=") 类型， 如 number、string、 pointer、array、struct，以及对应的 interface。
+
+值可以是任意类型，没有限制。
+
+定义 Map
+
+第一种，声明一个Map：
+
+var m map[int]string
+Map定义并初始化
+
+var m1 map[int]string = map[int]string{0: "Linux", 1: "Python"}
+var m2 = map[int]string{0: "Java", 1: "Golang"}
+第二种，通过make来创建Map
+
+var m1 map[int]string = make(map[int]string, 10)
+var m2 = make(map[int]string, 10)
+第三种，通过 := 语法来定义Map
+
+m1 := map[int]string{}
+m2 := make(map[int]string, 10)
+Map操作
+
+插入操作：
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    fmt.Printf("插入前：map m : %v\n", m)
+    m["key2"] = "oldboy"
+    fmt.Printf("插入后：map m : %v\n", m)
+}
+更新操作：
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    fmt.Printf("更新前：map m : %v\n", m)
+    m["key1"] = "Golang"
+    fmt.Printf("更新后：map m : %v\n", m)
+}
+查找操作：
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    val, ok := m["key0"]
+    if ok {
+        fmt.Printf("查找操作：key0 => %v\n", val)
+    }
+}
+删除操作：
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    fmt.Printf("删除前：map m : %v\n", m)
+    delete(m, "key1")
+    fmt.Printf("删除后：map m : %v\n", m)
+}
+删除操作，如果 key 不存在，不会出错。
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    fmt.Printf("删除前：map m : %v\n", m)
+    delete(m, "key10")
+    fmt.Printf("删除后：map m : %v\n", m)
+}
+求长度：
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    len := len(m)
+    fmt.Printf("map m 长度: %v\n", len)
+}
+注意：不可以在map上使用cap()方法。
+
+package main
+
+import "fmt"
+
+func main() {
+    m := map[string]string{"key0": "Linux", "key1": "Python"}
+    cap := cap(m)
+    fmt.Printf("map's cap is %v\n", cap)
+}
+编译错误：
+
+./main.go:7:12: invalid argument m (type map[string]string) for cap
+
+
+Go语言管道
+Channel概念
+
+Channel 是Go中的一个核心类型，你可以把它看成一个管道。Channel是引用类型，操作符是箭头 <- 。
+Channel 是 CSP 模式的具体实现，用于多个 goroutine 通讯。其内部实现了同步，确保并发安全。
+Channel 是线程安全的，先进先出，多个goroutine同时访问，不需要加锁，channel是有类型的，一个整数的channel只能存放整数。
+
+Channel定义
+
+第一种，channel声明
+
+声明int类型的chan
+
+var ch chan int
+声明string类型的chan
+
+var ch chan string
+声明map类型chan
+
+var ch chan map[int]string
+第二种，使用make定义，无缓冲channel
+
+var ch1 chan int = make(chan int)
+var ch2 = make(chan int)
+ch3 := make(chan int)
+第三种，使用make定义，有缓冲channel
+
+var ch1 chan int = make(chan int, 10)
+var ch2 = make(chan int, 10)
+ch3 := make(chan int, 10)
+第四种，只读channel
+
+var ch1 <-chan int
+var ch2 <-chan int = make(<-chan int, 10)
+var ch3 = make(<-chan int, 10)
+ch4 := make(<-chan int, 10)
+第五种，只写channel
+
+var ch1 chan<- int
+var ch2 chan<- int = make(chan<- int, 10)
+var ch3 = make(chan<- int, 10)
+ch4 := make(chan<- int, 10)
+Channel特点
+
+无缓冲的与有缓冲channel有着重大差别，那就是一个是同步的 一个是非同步的。
+
+比如
+
+无缓冲chan：ch1:=make(chan int)
+
+有缓冲chan：ch2:=make(chan int,1)
+
+无缓冲： ch1<-1 不仅仅是向 c1 通道放 1，而是一直要等有别的携程 <-ch1 接手了这个参数，那么ch1<-1才会继续下去，要不然就一直阻塞着。
+
+有缓冲： ch2<-1 则不会阻塞，因为缓冲大小是1(其实是缓冲大小为0)，只有当放第二个值的时候，第一个还没被人拿走，这时候才会阻塞。
+
+缓冲区是内部属性，并非类型构成要素。
+
+普通 channel 可以隐式转为只读channel或只写channel。
+
+package main
+
+var ch = make(chan int, 3)
+var send chan<- int = ch
+var recv <-chan int = ch
+
+func main() {
+
+}
+只读channel或只写channel不能转为普通 channel。
+
+package main
+
+func main() {
+    var send chan<- int
+    var recv <-chan int
+
+    ch1 := (chan int)(send)
+    ch2 := (chan int)(recv)
+}
+编译错误：
+
+./main.go:7:19: cannot convert send (type chan<- int) to type chan int
+./main.go:8:19: cannot convert recv (type <-chan int) to type chan int
+Channel操作
+
+使用内置函数 len() 返回未被读取的缓冲元素数量，使用内置函数 cap() 返回缓冲区大小。
+
+package main
+
+import "fmt"
+
+func main() {
+    ch1 := make(chan int)
+    ch2 := make(chan int, 3)
+
+    ch2 <- 1
+
+    fmt.Printf("ch1 缓冲元素数量：%v,缓冲区大小：%v\n", len(ch1), cap(ch1))
+    fmt.Printf("ch2 缓冲元素数量：%v,缓冲区大小：%v\n", len(ch2), cap(ch2))
+}
+运行结果：
+
+ch1 缓冲元素数量：0,缓冲区大小：0
+ch2 缓冲元素数量：1,缓冲区大小：3
+channel 写入、读取操作：
+
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int, 1)
+    // 写入chan
+    ch <- 99
+
+    // 读取chan
+    value, ok := <-ch
+    if ok {
+        fmt.Printf("读取chan：%v\n", value)
+    }
+
+}
+channel 关闭操作：
+
+1、使用内置函数 close() 进行关闭 chan。
+2、chan关闭之后，for range遍历chan中已经存在的元素后结束。
+3、没有使用for range的写法需要使用，val, ok := <- ch进行判断chan是否关闭。
+
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int, 5)
+
+    ch <- 1
+    ch <- 2
+    ch <- 3
+
+    close(ch)
+    for {
+        val, ok := <-ch
+        if ok == false {
+            fmt.Println("chan is closed")
+            break
+        }
+        fmt.Println(val)
+    }
+}
+注意：向已经关闭的 channel 发送数据会引发 panic 错误。
+
+package main
+
+func main() {
+    ch := make(chan int, 1)
+    close(ch)
+    ch <- 100
+}
+运行错误：
+
+panic: send on closed channel
+
+
+package main
+
+import (
+	"fmt"
+	"strings"
+	"reflect"
+	"bytes"
+	"encoding/binary"
+)
+
+type Books struct {
+	name string
+	author string
+	id int
+	datein string
+	dateout string
+}
+
+func main() {
+	b := Books{
+		name: "prejudice",
+		author: "liyang",
+		id: 1,
+		datein: "20180814",
+		dateout: "none",
+	}
+	array := [5]string{"Linux", "Python", "Java", "Golang", "DBA"}
+	data, err := fmt.Println("hahaha")
+	fmt.Println(data, err)
+	fmt.Print("adasd", "dasdasd\n")
+	fmt.Printf("%v\n", b)
+	fmt.Printf("%+v\n", b)
+	fmt.Printf("%#v\n", b)
+
+	fmt.Println("liyang string has li ---> ", strings.Contains("liyang", "li"))
+	fmt.Printf("Fields are: %q\n", strings.Fields("Linux Python Java     Golang"))
+	fmt.Println("Fields are: ", strings.Split("Linux,Python,Java,Golang", ","))
+	fmt.Println(array)
+
+	str := "liyang"
+	bstr := []byte(str)
+	fmt.Printf("str is %v, type is :%v\n", bstr, reflect.TypeOf(bstr))
+
+	var x int32
+	x = 100
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.BigEndian, x)
+	result := bytesBuffer.Bytes()
+	fmt.Printf("result is %v , result type is %v\n", result, reflect.TypeOf(result))
+
+	slice0 := []int{}
+	slice1 := make([]int, 10)
+	slice2 := make([]int, 10, 10)
+	fmt.Println(slice0, slice1, slice2)
+}
+运行结果：
+hahaha
+7 <nil>
+adasddasdasd
+{prejudice liyang 1 20180814 none}
+{name:prejudice author:liyang id:1 datein:20180814 dateout:none}
+main.Books{name:"prejudice", author:"liyang", id:1, datein:"20180814", dateout:"none"}
+liyang string has li --->  true
+Fields are: ["Linux" "Python" "Java" "Golang"]
+Fields are:  [Linux Python Java Golang]
+[Linux Python Java Golang DBA]
+str is [108 105 121 97 110 103], type is :[]uint8
+result is [0 0 0 100] , result type is []uint8
+[] [0 0 0 0 0 0 0 0 0 0] [0 0 0 0 0 0 0 0 0 0]
+
+
+Go语言指针
+指针（Pointer）是编程语言中的一个对象，利用地址，它的值直接指向（points to）存在电脑存储器中另一个地方的值。由于通过地址能找到所需的变量单元，可以说，地址指向该变量单元。因此，将地址形象化的称为“指针”。意思是通过它能找到以它为地址的内存单元。一个指针变量指向了一个值的内存地址。
+
+Go语言支持指针类型*T，指针的指针**T，以及包含包名前缀的*package.T。
+
+指针声明
+在指针类型变量前面加上 *（取值符）来获取指针所指向的内容。
+在值类型变量前面加上 &（取地址符）来获取该变量的指针。
+
+声明一个int值的指针变量
+
+var ip *int
+声明一个string值的指针变量
+
+var sp *string
+通过 := 语法来定义指针
+
+var str string = "oldboy"
+sp := &str
+声明一个int值的指针的指针变量
+
+var p **int
+声明一个time.Time值的指针变量
+
+var t *time.Time
+打印变量在内存中的地址：
+
+package main
+
+import "fmt"
+
+func main() {
+    var str string = "oldboy"
+
+    fmt.Printf("变量的地址: %x\n", &str)
+}
+运行结果：
+
+变量的地址: c42000e1d0
+空指针
+
+当一个指针被定义后没有分配到任何变量时，它的值为 nil。nil 指针也称为空指针。
+
+nil在概念上和其它语言的null、None、nil、NULL一样，都指代零值或空值。
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var ip *int
+    var sp *string
+
+    if ip == nil {
+        fmt.Println("ip == nil")
+    }
+    if sp == nil {
+        fmt.Println("sp == nil")
+    }
+}
+定义的不同类型的零值不能用于比较运算，实例如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var ip *int
+    var sp *string
+
+    if ip == sp {
+        fmt.Println("error")
+    }
+}
+编译错误：
+
+./main.go:11:8: invalid operation: ip == sp (mismatched types *int and *string)
+查看零值指针类型，实例如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var ip *int
+    var sp *string
+
+    fmt.Printf("ip : %#v\n", ip)
+    fmt.Printf("sp : %#v\n", sp)
+}
+运行结果：
+
+ip : (*int)(nil)
+sp : (*string)(nil)
+指针类型转换
+
+Go语言是不允许两个指针类型进行转换的。
+
+我们一般使用T作为一个指针类型，表示一个指向类型T变量的指针。为了安全的考虑，两个不同的指针类型不能相互转换，比如 *uint 不能转为 *int 。实例如下：
+
+package main
+
+func main() {
+    var i uint = 10
+    var p2 *int
+
+    p1 := &i
+    p2 = (*int)(p1)
+}
+编译错误：
+
+./main.go:8:13: cannot convert p1 (type *uint) to type *int
+unsafe.Pointer类型用于表示任意类型的指针。有4个特殊的只能用于Pointer类型的操作：
+
+1、 任意类型的指针可以转换为一个Pointer类型值
+2、 一个Pointer类型值可以转换为任意类型的指针
+3、 一个uintptr类型值可以转换为一个Pointer类型值
+4、 一个Pointer类型值可以转换为一个uintptr类型值
+因此，Pointer类型允许程序绕过类型系统读写任意内存。使用它时必须谨慎。实例如下：
+
+package main
+
+import (
+    "fmt"
+    "unsafe"
+)
+
+func main() {
+    var i uint = 10
+    var p2 *int
+
+    p1 := &i
+    p2 = (*int)(unsafe.Pointer(p1))
+    fmt.Println(*p2)
+}
+
+
+Go语言结构体
+Go 语言中数组可以存储同一类型的数据，但在结构体中我们可以为不同项定义不同的数据类型。
+
+结构体是由一系列具有相同类型或不同类型的数据构成的数据集合。
+
+struct 特点
+1、用来自定义复杂数据结构
+2、struct里面可以包含一个或多个字段（属性）
+3、struct类型可以定义方法，注意和函数的区分
+4、struct类型是值类型
+5、struct类型可以嵌套
+6、结构体是用户单独定义的类型，不能和其他类型进行强制转换
+7、Go中的struct没有构造函数，一般可以使用工厂模式来解决这个问题
+8、我们可以为struct中的每个字段，写上一个tag。这个tag可以通过反射的机制获取到，最常用的场景就是json序列化和反序列化
+9、访问结构体成员, 用 "." 来连接，格式为："结构体.成员名"
+
+struct 定义
+
+可用 type 在全局或函数内定义新类型。
+第一种，定义一个新的数据类型，结构体中只有一个成员。
+
+type bigint int64
+type smallint int8
+新类型不是原类型的别名，除拥有相同数据存储结构外，它们之间没有任何关系，不会持有原类型任何信息。除非目标类型是未命名类型，否则必须显式转换。
+
+第二种，定义一个新的数据类型，结构体中有多个成员。
+
+type oldboy struct {
+    Linux  string
+    Python string
+    Golang string
+}
+第三种，定义一个新的数据类型，指向结构体的指针。
+
+type Linux string
+
+type oldboy struct {
+    *Linux
+}
+不能同时嵌入某一类型和其指针类型，因为它们名字相同。实例如下：
+
+package main
+
+type Linux string
+
+type oldboy struct {
+    *Linux
+    Linux
+}
+
+func main() {
+
+}
+编译错误：
+
+./main.go:7:2: duplicate field Linux
+struct 初始化
+
+有序初始化: 结构体中的多个成员的值，必须一一对应。
+无序初始化: 结构体中的多个成员的值，无须一一对应，可初始化部分值。
+
+package main
+
+type oldboy struct {
+    Linux  string
+    Python string
+    Golang string
+}
+
+// 有序初始化
+var ordered = oldboy{"linux", "python", "golang"}
+
+// 无序初始化
+var disordered = oldboy{Golang: "golang"}
+
+func main() {
+}
+结构体初始化方法有如下几种：
+
+package main
+
+import (
+    "fmt"
+)
+
+type oldboy struct {
+    int
+    string
+}
+
+var one oldboy
+
+func main() {
+    two := new(oldboy) //同 var two *oldboy = new(oldboy)
+    three := oldboy{1, "three"}
+    four := oldboy{}
+    five := &oldboy{}
+    six := &oldboy{2, "six"} //同 var six *oldboy = &oldboy{2, "six"}
+
+    fmt.Println(one, two, three, four, five, six)
+}
+one three four 返回 oldboy 类型变量；two five six 返回 *oldboy 类型变量；若无初始化值，则默认为零值。
+
+匿名字段
+
+定义一个struct，定义的时候是字段名与其类型一一对应，实际上Go语言支持只提供类型，而不写字段名的方式，也就是匿名字段，或称为嵌入字段。
+
+当匿名字段是一个struct的时候，那么这个struct所拥有的全部字段都被隐式地引入了当前定义的这个struct。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Person struct {
+    name string
+    age  int
+    addr string
+}
+
+type Employee struct {
+    Person //匿名字段
+    salary int
+    int           //用内置类型作为匿名字段
+    addr   string //类似于重载
+}
+
+func main() {
+    em1 := Employee{
+        Person{"oldboy", 18, "北京"},
+        10,
+        100,
+        "首都",
+    }
+    fmt.Println(em1)
+    var em2 Person = em1.Person 
+    fmt.Println(em2)
+}
+struct与tag应用
+
+声明struct结构的时候，在属性的右侧用小米点括起来的内容叫标签（Tag），在转换成其它数据格式的时候，会使用其中特定的字段作为键值。例如转成json格式，实例如下：
+
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type User struct {
+    UserId   int
+    UserName string
+}
+type UserTag struct {
+    UserId   int    `json:"user_id" bson:"user_id"`
+    UserName string `json:"user_name" bson:"user_name"`
+}
+
+func main() {
+    user := &User{UserId: 1, UserName: "oldboy"}
+    json_user, _ := json.Marshal(user)
+    fmt.Printf("struct User echo : %v\n", string(json_user))
+
+    user_tag := &UserTag{UserId: 1, UserName: "oldboy"}
+    json_user_tag, _ := json.Marshal(user_tag)
+    fmt.Printf("struct UserTag echo : %v\n", string(json_user_tag))
+}
+运行结果：
+
+struct User echo : {"UserId":1,"UserName":"oldboy"}
+struct UserTag echo : {"user_id":1,"user_name":"oldboy"}
+标签是struct类型的组成部分：
+
+package main
+
+var user1 struct {
+    UserId int `json:"user_id"`
+}
+var user2 struct {
+    UserId int `bson:"user_id"`
+}
+
+func main() {
+    user1 = user2
+}
+编译错误：
+
+./main.go:11:8: cannot use user2 (type struct { UserId int "bson:\"user_id\"" }) as type struct { UserId int "json:\"user_id\"" } in assignment
+
+
+Go语言常见语法错误
+1、开大括号不能放在单独的一行
+
+错误代码：
+
+package main
+
+import "fmt"
+
+func main() 
+{ 
+    fmt.Println("hello world!")
+}
+编译错误：
+
+./main.go:5:6: missing function body for "main"
+./main.go:6:1: syntax error: unexpected semicolon or newline before {
+正确代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("hello world!")
+}
+2、未使用的变量
+
+如果你有未使用的局部变量，代码将编译失败。
+如果你给未使用的变量分配了一个新的值，代码还是会编译失败。你需要在某个地方使用这个变量，才能让编译器愉快的编译。
+
+错误代码：
+
+package main
+
+var gvar int
+
+func main() {
+    var one int
+    two := 2
+    var three int
+    three = 3
+}
+编译错误：
+
+./main.go:6:6: one declared and not used
+./main.go:7:9: two declared and not used
+./main.go:8:6: three declared and not used
+正确代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    var one int
+    _ = one
+    two := 2
+    fmt.Println(two)
+    var three int
+    three = 3
+    one = three
+    var four int
+    four = four
+}
+
+// 另外可以选择是注释掉或者移除未使用的变量
+3、未使用的Imports
+
+如果你引入一个包，而没有使用其中的任何函数、接口、结构体或者变量的话，代码将会编译失败。
+如果你真的需要引入的包，你可以添加一个"_"下划线标记符，来作为这个包的名字，从而避免编译失败。下滑线标记符用于引入，但不使用。
+
+错误代码：
+
+package main
+
+import (
+    "fmt"
+    "log"
+    "time"
+)
+
+func main() {
+}
+编译错误：
+
+./main.go:4:2: imported and not used: "fmt"
+./main.go:5:2: imported and not used: "log"
+./main.go:6:2: imported and not used: "time"
+正确代码：
+
+package main
+
+import (
+    _ "fmt"
+    "log"
+    "time"
+)
+
+var _ = log.Println
+
+func main() {
+    _ = time.Now
+}
+
+// 另外可以选择是移除或者注释掉未使用的imports
+4、":="简式的变量声明仅可以在函数内部使用
+
+错误代码：
+
+package main
+
+myvar := 1 
+
+func main() {  
+}
+编译错误：
+
+./main.go:3:1: syntax error: non-declaration statement outside function body
+正确代码：
+
+package main
+
+var myvar = 1
+
+func main() {
+}
+5、使用简式声明重复声明变量
+
+你不能在一个单独的声明中重复声明一个变量，但在多变量声明中这是允许的，其中至少要有一个新的声明变量。
+重复变量需要在相同的代码块内，否则你将得到一个隐藏变量。
+
+错误代码：
+
+package main
+
+func main() {
+    one := 0
+    one := 1
+}
+编译错误：
+
+./main.go:5:6: no new variables on left side of :=
+正确代码：
+
+package main
+
+func main() {
+    one := 0
+    one, two := 1, 2
+    one, two = two, one
+}
+6、Go语言命名区分大小写
+
+错误代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    fmt.println("Hello world")
+}
+
+// 以下代码都是不正确的:
+// Package main
+// iMport "fmt"
+// import "Fmt"
+// Func main() {}
+// Fmt.Println
+// fmt.println
+编译错误：
+
+./main.go:6:2: cannot refer to unexported name fmt.println
+./main.go:6:2: undefined: fmt.println
+正确代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello world")
+}
+7、Go语言中分号分行
+
+错误代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello world") fmt.Println("Hi again")
+}
+编译错误：
+
+./main.go:6:29: syntax error: unexpected fmt at end of statement
+正确代码：
+
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello world")
+
+    //解决以上问题，可以将上述的两条语句放在两行
+    fmt.Println("Hi again") 
+
+    //可以将两条语句用分号结束
+    fmt.Println("Hello world");fmt.Println("Hi again") 
+    test()
+}
+
+func test() { 
+    //因此在Go语言中，分号能省则省，如果必须使用时，添加上也不会出错。
+    fmt.Println("Hello world");fmt.Println("Hi again");
+};
+8、Go语言中无效的分号
+
+错误代码：
+
+package main
+
+import "fmt";;
+
+func main() {
+    fmt.Println("Hello world")
+}
+编译错误：
+
+./main.go:3:14: syntax error: non-declaration statement outside function body
+正确代码：
+
+package main
+
+import "fmt";
+
+func main() {
+    fmt.Println("Hello world")
+}
+9、Go语言中注意变量作用域
+
+错误代码：
+
+package main
+
+var num int
+
+func main() {
+    str := "hello world"
+    if true {
+        var b bool
+    }
+    println(num)
+    println(str)
+    println(b)
+}
+编译错误：
+
+./main.go:12:10: undefined: b
+正确代码：
+
+package main
+
+var num int
+
+func main() {
+    str := "hello world"
+    if true {
+        var b bool
+        println(b)
+    }
+    println(num)
+    println(str)
+}
+10、偶然的变量隐藏
+
+短式变量声明的语法如此的方便（尤其对于那些使用过动态语言的开发者而言），很容易让人把它当成一个正常的分配操作。如果你在一个新的代码块中犯了这个错误，将不会出现编译错误，但你的应用将不会做你所期望的事情。
+
+package main
+
+import "fmt"
+
+func main() {
+    x := 1
+    fmt.Println(x) // 1
+    {
+        fmt.Println(x) // 1
+        x := 2
+        fmt.Println(x) // 2
+    }
+    fmt.Println(x) // 1 
+}
+运行结果：
+
+1
+1
+2
+1
+即使对于经验丰富的Go开发者而言，这也是一个非常常见的陷阱，但又很难发现。
+
+你可以使用 vet命令来发现一些这样的问题。 默认情况下， vet不会执行这样的检查，你需要设置-shadow参数： 
+命令：go tool vet -shadow your_file.go
+
+go tool vet -shadow main.go
+main.go:10: declaration of "x" shadows declaration at main.go:6
+11、不使用显式类型，无法使用“nil”来初始化变量
+
+nil标志符用于表示interface、函数、maps、slices和channels的“零值”。如果你不指定变量的类型，编译器将无法编译你的代码，因为它猜不出具体的类型。
+
+错误代码：
+
+package main
+
+func main() {
+    var x = nil
+    _ = x
+}
+编译错误：
+
+./main.go:4:6: use of untyped nil
+正确代码：
+
+package main
+
+func main() {
+    var x interface{} = nil
+    _ = x
+}
+12、使用“nil” Slices and Maps
+
+在一个nil的slice中添加元素是没问题的，但对一个map做同样的事将会生成一个运行时的panic。
+
+正确代码：
+
+package main
+
+func main() {
+    var s []int
+    s = append(s, 1)
+}
+错误代码：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var m map[int]int
+    m[1] = 1
+    fmt.Println(m)
+}
+运行错误：
+
+panic: assignment to entry in nil map
+正确代码：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var m map[int]int
+    m = make(map[int]int)
+    m[1] = 1
+    fmt.Println(m)
+}
+13、Map的容量
+
+map 只有 len操作， 没有 cap 操作
+
+错误代码：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    m := map[int]string{1: "a", 2: "b", 3: "c"}
+    cap := cap(m)
+    fmt.Println(cap)
+}
+编译错误：
+
+./main.go:9:12: invalid argument m (type map[int]string) for cap
+正确代码：
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    m := map[int]string{1: "a", 2: "b", 3: "c"}
+    len := len(m)
+    fmt.Println(len)
+}
+14、字符串不会为nil
+
+这对于经常使用nil分配字符串变量的开发者而言是个需要注意的地方。
+
+package main
+
+func main() {
+    var x string = nil
+    if x == nil {
+        x = "default"
+    }
+}
+编译错误：
+
+./main.go:4:6: cannot use nil as type string in assignment
+./main.go:5:7: invalid operation: x == nil (mismatched types string and nil)
+正确代码：
+
+package main
+
+func main() {
+    var x string
+    if x == "" {
+        x = "default"
+    }
+}
+

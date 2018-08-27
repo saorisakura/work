@@ -1,0 +1,78 @@
+python对list去重的各种方法
+
+今天遇到一个问题，在同事随意的提示下，用了 itertools.groupby 这个函数。不过这个东西最终还是没用上。
+
+问题就是对一个list中的新闻id进行去重，去重之后要保证顺序不变。
+
+直观方法
+最简单的思路就是：
+
+ids = [1,2,3,3,4,2,3,4,5,6,1]
+news_ids = []
+for id in ids:
+    if id not in news_ids:
+        news_ids.append(id)
+print news_ids
+这样也可行，但是看起来不够爽。
+
+用set
+另外一个解决方案就是用set：
+
+ids = [1,4,3,3,4,2,3,4,5,6,1]
+ids = list(set(ids))
+这样的结果是没有保持原来的顺序。
+
+按照索引再次排序
+最后通过这种方式解决：
+
+ids = [1,4,3,3,4,2,3,4,5,6,1]
+news_ids = list(set(ids))
+news_ids.sort(key=ids.index)   # 感谢网友：@Magic 指正。
+使用itertools.grouby
+文章一开始就提到itertools.grouby, 如果不考虑列表顺序的话可用这个：
+
+ids = [1,4,3,3,4,2,3,4,5,6,1]
+ids.sort()
+it = itertools.groupby(ids)
+for k, g in it:
+    print k
+关于itertools.groupby的原理可以看这里：http://docs.python.org/2/library/itertools.html#itertools.groupby
+
+网友补充：用reduce
+网友reatlk留言给了另外的解决方案。我补充并解释到这里：
+
+In [5]: ids = [1,4,3,3,4,2,3,4,5,6,1]
+In [6]: func = lambda x,y:x if y in x else x + [y]
+In [7]: reduce(func, [[], ] + ids)
+Out[7]: [1, 4, 3, 2, 5, 6]
+上面是我在ipython中运行的代码，其中的 lambda x,y:x if y in x else x + [y] 等价于 lambda x,y: y in x and x or x+[y] 。
+
+思路其实就是先把ids变为[[], 1,4,3,......] ,然后在利用reduce的特性。reduce解释参看这里：http://docs.python.org/2/library/functions.html#reduce
+
+
+
+>>> foo = [2, 18, 9, 22, 17, 24, 8, 12, 27]
+>>>
+>>> print filter(lambda x: x % 3 == 0, foo)
+[18, 9, 24, 12, 27]
+>>>
+>>> print map(lambda x: x * 2 + 10, foo)
+[14, 46, 28, 54, 44, 58, 26, 34, 64]
+>>>
+>>> print reduce(lambda x, y: x + y, foo)
+
+from functools import reduce.
+reduce(function, iterable[, initializer])
+Apply function of two arguments cumulatively to the items of iterable, from left to right, so as to reduce the iterable to a single value. For example, reduce(lambda x, y: x+y, [1, 2, 3, 4, 5]) calculates ((((1+2)+3)+4)+5). The left argument, x, is the accumulated value and the right argument, y, is the update value from the iterable. If the optional initializer is present, it is placed before the items of the iterable in the calculation, and serves as a default when the iterable is empty. If initializer is not given and iterable contains only one item, the first item is returned. Roughly equivalent to:
+
+def reduce(function, iterable, initializer=None):
+    it = iter(iterable)
+    if initializer is None:
+        try:
+            initializer = next(it)
+        except StopIteration:
+            raise TypeError('reduce() of empty sequence with no initial value')
+    accum_value = initializer
+    for x in it:
+        accum_value = function(accum_value, x)
+    return accum_value

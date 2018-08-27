@@ -1,0 +1,203 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""'定时任务每五分钟发送上一个5分钟视频
+    目标视频：10.1.1.25 /usr/local/checkVideo     audited、auditing、black、white
+    find
+	cmd = "/usr/local/ffmpeg/bin/ffmpeg -i '" + url + "' -vf fps=4/60 " + \
+              minivdir + source + "_" + pattern + "_" + vid + "_" + hexsalt + "%3d.jpg > /dev/null 2>&1"
+	
+	x=subprocess.Popen('ffmpeg -i inputvideo.mp4 -r 30 inputvideo.avi', shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+	output,err=x.communicate()
+	if output:
+	 print"success",output
+	else:
+	 print"error",err
+    """
+import linecache
+import os
+import os.path
+import requests
+import time
+import datetime
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
+ 
+#openAPI现网配置
+url='http://***/nudityRecog'
+app_key = '***'
+access_token = '***'
+imagedir='/opt/tomcat_api/video_sendto_api/image/'
+ 
+audited_dir='/usr/local/checkVideo/audited'
+auditing_dir='/usr/local/checkVideo/auditing'
+black_dir='/usr/local/checkVideo/black'
+white_dir='/usr/local/checkVideo/white'
+ 
+#时间差5分钟执行一次
+subtime=300
+ 
+#生成审核中截图
+def create_auditing_image(auditing_dir):
+    #扫描视频目录生成截图
+    for parent, dirnames, filenames in os.walk(auditing_dir):  # 三个参数：分别返回1.父目录 2.所有文件夹名字（不含路径） 3.所有文件名字
+        for filename in filenames:  # 输出文件信息
+            video_path = os.path.join(parent, filename)  # 输出文件路径信息
+            filePath = unicode(video_path, 'utf8') #中文编码
+            filetime= os.path.getmtime(filePath) #获取修改时间
+            localtime=time.time() #获取当前系统时间
+            t=localtime-filetime #两者差值
+            #判断差值是否小于300s
+            if t<=subtime:
+                print t,filePath
+                filename=unicode(filename, 'utf8')  #下载视频名称
+                #生成视频md5
+                str_md5= 'md5sum'+' ' + filePath +' '+ "| awk  '{print $1}'"
+                video_md5 = os.popen(str_md5).readline(32)
+                print filePath,video_md5
+                #拼接截图命令行，
+                str_video= "ffmpeg -ss 0:1:00 -i "+" " +filePath + " "+"-r 0.01 -f image2 "+imagedir+video_md5+"-image-%5d.jpeg"
+                images = os.popen(str_video)  # 调用命令行生成截图
+                print str_video
+ 
+#生成审核完截图
+def create_audited_image(audited_dir):
+    #扫描视频目录生成截图
+    for parent, dirnames, filenames in os.walk(audited_dir):  # 三个参数：分别返回1.父目录 2.所有文件夹名字（不含路径） 3.所有文件名字
+        for filename in filenames:  # 输出文件信息
+            video_path = os.path.join(parent, filename)  # 输出文件路径信息
+            filePath = unicode(video_path, 'utf8') #中文编码
+            filetime= os.path.getmtime(filePath) #获取修改时间
+            localtime=time.time() #获取当前系统时间
+            t=localtime-filetime #两者差值
+            #判断差值是否小于300s
+            if t<=subtime:
+                print t,filePath
+                filename=unicode(filename, 'utf8')  #下载视频名称
+                #生成视频md5
+                str_md5= 'md5sum'+' ' + filePath +' '+ "| awk  '{print $1}'"
+                video_md5 = os.popen(str_md5).readline(32)
+                #拼接命令行，
+                str_video= "ffmpeg -ss 0:1:00 -i "+" " +filePath + " "+"-r 0.01 -f image2 "+imagedir+video_md5+"-image-%5d.jpeg"
+                images = os.popen(str_video)  # 调用命令行生成截图
+                print str_video
+ 
+#生成黑名单截图
+def create_black_image(black_dir):
+    #扫描视频目录生成截图
+    for parent, dirnames, filenames in os.walk(black_dir):  # 三个参数：分别返回1.父目录 2.所有文件夹名字（不含路径） 3.所有文件名字
+        for filename in filenames:  # 输出文件信息
+            video_path = os.path.join(parent, filename)  # 输出文件路径信息
+            filePath = unicode(video_path, 'utf8') #中文编码
+            filetime= os.path.getmtime(filePath) #获取修改时间
+            localtime=time.time() #获取当前系统时间
+            t=localtime-filetime #两者差值
+            #判断差值是否小于300s
+            if t<=subtime:
+                print t,filePath
+                filename=unicode(filename, 'utf8')  #下载视频名称
+                #生成视频md5
+                str_md5= 'md5sum'+' ' + filePath +' '+ "| awk  '{print $1}'"
+                video_md5 = os.popen(str_md5).readline(32)
+                #拼接命令行，
+                str_video= "ffmpeg -ss 0:1:00 -i "+" " +filePath + " "+"-r 0.01 -f image2 "+imagedir+video_md5+"-image-%5d.jpeg"
+                images = os.popen(str_video)  # 调用命令行生成截图
+                print str_video
+ 
+ 
+#生成白名单截图
+def create_white_image(white_dir):
+    #扫描视频目录生成截图
+    for parent, dirnames, filenames in os.walk(white_dir):  # 三个参数：分别返回1.父目录 2.所有文件夹名字（不含路径） 3.所有文件名字
+        for filename in filenames:  # 输出文件信息
+            video_path = os.path.join(parent, filename)  # 输出文件路径信息
+            filePath = unicode(video_path, 'utf8') #中文编码
+            filetime= os.path.getmtime(filePath) #获取修改时间
+            localtime=time.time() #获取当前系统时间
+            t=localtime-filetime #两者差值
+            #判断差值是否小于300s
+            if t<=subtime:
+                print t,filePath
+                filename=unicode(filename, 'utf8')  #下载视频名称
+                #生成视频md5
+                str_md5= 'md5sum'+' ' + filePath +' '+ "| awk  '{print $1}'"
+                video_md5 = os.popen(str_md5).readline(32)
+                #拼接命令行，
+                str_video= "ffmpeg -ss 0:1:00 -i "+" " +filePath + " "+"-r 0.01 -f image2 "+imagedir+video_md5+"-image-%5d.jpeg"
+                images = os.popen(str_video)  # 调用命令行生成截图
+                print str_video
+#发送图片进程
+def send_image(imagedir):
+    #扫描图片路径
+    for img_parent, img_dir_names, img_names in os.walk(imagedir):
+        for img_name in img_names:
+            image = os.path.join(img_parent, img_name) #拼接图片完整路径
+            print time.strftime("%Y-%m-%d %X"), image
+            #准备发送图片
+            file = dict(file=open(image, 'rb'))
+            post_data = {'mark': 'room-201', 'timestamp': 1846123456, 'random': 123}
+            headers = {'app_key': app_key, 'access_token': access_token}
+            result = requests.post(url, files=file, data=post_data, headers=headers, verify=False)
+            print result.content
+            #删除发送的图片
+            str_img = "rm -f " + " " + image
+            del_img = os.popen(str_img).readline()
+            print del_img
+ 
+if __name__ == "__main__":
+    #create_auditing_image(auditing_dir)
+    #create_audited_image(audited_dir)
+    #create_black_image(black_dir)
+    #create_white_image(white_dir)
+    send_image(imagedir)
+
+	
+FFMPEG裁剪视频、提取某帧图像、合并视频和转换视频格式命令的基本用法
+
+1.FFMPEG裁剪视频
+
+	命令：ffmpeg -ss START -t DURATION -i INPUT -vcodec copy -acodec copy OUTPUT
+
+	其中各参数的说明如下:
+
+	START： 开始时间。如00:01:20，表示裁剪部分从1分20秒处开始
+
+	DURATION： 视频时长。如00:02:30，表示截取时长为2分30秒的视频
+
+	  INPUT ：输入。表示原始视频文件
+
+	OUTPUT：输出。
+
+	-vcode copy和-acodec copy 表示所要使用的视频和音频的编码格式，copy表示原样拷贝。
+
+2.FFMPEG提取某一帧图像
+
+	命令：ffmpeg -i INPUT -y -f image2 -ss TIME -vframes 1 OUTPUT
+
+	其中各参数的说明如下:
+
+	  INPUT ：输入。表示原始视频文件
+
+	TIME：某个时间点，要提取的图像即为该时间点的图像。格式00:01:30或直接写90
+
+	OUTPUT：会在视频文件所在的文件夹下生成图像文件
+
+3.FFMPEG合并视频文件
+
+	命令：ffmpeg -i concat:"PART1.mpg|PART2.mpg" -vcodec copy -acodec copy OUTPUT.mpg
+
+	其中各参数的说明如下:
+
+	  PART1：要合并的第一个视频文件的名字
+
+	PART2：要合并的第二个视频文件的名字
+
+	OUTPUT：合并后的视频文件的名字
+
+4.FFMPEG转换视频格式
+
+	命令：ffmpeg -i INPUT -f mpeg OUTPUT
+
+
+	例如：ffmpeg -i D:/temp1/avi -f mpeg D:/result.mpg
+

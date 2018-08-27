@@ -1,0 +1,1840 @@
+二路归并排序算法
+
+将两个按值有序序列合并成一个按值有序序列，则称之为二路归并排序，下面有自底向上和自顶向下的两种排序算法，自顶向下的排序在本文末讲述，使用递归实现，代码较简洁，经供参考。
+
+1. 归并子算法：把位置相邻的两个按值有序序列合并成一个按值有序序列。例如把序列 X[s..u] = {3, 12, 23, 32}和 序列 X[u+1..v] = {2, 5, 8, 99} 合并成序列 
+
+Z[s..v] = {2, 3, 5, 8, 12, 23, 32, 99}, 注意合并前的元素都位于同一个有序序列的相邻位置，合并后的有序序列的下标与合并前的序列总的起始下标相同。
+
+算法过程中需要三个整型变量，i 用来遍历归并的前一个有序序列，其初始位置是s；j 用来遍历归并的后一个有序序列，其初始值是u+1；q 用来指出归并后得到的有序序列的末尾元素的位置，其初始值是s。当遍历完成其中的一个有序序列之后，只需把另一个未结束有序序列的剩余元素复制到合并后的有序序列的末尾。
+
+看代码：
+
+//将有序的X[s..u]和X[u+1..v]归并为有序的Z[s..v]
+void merge(int X[], int Z[], int s, int u, int v)
+{
+    int i, j, q;
+    i = s;
+    j = u + 1;
+    q = s;
+ 
+    while( i <= u && j<= v )
+    {
+        if( X[i] <= X[j] )
+            Z[q++] = X[i++];
+        else
+            Z[q++] = X[j++];
+    }
+ 
+    while( i <= u )   //将X中剩余元素X[i..u]复制到Z
+        Z[q++] = X[i++];
+    while( j <= v )   //将X中剩余元素X[j..v]复制到Z
+        Z[q++] = X[j++];
+}
+
+2. 一趟归并扫描子算法：将参加排序的序列分成若干个长度为 t 的，且各自按值有序的子序列，然后多次调用归并子算法merge将所有两两相邻成对的子序列合并成若干个长度为
+2t 的，且各自按值有序的子序列。
+
+若某一趟归并扫描到最后，剩下的元素个数不足两个子序列的长度时：
+
+若剩下的元素个数大于一个子序列的长度 t 时，则再调用一次归并子算法 merge 将剩下的两个不等长的子序列合并成一个有序子序列
+若剩下的元素个数小于或者等于一个子序列的长度 t 时，只须将剩下的元素依次复制到前一个子序列后面。
+看代码：
+/* X[0..n-1]表示参加排序的初始序列
+ * t为某一趟归并时子序列的长度
+ * 整型变量i指出当前归并的两个子序列中第1个子序列的第1个元素的位置
+ * Y[0..n-1]表示这一趟归并后的结果
+*/
+void mergePass(int X[], int Y[], int n, int t)
+{
+    int i = 0, j;
+    while( n - i >= 2 * t )     //将相邻的两个长度为t的各自有序的子序列合并成一个长度为2t的子序列
+    {
+        merge(X, Y, i, i + t - 1, i + 2 * t - 1);
+        i = i + 2 * t;
+    }
+ 
+    if( n - i > t )       //若最后剩下的元素个数大于一个子序列的长度t时
+        merge(X, Y, i, i + t - 1, n - 1);
+    else             //n-i <= t时，相当于只是把X[i..n-1]序列中的数据赋值给Y[i..n-1]
+        for( j = i ; j < n ; ++j )
+            Y[j] = X[j];
+}
+
+3. 二路归并排序算法：将参加排序的初始序列分成长度为1的子序列使用mergePass函数进行第一趟排序，得到 n / 2 个长度为 2 的各自有序的子序列（若n为奇数，还会存在一个最后元素的子序列），再一次调用mergePass函数进行第二趟排序，得到 n / 4 个长度为 4 的各自有序的子序列， 第 i 趟排序就是两两归并长度为 2^(i-1) 的子序列得到 n / (2^i) 长度为 2^i 的子序列，直到最后只剩一个长度为n的子序列。由此看出，一共需要 log2n 趟排序，每一趟排序的时间复杂度是 O(n), 由此可知
+该算法的总的时间复杂度是是 O(n log2n)，但是该算法需要 O(n) 的辅助空间，空间复杂度很大，是 O(n).
+看代码：
+void mergeSort(int X[], int n)
+{
+    int t = 1;
+    int *Y = (int *)malloc(sizeof(int) * n);
+    while( t < n )
+    {
+        mergePass(X, Y, n, t);
+        t *= 2;
+        mergePass(Y, X, n, t);
+        t *= 2;
+    }
+    free(Y);
+}
+
+程序总的代码汇总：
+#include <stdlib.h>
+#include <stdio.h>
+ 
+//将有序的X[s..u]和X[u+1..v]归并为有序的Z[s..v]
+void merge(int X[], int Z[], int s, int u, int v)
+{
+    int i, j, q;
+    i = s;
+    j = u + 1;
+    q = s;
+ 
+    while( i <= u && j<= v )
+    {
+        if( X[i] <= X[j] )
+            Z[q++] = X[i++];
+        else
+            Z[q++] = X[j++];
+    }
+ 
+    while( i <= u )   //将X中剩余元素X[i..u]复制到Z
+        Z[q++] = X[i++];
+    while( j <= v )   //将X中剩余元素X[j..v]复制到Z
+        Z[q++] = X[j++];
+}
+ 
+/* X[0..n-1]表示参加排序的初始序列
+ * t为某一趟归并时子序列的长度
+ * 整型变量i指出当前归并的两个子序列中第1个子序列的第1个元素的位置
+ * Y[0..n-1]表示这一趟归并后的结果
+*/
+void mergePass(int X[], int Y[], int n, int t)
+{
+    int i = 0, j;
+    while( n - i >= 2 * t )     //将相邻的两个长度为t的各自有序的子序列合并成一个长度为2t的子序列
+    {
+        merge(X, Y, i, i + t - 1, i + 2 * t - 1);
+        i = i + 2 * t;
+    }
+ 
+    if( n - i > t )       //若最后剩下的元素个数大于一个子序列的长度t时
+        merge(X, Y, i, i + t - 1, n - 1);
+    else             //n-i <= t时，相当于只是把X[i..n-1]序列中的数据赋值给Y[i..n-1]
+        for( j = i ; j < n ; ++j )
+            Y[j] = X[j];
+}
+ 
+void mergeSort(int X[], int n)
+{
+    int t = 1;
+    int *Y = (int *)malloc(sizeof(int) * n);
+    while( t < n )
+    {
+        mergePass(X, Y, n, t);
+        t *= 2;
+        mergePass(Y, X, n, t);
+        t *= 2;
+    }
+    free(Y);
+}
+ 
+void print_array(int array[], int n)
+{
+    int i;
+    for( i = 0 ; i < n ; ++i )
+        printf("%d ", array[i]);
+    printf("\n");
+}
+ 
+int main()
+{
+    int array[] = {65, 2, 6, 1, 90, 78, 105, 67, 35, 23, 3, 88, -22};
+    int size = sizeof(array) / sizeof(int);
+    mergeSort(array, size);
+    print_array(array, size);
+    return 0;
+}
+
+
+归并排序自顶向下排序，仅供参考：
+void merge2(int *data, int start, int mid, int end)
+{
+    int *temp = (int *)malloc((end-start+1)*sizeof(int));
+    int i = start;
+    int j = mid + 1;
+    int k = 0;
+    while(i <= mid && j <= end)
+    {
+        temp[k++] = data[i] <= data[j] ? data[i++] : data[j++];
+    }
+ 
+    while(i <= mid)
+        temp[k++] = data[i++];
+    while(j <= end)
+        temp[k++] = data[j++];
+ 
+    k = 0;
+    for(i = start; i <= end; ++i)
+        data[i] = temp[k++];
+ 
+    free(temp);
+}
+//从顶往下
+void mergeSort2(int *data, int start, int end, int *des)
+{
+    if(start == end)
+        return;
+ 
+    int mid = (end + start)/2;
+    mergeSort2(data, start, mid, des);
+    mergeSort2(data, mid+1, end, des);
+    merge2(data, start, mid, end);
+}
+
+个人新博客，欢迎关注：http://liumh.com
+
+
+文章标签： 算法 merge
+个人分类： 数据结构
+Java面向对象编程（高手养成记）本课程主要讲解JavaSE的发展历史，JDK开发环境的搭建，面向对象编程、多线程、IO、类集、网络、数据库编程。Java | wanghui_777马上了解 >>
+想对作者说点什么？ 我来说一句
+ anyeshenshang1
+SodysLiu2017-01-04 11:56:20#7楼
+[reply]anyeshenshang1[/reply] 第四行第五行 应该是9 我写错了
+type_cc
+type_cc2016-11-20 21:25:53#6楼
+请问我能转载一下吗？？
+查看回复(1)
+zhang_fei_fresh
+zhang_fei_fresh2015-10-31 16:38:53#5楼
+很清晰
+查看回复(1)
+xiaochongzi716717
+xiaochongzi7167172014-02-10 00:34:54#4楼
+不错，第一个讲的很清楚！
+cjh94520
+cjh945202012-11-26 20:51:58#3楼
+非常不错，刚开始看老师讲不明白，你一说我就懂了，感谢你！
+查看 10 条热评
+排序算法之二路归并排序
+二路归并排序     int MergeSort(datatype *array, int low, int high) { int i, j, k; int mid; ...
+
+ u010647471 u010647471
+
+2015-11-01 23:14:12
+
+阅读数：7195
+
+【Java常用排序算法】归并排序（二路归并排序）
+归并排序 二路归并排序 Java实现
+
+ donggua3694857 donggua3694857
+
+2017-02-27 23:17:10
+
+阅读数：4375
+
+强化学习深入浅出完全教程
+
+强化学习 | mountain623
+二路归并算法 - 听老罗娓娓道来 - CSDN博客
+归并算法到底是什么意思 呢?听到归并就知道其实是把数组进行合并,那么我们合并的时候肯定有什么特征。 首先我们归并的目标是数组,由于是二路归并,那么我们是有2个...
+
+2018-1-30
+
+二路归并算法 - CSDN博客
+然后两两归并得到n/2 个长度为2或者1的有序子序列;并两两归并,重复直至得到...二路归并算法的实现 原文地址:http://blog.csdn.net/middlekingt/article/detai...
+
+2018-5-20
+
+二路归并排序算法(递归&非递归)
+归并（Merge）排序法是将两个（或两个以上）有序表合并成一个新的有序表，即把待排序序列分为若干个子序列，每个子序列是有序的，然后再把有序子序列合并为整体有序序列。 归并排序是建立在归并操作上的...
+
+ prstaxy prstaxy
+
+2012-11-09 14:31:34
+
+阅读数：19275
+
+二路归并算法的实现 - CSDN博客
+二路归并排序算法(递归&非递归) 归并(Merge)排序法是将两个(或两个以上)有序表合并成一个新的有序表,即把待排序序列分为若干个子序列,每个子序列是有序的...
+
+2018-6-26
+
+归并排序:二路归并 - CSDN博客
+该算法是采用分治法(Divide and Conquer)的一个非常典型的应用。归并排序最常用的是二路归并,即把两个小的有序的序列和并成一个大的有序序列:合二为一。 一...
+
+2018-7-6
+
+二路归并排序
+二路归并排序的核心思想是对两个已排序的子序列进行两两归并合成一个子序列的过程。它是利用分治法求解的一个典型应用。设归并排序的当前区间是R[low..high]，二路归并排序的主要步骤如下： 1 将当...
+
+ ChengNuoDeYongYuan ChengNuoDeYongYuan
+
+2016-08-20 19:06:56
+
+阅读数：418
+
+2路归并排序算法（C语言）
+转载自：http://blog.csdn.net/caryaliu/article/details/7475700 将两个按值有序序列合并成一个按值有序序列，则称之为二路归并排序，下面有自底向上和...
+
+ Singular__point Singular__point
+
+2016-12-18 09:58:48
+
+阅读数：3268
+
+二路归并排序 - CSDN博客
+二路归并的时间复杂度为O(nlogn),并且由于二路归并并不改变相同元素的相对位置...一、归并排序简介1.算法思想 归并排序属于比较类非线性时间排序,比较类排序中性能...
+
+2018-6-20
+
+常见的五类排序算法图解和实现(归并类:二路归并排序) - CSDN博客
+回忆图解的过程,二路归并算法的流程,不同于递归,递归是先递归语句,然后归并函数...多并高 阅读量:650418 篇 XShowAlgorithm 阅读量:133510 篇 Spring 阅读量...
+
+2018-6-26
+
+常见的五类排序算法图解和实现（归并类：二路归并排序）
+归并类的排序算法 归并：将两个或两个以上的有序表组合成一个新的有序表。 内部排序中，通常采用的是 2-路归并排序。即：将两个位置相邻的记录有序子序列归并为一个记录有序的序列。归并排序是建立...
+
+ FENGQIYUNRAN FENGQIYUNRAN
+
+2017-12-10 16:24:23
+
+阅读数：497
+
+北京新政策:50岁以上中老年人,可以申请免费种牙,每天20名
+北京京一口腔 · 顶新
+二路归并算法 - CSDN博客
+//将两个数组合并,并排序 { //将有序的S[start...mid]和S[mid+1...end...二路归并排序算法(递归&非递归) 归并(Merge)排序法是将两个(或两个以上)有...
+
+2018-7-6
+
+排序算法之二路归并排序 - CSDN博客
+将两个按值有序序列合并成一个按值有序序列,则称之为二路归并排序,下面有自底向上和自顶向下的两种排序算法,自顶向下的排序在本文末讲述,使用递归实现,代码较...
+
+2018-2-12
+
+《数据结构》复习之排序算法
+排序算法 1直接插入排序 2希尔排序 3冒泡排序 4快速排序 5简单选择排序 6堆排序 7二路归并排序 8基数排序 排序算法总结 1排序算法的稳定性 2复杂度总结 3稳定性总结 4其他1.排序算法1....
+
+ King_Like_Coding King_Like_Coding
+
+2016-07-06 16:07:50
+
+阅读数：1225
+
+2路归并排序（MERGE_SORT）
+简述： 我用的循环输入测试，输出Ctrl+z结束，输入随机产生数的个数，然后观察结果。 代码如下： #include #include #include void Merge_Sort(int ...
+
+ llwwlql llwwlql
+
+2015-12-15 20:17:54
+
+阅读数：618
+
+二路归并2算法的java实现(普通方法) - CSDN博客
+这里是二路归并排序算法的普通实现: package GB; /** * * @author YuYunTan(谭淇蔚) *这里是算法,归并排序,这是二路归并排序算法 *分治策略的思想: *任一...
+
+2018-3-3
+
+2-路归并排序,写一个算法在链表结构上实现这一策略
+2-路归并排序的另一策略是,先对待排序序列扫描一遍,找出并划分为若干个最大有序子列,将这些子列作为初始归并段,试写一个算法在链表结构上实现这一策略
+
+2018-5-9
+
+java实现排序算法之归并排序(2路归并)
+java实现归并排序讲解
+
+ NFMSR NFMSR
+
+2017-02-20 23:47:05
+
+阅读数：424
+
+2-路归并排序详解
+2-路归并排序的核心操作是将一维数组中前后相邻的两个有序序列归并为一个有序序列. 1、算法基本思路     　设两个有序的子文件(相当于输入堆)放在同一向量中相邻的位置上：R[low..m]，R[m+...
+
+ yunzhongguwu005 yunzhongguwu005
+
+2013-07-25 20:57:36
+
+阅读数：8154
+
+二路归并排序简介及其并行化
+一、归并排序简介 1.算法思想 归并排序属于比较类非线性时间排序，比较类排序中性能最佳，应用较为广泛。 归并排序是分治法（Divide and Conquer）的一个典型的应用。将已有序的子序列...
+
+ K346K346 K346K346
+
+2015-05-08 17:46:29
+
+阅读数：4146
+
+二路归并排序（也叫合并排序）
+下面这图展示了二路归并的过程
+
+ u014309268 u014309268
+
+2014-09-29 02:08:36
+
+阅读数：1519
+
+单链表为存储结构, 实现二路归并排序的算法
+2010年06月04日 1KB 下载
+
+ 
+
+二路归并排序算法实现-完整C语言程序
+/*********************************************************************************************** 1.设...
+
+ shihui512 shihui512
+
+2013-04-20 18:38:51
+
+阅读数：2313
+
+二路归并排序算法（递归实现）
+2010年12月03日 1KB 下载
+
+ 
+归并排序：二路归并
+归并排序(Merge Sort)是将两个(或两个以上)有序表合并成一个新的有序表，即把待排序序列分为若干个有序的子序列，再把有序的子序列合并为整体有序序列。 归并排序的具体做法： 把原序列不断地递归等...
+
+ zhangxiangDavaid zhangxiangDavaid
+
+2014-06-26 17:40:33
+
+阅读数：3767
+
+C++——算法基础之排序——二路归并排序
+今天，大白跟大家说一说，二路归并排序 二路归并排序：是一种比较快的排序方法。 思想：将序列切半分开，然后对左右进行递归切半，直至最小单元序列内元素个数为1。然后依次将两个序列有序合并为一个序列，...
+
+ QLY1798LOVE QLY1798LOVE
+
+2016-09-14 10:49:00
+
+阅读数：1023
+
+二路归并算法的实现
+原文地址：http://blog.csdn.net/middlekingt/article/details/8446552 public class MergeSort { ...
+
+ disiwei1012 disiwei1012
+
+2017-05-24 08:56:01
+
+阅读数：388
+
+
+经典算法之二路归并排序
+二路归并排序是先将整个序列分为两半，对每一半分别归并排序，将得到两个有序序列，然后将这两个序列归并成一个序列即可。...
+
+ wardseptember wardseptember
+
+2017-12-06 12:55:18
+
+阅读数：1299
+
+常见算法题：单链表二路归并
+题目：现有两个递增的单链表L1和L2，设计一个算法将L1与L2的所有结点归并到递增的单链表L3中。要求：空间复杂度为O(1)。思路：本题可采用二路归并思路，但题目要求空间复杂度为O(1)，因此不能复制...
+
+
+
+
+
+2-路归并排序详解
+2013年07月25日 20:57:36
+阅读数：8155
+    2-路归并排序的核心操作是将一维数组中前后相邻的两个有序序列归并为一个有序序列.其时间复杂度为O（NlgN）,空间复杂度为O（N）.是一种稳定的排序方法.
+
+1、算法基本思路
+    　设两个有序的子文件(相当于输入堆)放在同一向量中相邻的位置上：R[low..m]，R[m+1..high]，先将它们合并到一个局部的暂存向量R1(相当于输出堆)中，待合并完成后将R1复制回R[low..high]中。
+  合并过程
+    　合并过程中，设置i，j和p三个指针，其初值分别指向这三个记录区的起始位置。合并时依次比较R[i]和R[j]的关键字，取关键字较小的记录复制到R1[p]中，然后将被复制记录的指针i或j加1，以及指向复制位置的指针p加1。
+    　重复这一过程直至两个输入的子文件有一个已全部复制完毕(不妨称其为空)，此时将另一非空的子文件中剩余记录依次复制到R1中即可。
+归并算法如下:
+
+
+void  Merge(int * a,int low,int mid,int high)
+{
+   int i=low,j=mid+1,p=0;
+   int * r=new int[high-low+1];
+   while(i<=mid && j<=high)
+   {
+	   r[p++]=(a[i]<=a[j])?a[i++]:a[j++];
+   }
+   while(i<=mid)
+	   r[p++]=a[i++];
+   while(j<=high)
+	   r[p++]=a[j++];
+   for(p=0,i=low;i<=high;p++,i++)
+	   a[i]=r[p];
+   delete [] r;
+}
+
+归并排序
+    归并排序有两种实现方法：自底向上和自顶向下。
+1、 自底向上的方法
+   （1）自底向上的基本思想
+     自底向上的基本思想是：第1趟归并排序时，将待排序的文件R[1..n]看作是n个长度为1的有序子文件，将这些子文件两两归并，若n为偶数，则得到 个长度为2的有序子文件；若n为奇数，则最后一个子文件轮空(不参与归并)。故本趟归并完成后，前 个有序子文件长度为2，但最后一个子文件长度仍为1；第2趟归并则是将第1趟归并所得到的 个有序的子文件两两归并，如此反复，直到最后得到一个长度为n的有序文件为止。
+     上述的每次归并操作，均是将两个有序的子文件合并成一个有序的子文件，故称其为"二路归并排序"。类似地有k(k>2)路归并排序。
+    (2)一趟归并算法
+ 
+ 分析：
+      在某趟归并中，设各子文件长度为length(最后一个子文件的长度可能小于length)，则归并前R[1..n]中共有 个有序的子文件：R[1..length]，R[length+1..2length]，…， 。
+注意：
+     调用归并操作将相邻的一对子文件进行归并时，必须对子文件的个数可能是奇数、以及最后一个子文件的长度小于length这两种特殊情况进行特殊处理：
+　　① 若子文件个数为奇数，则最后一个子文件无须和其它子文件归并(即本趟轮空)；
+　　② 若子文件个数为偶数，则要注意最后一对子文件中后一子文件的区间上界是n。
+  具体算法如下：
+
+
+ void MergePass(int *a,int n,int length)
+ {
+	 int i=0;
+     for(;i+2*length<n-1;i+=2*length)
+	 {
+         Merge(a,i,i+length-1,i+2*length-1);
+	 }
+	 if(i+length<=n-1)
+        Merge(a,i,i+length-1,n-1);//尚有两个子文件，其中后一个长度小于length,归并最后两个子文件
+	   //注意：若i≤n-1且i+length-1≥n-1时，则剩余一个子文件轮空，无须归并
+ }
+   (3)二路归并排序算法
+
+ //自底向上
+ void MergeSort(int *a,int n)
+ {
+    for(int length=1;length<n;length*=2)
+       MergePass(a,n,length);
+ }
+注意：
+     自底向上的归并排序算法虽然效率较高，但可读性较差
+
+
+
+2、自顶向下的方法
+     采用分治法进行自顶向下的算法设计，形式更为简洁。
+
+（1）分治法的三个步骤
+     设归并排序的当前区间是R[low..high]，分治法的三个步骤是：
+①分解：将当前区间一分为二，即求分裂点
+                  
+②求解：递归地对两个子区间R[low..mid]和R[mid+1..high]进行归并排序；
+③组合：将已排序的两个子区间R[low..mid]和R[mid+1..high]归并为一个有序的区间R[low..high]。
+  递归的终结条件：子区间长度为1（一个记录自然有序）。
+
+（2）具体算法(递归实现)
+ //自顶向下(递归实现)
+void MSort(int *a,int low,int high)
+{
+    if(low<high)
+	{
+	   int mid=(low+high)/2;
+	   MSort(a,low,mid);
+	   MSort(a,mid+1,high);
+       Merge(a,low,mid,high);
+	}
+}
+ 
+void MergeSort(int *a,int n)
+{
+	MSort(a,0,n-1);
+}
+（3）具体算法(非递归实现)
+//将上述递归转化为非递归
+#define Partition '0' //划分
+#define Mergetion '1' //归并
+typedef struct Region
+{
+	int first;//起始位置
+	int end;  //结束位置
+	char flag;//标记该区域是应该划分还是应该归并  
+}Region;
+//非递归实现(感觉跟二叉树后序遍历的非递归实现很像)
+void  NonRecursiveMergeSort(int *a,int len)
+{
+	stack<Region> region_stack;
+	Region beginRegion;
+	beginRegion.first=0;
+	beginRegion.end=len-1;
+	beginRegion.flag=Partition;
+	region_stack.push(beginRegion);
+	while(!region_stack.empty())
+	{
+		Region region=region_stack.top();
+		region_stack.pop();//从栈中删除
+		if(region.flag==Mergetion)//应该归并
+		{
+			Merge(a,region.first,(region.first+region.end)/2,region.end);//归并之
+		}
+		else //应该划分
+		{
+			if(region.first+1>=region.end)//如果区域是两个相邻的数
+			{
+				Merge(a,region.first,(region.first+region.end)/2,region.end);//直接合并之
+			}
+			else //否则应该划分
+			{
+				region.flag=Mergetion;//下次应该归并
+				region_stack.push(region);
+				int mid=(region.first+region.end)/2;
+ 
+				Region region_low;
+				region_low.first=region.first;
+				region_low.end=mid;
+				region_low.flag=Partition;
+				region_stack.push(region_low);
+ 
+				Region region_up;
+				region_up.first=mid+1;
+				region_up.end=region.end;
+				region_up.flag=Partition;
+				region_stack.push(region_up);
+			}
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+完整代码展示如下
+// 归并排序(改进版).cpp : 定义控制台应用程序的入口点。
+#include "stdafx.h"
+#include  <iostream>
+#include <stack>
+using namespace std;
+ 
+void printArray(int *a,int n)
+{
+	for(int i=0;i<n;i++)
+		cout<<a[i]<<" ";
+	cout<<endl;
+}
+ 
+void  Merge(int * a,int low,int mid,int high)
+{
+   int i=low,j=mid+1,p=0;
+   int * r=new int[high-low+1];
+   while(i<=mid && j<=high)
+   {
+	   r[p++]=(a[i]<=a[j])?a[i++]:a[j++];
+   }
+   while(i<=mid)
+	   r[p++]=a[i++];
+   while(j<=high)
+	   r[p++]=a[j++];
+   for(p=0,i=low;i<=high;p++,i++)
+	   a[i]=r[p];
+   delete [] r;
+}
+ 
+/*
+ void MergePass(int *a,int n,int length)
+ {
+	 int i=0;
+     for(;i+2*length<n-1;i+=2*length)
+	 {
+         Merge(a,i,i+length-1,i+2*length-1);
+	 }
+	 if(i+length<=n-1)
+        Merge(a,i,i+length-1,n-1);//尚有两个子文件，其中后一个长度小于length,归并最后两个子文件
+	   //注意：若i≤n-1且i+length-1≥n-1时，则剩余一个子文件轮空，无须归并
+ }
+ //自底向上
+ void MergeSort(int *a,int n)
+ {
+    for(int length=1;length<n;length*=2)
+       MergePass(a,n,length);
+ }
+*/
+ 
+ //自顶向下(递归实现)
+void MSort(int *a,int low,int high)
+{
+    if(low<high)
+	{
+	   int mid=(low+high)/2;
+	   MSort(a,low,mid);
+	   MSort(a,mid+1,high);
+       Merge(a,low,mid,high);
+	}
+}
+ 
+void MergeSort(int *a,int n)
+{
+	MSort(a,0,n-1);
+}
+ 
+//将上述递归转化为非递归
+#define Partition '0' //划分
+#define Mergetion '1' //归并
+typedef struct Region
+{
+	int first;//起始位置
+	int end;  //结束位置
+	char flag;//标记该区域是应该划分还是应该归并  
+}Region;
+//非递归实现(感觉跟二叉树后序遍历的非递归实现很像)
+void  NonRecursiveMergeSort(int *a,int len)
+{
+	stack<Region> region_stack;
+	Region beginRegion;
+	beginRegion.first=0;
+	beginRegion.end=len-1;
+	beginRegion.flag=Partition;
+	region_stack.push(beginRegion);
+	while(!region_stack.empty())
+	{
+		Region region=region_stack.top();
+		region_stack.pop();//从栈中删除
+		if(region.flag==Mergetion)//应该归并
+		{
+			Merge(a,region.first,(region.first+region.end)/2,region.end);//归并之
+		}
+		else //应该划分
+		{
+			if(region.first+1>=region.end)//如果区域是两个相邻的数
+			{
+				Merge(a,region.first,(region.first+region.end)/2,region.end);//直接合并之
+			}
+			else //否则应该划分
+			{
+				region.flag=Mergetion;//下次应该归并
+				region_stack.push(region);
+				int mid=(region.first+region.end)/2;
+ 
+				Region region_low;
+				region_low.first=region.first;
+				region_low.end=mid;
+				region_low.flag=Partition;
+				region_stack.push(region_low);
+ 
+				Region region_up;
+				region_up.first=mid+1;
+				region_up.end=region.end;
+				region_up.flag=Partition;
+				region_stack.push(region_up);
+			}
+		}
+	}
+}
+ 
+ 
+int _tmain(int argc, _TCHAR* argv[])
+{
+	int a[]={49,38,65,97,76,13,27,49};
+	int n=sizeof(a)/sizeof(int);
+	printArray(a,n);
+	//MergeSort(a,n);
+	NonRecursiveMergeSort(a,n);
+	printArray(a,n);
+	system("PAUSE");
+	return 0;
+}
+
+
+归并排序（MERGE-SORT）是建立在归并操作上的一种有效的排序算法,该算法是采用分治法（Divide and Conquer）的一个非常典型的应用。将已有序的子序列合并，得到完全有序的序列；即先使每个子序列有序，再使子序列段间有序。若将两个有序表合并成一个有序表，称为二路归并。
+中文名 归并排序 外文名 Merge sort 稳定性 稳定 时间复杂度 O(n log n)  空间复杂度 O（n) 发明者 约翰·冯·诺伊曼
+目录
+1 归并操作
+2 算法描述
+3 比较
+4 用途
+▪ 排序
+▪ 求逆序对数
+5 示例代码
+6 复杂度
+7 归并算法
+8 应用实例
+归并操作编辑
+归并操作(merge)，也叫归并算法，指的是将两个顺序序列合并成一个顺序序列的方法。
+如　设有数列{6，202，100，301，38，8，1}
+初始状态：6,202,100,301,38,8,1
+第一次归并后：{6,202},{100,301},{8,38},{1}，比较次数：3；
+第二次归并后：{6,100,202,301}，{1,8,38}，比较次数：4；
+第三次归并后：{1,6,8,38,100,202,301},比较次数：4；
+总的比较次数为：3+4+4=11,；
+逆序数为14；
+算法描述编辑
+归并操作的工作原理如下：
+第一步：申请空间，使其大小为两个已经排序序列之和，该空间用来存放合并后的序列
+第二步：设定两个指针，最初位置分别为两个已经排序序列的起始位置
+第三步：比较两个指针所指向的元素，选择相对小的元素放入到合并空间，并移动指针到下一位置
+重复步骤3直到某一指针超出序列尾
+将另一序列剩下的所有元素直接复制到合并序列尾
+比较编辑
+归并排序是稳定的排序.即相等的元素的顺序不会改变.如输入记录 1(1) 3(2) 2(3) 2(4) 5(5) (括号中是记录的关键字)时输出的 1(1) 2(3) 2(4) 3(2) 5(5) 中的2 和 2 是按输入的顺序.这对要排序数据包含多个信息而要按其中的某一个信息排序,要求其它信息尽量按输入的顺序排列时很重要。归并排序的比较次数小于快速排序的比较次数，移动次数一般多于快速排序的移动次数。
+用途编辑
+排序
+（速度仅次于快速排序，为稳定排序算法，一般用于对总体无序，但是各子项相对有序的数列，应用见2011年普及复赛第3题“瑞士轮”的标程）
+求逆序对数
+具体思路是，在归并的过程中计算每个小区间的逆序对数，进而计算出大区间的逆序对数（也可以用树状数组来求解）
+scala代码：
+
+objectMainextendsApp{
+    varreverse_pairs = 0//逆序数
+    defmsort[T](cmp:(T, T) => Boolean)(l:List[T]):List[T] = {
+        defmerge(l1:List[T], l2:List[T]):List[T]=(l1, l2)match{
+            case(Nil, _) => l2
+            case(_, Nil) => l1
+            case(x::left1, y::left2) =>
+                if(cmp(x, y))
+                    x::merge(left1, l2)
+                else{
+                    reverse_pairs += l1.length
+                    y::merge(l1, left2)
+                }
+        }
+        valn = l.length / 2
+        if(n == 0)
+            return l
+        else{
+            val(l1, l2) = l.splitAt(n)
+            merge(msort(cmp)(l1), msort(cmp)(l2))
+        }
+    }
+    println(msort((x:Int, y:Int) => x<y)(List(5, 4, 3, 2, 7,6 )))
+    println(reverse_pairs)
+}
+
+#include<cstdio>
+const int MAXN=200005;
+int n, a[MAXN], temp[MAXN];
+long long ans;
+void count(int l, int r)
+{    
+    if(r == l) return ;//结束条件
+    int m = (l + r) >> 1;    count(l, m);
+    count(m + 1, r);//二分查找
+    int i = l, j = m + 1, k = l;
+    while(j <= r || i <= m)    {
+        if(j > r || (i <= m && a[i] < a[j]))
+            temp[k++] = a[i++];
+        else
+            temp[k++] = a[j++], ans += m - i + 1;    }
+    for(i = l; i <= r; i++)        a[i] = temp[i];}
+int main()
+{    scanf("%d", &n);
+    for(int i = 1; i <= n; i++)
+        scanf("%d", &a[i]);        count(1, n);//调用函数
+    printf("%lld", ans);//输出
+    return 0;
+}
+示例代码编辑
+归并排序原理
+归并排序具体工作原理如下（假设序列共有n个元素）：
+将序列每相邻两个数字进行归并操作（merge)，形成floor(n/2)个序列，排序后每个序列包含两个元素
+将上述序列再次归并，形成floor(n/4)个序列，每个序列包含四个元素
+重复步骤2，直到所有元素排序完毕
+示例代码
+Swift语言
+
+//归并排序
+func mergeSort(_ arr: inout [Int]) {
+    var gap = 1;
+    while gap < arr.count {
+        mergePass(&arr, gap: gap);
+         
+        gap *= 2;
+    }
+}
+ 
+//分解合并序列，gap表示子序列的元素个数
+func mergePass(_ arr: inout [Int], gap: Int) {
+    var i = 0;
+    let count = arr.count;
+     
+    while i + 2 * gap - 1 < count {
+        mergeArray(&arr, low: i, mid: i + gap - 1, high: i + 2 * gap - 1);
+         
+        i += 2 * gap;
+    }
+     
+    //合并剩余的序列
+    if i + gap - 1 < count {
+        mergeArray(&arr, low: i, mid: i + gap - 1, high: count - 1);
+    }
+}
+ 
+//合并两个序列
+func mergeArray(_ arr: inout [Int], low: Int, mid: Int, high: Int) {
+     
+    var i = low;
+    var j = mid + 1;
+    var k = 0;
+     
+    var array = Array<Int>(repeating: 0, count: high - low + 1);
+     
+    while i <= mid && j <= high {
+        if arr[i] < arr[j] {
+            array[k] = arr[i];
+            i += 1;
+            k += 1;
+        } else {
+            array[k] = arr[j];
+            j += 1;
+            k += 1;
+        }
+    }
+     
+    while i <= mid {
+        array[k] = arr[i];
+        i += 1;
+        k += 1;
+    }
+     
+    while j <= high {
+        array[k] = arr[j];
+        j += 1;
+        k += 1;
+    }
+     
+    //将排序好的序列复制回原数组
+    k = 0;
+    for i in low...high {
+        arr[i] = array[k];
+         
+        k += 1;
+    }
+}
+ 
+ 
+var array = [2, 5, 8, 9, 10, 4, 3, 16, 1, 7, 8];
+mergeSort(&array);
+print(array);
+Go语言
+
+func mergeSort(r []int) []int {
+    length := len(r)   
+    if length <= 1 {
+        return r 
+    }   
+    num := length / 2
+    left := mergeSort(r[:num])   
+    right := mergeSort(r[num:])   
+    return merge(left, right)
+}
+func merge(left, right []int) (result []int) {   
+    l, r := 0, 0   
+    for l < len(left) && r < len(right) {
+        if left[l] < right[r] {         
+            result = append(result, left[l])         
+            l++      
+        } else {         
+            result = append(result, right[r])         
+            r++      
+        }   
+    }   
+    result = append(result, left[l:]...)   
+    result = append(result, right[r:]...)   
+    return
+}
+Java语言
+
+package algorithm;
+ 
+public class MergeSort {
+    //　private　static　long　sum　=　0;
+ 
+    /**
+     * 　*　<pre>
+     * 　*　二路归并
+     * 　*　原理：将两个有序表合并和一个有序表
+     * 　*　</pre>
+     * 　*
+     * 　*　@param　a
+     * 　*　@param　s
+     * 　*　第一个有序表的起始下标
+     * 　*　@param　m
+     * 　*　第二个有序表的起始下标
+     * 　*　@param　t
+     * 　*　第二个有序表的结束小标
+     * 　*
+     */
+    private static void merge(int[] a, int s, int m, int t) {
+        int[] tmp = new int[t - s + 1];
+        int i = s, j = m, k = 0;
+        while (i < m && j <= t) {
+            if (a[i] <= a[j]) {
+                tmp[k] = a[i];
+                k++;
+                i++;
+            } else {
+                tmp[k] = a[j];
+                j++;
+                k++;
+            }
+        }
+        while (i < m) {
+            tmp[k] = a[i];
+            i++;
+            k++;
+        }
+        while (j <= t) {
+            tmp[k] = a[j];
+            j++;
+            k++;
+        }
+        System.arraycopy(tmp, 0, a, s, tmp.length);
+    }
+ 
+    /**
+     * 　*
+     * 　*　@param　a
+     * 　*　@param　s
+     * 　*　@param　len
+     * 　*　每次归并的有序集合的长度
+     */
+    public static void mergeSort(int[] a, int s, int len) {
+        int size = a.length;
+        int mid = size / (len << 1);
+        int c = size & ((len << 1) - 1);
+        //　-------归并到只剩一个有序集合的时候结束算法-------//
+        if (mid == 0)
+            return;
+        //　------进行一趟归并排序-------//
+        for (int i = 0; i < mid; ++i) {
+            s = i * 2 * len;
+            merge(a, s, s + len, (len << 1) + s - 1);
+        }
+        //　-------将剩下的数和倒数一个有序集合归并-------//
+        if (c != 0)
+            merge(a, size - c - 2 * len, size - c, size - 1);
+        //　-------递归执行下一趟归并排序------//
+        mergeSort(a, 0, 2 * len);
+    }
+ 
+    public static void main(String[] args) {
+        int[] a = new int[]{4, 3, 6, 1, 2, 5};
+        mergeSort(a, 0, 1);
+        for (int i = 0; i < a.length; ++i) {
+            System.out.print(a[i] + "　");
+        }
+    }
+}
+C#语言
+
+public static void Sort(int[] a, int f, int e)
+{
+    if (f < e)
+    {
+        int mid = (f + e) / 2;
+        Sort(a, f, mid);
+        Sort(a, mid + 1, e);
+        MergeMethid(a, f, mid, e);
+    }
+}
+private static void MergeMethid(int[] a, int f, int mid, int e)
+{
+    int[] t = new int[e - f + 1];
+    int m = f, n = mid + 1, k = 0;
+    while(n <= e && m <= mid)
+    {
+        if (a[m] > a[n]) t[k++] = a[n++];
+        else t[k++] = a[m++];
+    }
+    while (n < e + 1) t[k++] = a[n++];
+    while (m < mid + 1) t[k++] = a[m++];
+    for (k = 0, m = f; m < e + 1; k++, m++) a[m] = t[k];
+}
+Python语言
+
+def MergeSort(lists):
+    if len(lists) <= 1:
+        return lists
+    num = int( len(lists) / 2 )
+    left = MergeSort(lists[:num])
+    right = MergeSort(lists[num:])
+    return Merge(left, right)
+def Merge(left,right):
+    r, l=0, 0
+    result=[]
+    while l<len(left) and r<len(right):
+        if left[l] < right[r]:
+            result.append(left[l])
+            l += 1
+        else:
+            result.append(right[r])
+            r += 1
+    result += left[l:]
+    result += right[r:]
+    return result
+print MergeSort([1, 2, 3, 4, 5, 6, 7, 90, 21, 23, 45])
+C语言
+
+#include <stdlib.h>
+#include <stdio.h>
+ 
+void Merge(int sourceArr[],int tempArr[], int startIndex, int midIndex, int endIndex)
+{
+    int i = startIndex, j=midIndex+1, k = startIndex;
+    while(i!=midIndex+1 && j!=endIndex+1)
+    {
+        if(sourceArr[i] > sourceArr[j])
+            tempArr[k++] = sourceArr[j++];
+        else
+            tempArr[k++] = sourceArr[i++];
+    }
+    while(i != midIndex+1)
+        tempArr[k++] = sourceArr[i++];
+    while(j != endIndex+1)
+        tempArr[k++] = sourceArr[j++];
+    for(i=startIndex; i<=endIndex; i++)
+        sourceArr[i] = tempArr[i];
+}
+ 
+//内部使用递归
+void MergeSort(int sourceArr[], int tempArr[], int startIndex, int endIndex)
+{
+    int midIndex;
+    if(startIndex < endIndex)
+    {
+        midIndex = (startIndex + endIndex) / 2;
+        MergeSort(sourceArr, tempArr, startIndex, midIndex);
+        MergeSort(sourceArr, tempArr, midIndex+1, endIndex);
+        Merge(sourceArr, tempArr, startIndex, midIndex, endIndex);
+    }
+}
+ 
+int main(int argc, char * argv[])
+{
+    int a[8] = {50, 10, 20, 30, 70, 40, 80, 60};
+    int i, b[8];
+    MergeSort(a, b, 0, 7);
+    for(i=0; i<8; i++)
+        printf("%d ", a[i]);
+    printf("\n");
+    return 0;
+}
+PHP语言
+
+//merge函数将指定的两个有序数组(arr1,arr2)合并并且排序
+//我们可以找到第三个数组,然后依次从两个数组的开始取数据哪个数据小就先取哪个的,然后删除掉刚刚取过///的数据
+function al_merge($arrA,$arrB)
+{
+    $arrC = array();
+    while(count($arrA) && count($arrB)){
+        //这里不断的判断哪个值小,就将小的值给到arrC,但是到最后肯定要剩下几个值,
+        //不是剩下arrA里面的就是剩下arrB里面的而且这几个有序的值,肯定比arrC里面所有的值都大所以使用
+        $arrC[] = $arrA['0'] < $arrB['0'] ? array_shift($arrA) : array_shift($arrB);
+    }
+    return array_merge($arrC, $arrA, $arrB);
+}
+//归并排序主程序
+function al_merge_sort($arr){
+    $len = count($arr);
+    if($len <= 1)
+        return $arr;//递归结束条件,到达这步的时候,数组就只剩下一个元素了,也就是分离了数组
+    $mid = intval($len/2);//取数组中间
+    $left_arr = array_slice($arr, 0, $mid);//拆分数组0-mid这部分给左边left_arr
+    $right_arr = array_slice($arr, $mid);//拆分数组mid-末尾这部分给右边right_arr
+    $left_arr = al_merge_sort($left_arr);//左边拆分完后开始递归合并往上走
+    $right_arr = al_merge_sort($right_arr);//右边拆分完毕开始递归往上走
+    $arr = al_merge($left_arr, $right_arr);//合并两个数组,继续递归
+    return $arr;
+}
+$arr = array(12, 5, 4, 7, 8, 3, 4, 2, 6, 4, 9);
+print_r(al_merge_sort($arr));
+Pascal语言
+
+program　mergesort_1;
+const maxn=7;
+type
+    arr=array[1..maxn] of integer;
+var
+    a,b,c:arr;
+    i:integer;
+procedure merge(r:arr; l,m,n:integer; var r2:arr);
+    var
+        i,j,k,p:integer;
+    begin
+        i:=l;
+        j:=m+1;
+        k:=l-1;
+        while (i<=m) and (j<=n) do begin
+            k:=k+1;
+            if r[i]<=r[j] then begin
+                r2[k]:=r[i];
+                i:=i+1
+            end
+            else begin
+                r2[k]:=r[j];
+                j:=j+1;
+            end
+        end;
+        if i<=m then for p:=i to m do begin
+            k:=k+1;
+            r2[k]:=r[p];
+        end;
+        if j<=n then for p:=j to n do begin
+            k:=k+1;
+            r2[k]:=r[p];
+        end;
+    end;
+procedure mergesort(var r,r1:arr; s,t:integer);
+    var
+        k:integer; c:arr;
+    begin
+        if s=t then r1[s]:=r[s]
+        else begin
+            k:=(s+t)div2;
+            mergesort(r,c,s,k);
+            mergesort(r,c,k+1,t);
+            merge(c,s,k,t,r1)
+        end;
+    end;
+begin
+    write('Enterdata:');
+    for i:=1 to maxn do read(a[i]);
+    mergesort(a,b,1,maxn);
+    for i:=1 to maxn do write(b[i]:9);
+    writeln;
+end.
+//============================================
+program mergesort_2;
+const max=100000;
+var
+    a,r:array[1..max] of longint;
+    n,i:longint;
+procedure msort(s,t:longint);
+    var
+        m,i,j,k:longint;
+    begin
+        if s=t then exit;
+        m:=(s+t) div 2;
+        msort(s,m);
+        msort(m+1,t);
+        i:=s;
+        j:=m+1;
+        k:=s;
+        while (i<=m) and (j<=t) do begin
+            if a[i]<a[j] then begin
+                r[k]:=a[i];
+                inc(i);
+                inc(k);
+            end
+            else begin
+                r[k]:=a[j];
+                inc(j);
+                inc(k);
+            end;
+        end;
+        while i<=m do begin
+            r[k]:=a[i];
+            inc(i);
+            inc(k);
+        end;
+        while j<=t do begin
+            r[k]:=a[j];
+            inc(j);
+            inc(k);
+        end;
+        for i:=s to t do a[i]:=r[i];
+    end;
+begin
+    readln(n);
+    for i:=1 to n do read(a[i]);
+    msort(1,n);
+    for i:=1 to n do writeln(a[i]);
+end.
+Basic语言
+
+Sub MergeSort(Array() As Integer, First As Integer, Last As Integer)
+Dim mid As Integer = 0
+If first<last Then
+ mid = (first+last)\ 2
+MergeSort(Array, first, mid);
+MergeSort(Array, mid+1, last);
+Merge(Array, first, mid, last);
+End If
+End Sub
+/*
+以下示例代码实现了归并操作。array[]是元素序列，其中从索引p开始到q位置，按照升序排列，同时，从(q+1)到r也已经按照升序排列，merge()函数将把这两个已经排序好的子序列合并成一个排序序列。结果放到array中。
+*/
+/**
+* 0 <= p <= q < r, subarray array[p..q] and array[q+1..r] are already sorted.
+* the merge() function merges the two sub-arrays into one sorted array.
+*/
+void Merge(int array[], int p, int q, int r)
+{
+    int i,k;
+    int begin1,end1,begin2,end2;
+    int* temp = (int*)malloc((r-p+1)*sizeof(int));
+    begin1 = p;
+    end1   = q;
+    begin2 = q+1;
+    end2   = r;
+    k = 0;
+    while((begin1 <= end1)&&( begin2 <= end2))
+    {
+        if(array[begin1] <= array[begin2]){ 
+            temp[k] = array[begin1];
+            begin1++;
+        }
+        else
+        {
+            temp[k] = array[begin2];
+            begin2++;
+        }
+        k++;
+    }
+    while(begin1<=end1 || begin2<=end2)
+    {
+        if(begin1<=end1)
+        {
+            temp[k++] = array[begin1++];
+        }
+        if(begin2<=end2)
+        {
+            temp[k++] = array[begin2++];
+        }
+        }
+        for (i = 0; i < =(r - p); i++)
+            array[p+i] = temp[i];
+    free(temp);
+}
+JavaScript语言
+使用递归的代码如下。优点是描述算法过程思路清晰，缺点是使用递归，mergeSort()函数频繁地自我调用。长度为n的数组最终会调用mergeSort()函数 2n-1次，这意味着一个长度超过1500的数组会在Firefox上发生栈溢出错误。可以考虑使用迭代来实现同样的功能。
+
+function　merge(left, right){
+    var　result=[];
+    while(left.length>0 && right.length>0){
+        if(left[0]<right[0]){
+        /*shift()方法用于把数组的第一个元素从其中删除，并返回第一个元素的值。*/
+            result.push(left.shift());
+        }else{
+            result.push(right.shift());
+        }
+    }
+    return　result.concat(left).concat(right);
+}
+function　mergeSort(items){
+    if(items.length == 1){
+        return　items;
+}
+var　middle = Math.floor(items.length/2),
+    left = items.slice(0, middle),
+    right = items.slice(middle);
+    return　merge(mergeSort(left), mergeSort(right));
+}
+非递归算法（C++）
+
+#include<iostream>
+#include<ctime>
+#include<cstring>
+#include<cstdlib>
+using namespace std;
+/**将a开头的长为length的数组和b开头长为right的数组合并n为数组长度，用于最后一组*/
+void　Merge(int*　data,int　a,int　b,int　length,int　n){
+　int　right;
+　if(b+length-1 >= n-1)　right = n-b;
+　else　right = length;
+　int*　temp = new　int[length+right];
+　int　i=0, j=0;
+　while(i<=length-1 && j<=right-1){
+    　if(data[a+i] <= data[b+j]){
+    　    temp[i+j] = data[a+i];i++;
+      }
+    　else{
+        temp[i+j] = data[b+j];
+        j++;
+      }
+　}
+　if(j == right){//a中还有元素，且全都比b中的大,a[i]还未使用
+　  memcpy(temp + i + j, data + a + i, (length - i) * sizeof(int));
+　}
+  else if(i == length){
+      memcpy(temp + i + j, data + b + j, (right - j)*sizeof(int));
+  }
+　memcpy(data+a, temp, (right + length) * sizeof(int));
+　delete [] temp;
+}
+void　MergeSort(int*　data, int　n){
+　int　step = 1;
+　while(step < n){
+    　for(int　i=0; i<=n-step-1; i+=2*step)
+    　    Merge(data, i, i+step, step, n);
+    //将i和i+step这两个有序序列进行合并
+    //序列长度为step
+    //当i以后的长度小于或者等于step时，退出
+    　step*=2;//在按某一步长归并序列之后，步长加倍
+　}
+}
+int　main(){
+　int　n;
+　cin>>n;
+　int*　data = new　int[n];
+　if(!data)　exit(1);
+　int　k = n;
+　while(k--){
+　    cin>>data[n-k-1];
+　}
+　clock_t　s = clock();
+　MergeSort(data, n);
+　clock_t　e = clock();
+　k=n;
+　while(k--){
+　    cout<<data[n-k-1]<<' ';
+　}
+　cout<<endl;
+　cout<<"the algorithm used"<<e-s<<"miliseconds."<<endl;
+　delete　data;
+　return　0;
+}
+ 
+递归算法：
+#include<iostream>
+using namespace std;
+void merge(int *data, int start, int mid, int end, int *result)
+{
+    int i, j, k;
+    i = start;
+    j = mid + 1;                        //避免重复比较data[mid]
+    k = 0;
+    while (i <= mid && j <= end)        //数组data[start,mid]与数组(mid,end]均没有全部归入数组result中去
+    {
+        if (data[i] <= data[j])         //如果data[i]小于等于data[j]
+            result[k++] = data[i++];    //则将data[i]的值赋给result[k]，之后i,k各加一，表示后移一位
+        else
+            result[k++] = data[j++];    //否则，将data[j]的值赋给result[k]，j,k各加一
+    }
+    while (i <= mid)                    //表示数组data(mid,end]已经全部归入result数组中去了，而数组data[start,mid]还有剩余
+        result[k++] = data[i++];        //将数组data[start,mid]剩下的值，逐一归入数组result
+    while (j <= end)                    //表示数组data[start,mid]已经全部归入到result数组中去了，而数组(mid,high]还有剩余
+        result[k++] = data[j++];        //将数组a[mid,high]剩下的值，逐一归入数组result
+ 
+    for (i = 0; i < k; i++)             //将归并后的数组的值逐一赋给数组data[start,end]
+        data[start + i] = result[i];    //注意，应从data[start+i]开始赋值
+}
+void merge_sort(int *data, int start, int end, int *result)
+{
+    if (start < end)
+    {
+        int mid = (start + end) / 2;
+        merge_sort(data, start, mid, result);                    //对左边进行排序
+        merge_sort(data, mid + 1, end, result);                  //对右边进行排序
+        merge(data, start, mid, end, result);                    //把排序好的数据合并
+    }
+}
+void amalgamation(int *data1, int *data2, int *result)
+{
+    for (int i = 0; i < 10; i++)
+        result[i] = data1[i];
+    for (int i = 0; i < 10; i++)
+        result[i + 10] = data2[i];
+}
+int main()
+{
+    int data1[10] = { 1,7,6,4,9,14,19,100,55,10 };
+    int data2[10] = { 2,6,8,99,45,63,102,556,10,41 };
+    int *result = new int[20];                              
+    int *result1 = new int[20];
+    amalgamation(data1, data2, result);
+    for (int i = 0; i < 20; ++i)
+        cout << result[i] << "  ";
+    cout << endl;
+    merge_sort(result, 0, 19, result1);
+    for (int i = 0; i < 20; ++i)
+        cout << result[i] << "  ";
+    delete[]result;
+    delete[]result1;
+    return 0;
+}
+二路归并
+
+Const
+FI='in.txt';
+FO='out.txt';
+MaxN=10000;
+Type
+TIndex=Longint;
+TDat=Array[0..MaxN]OfTIndex;
+Var
+N:TIndex;
+Dat:TDat;
+Tmp:TDat;
+ProcedureMerge(L,Mid,R:TIndex);
+Var
+P1,P2:TIndex;
+E1,E2:TIndex;
+P:TIndex;
+I:TIndex;
+Begin
+P1:=L;
+P2:=Mid+1;
+P:=L;
+Repeat
+If(Dat[P1]<=Dat[P2])Then
+Begin
+Tmp[P]:=Dat[P1];
+Inc(P1);
+Inc(P);
+End
+Else
+Begin
+Tmp[P]:=Dat[P2];
+Inc(P2);
+Inc(P);
+End;
+Until(P1=Mid+1)Or(P2=R+1);
+If(P1=Mid+1)Then
+Begin
+E1:=P2;
+E2:=R;
+End
+Else
+Begin
+E1:=P1;
+E2:=Mid;
+End;
+ForI:=E1ToE2Do
+Begin
+Tmp[P]:=Dat[I];
+Inc(P);
+End;
+End;
+ProcedureSort(L,R:TIndex);
+Var
+Mid:TIndex=0;
+Begin
+Mid:=(L+R)Shr1;
+If(L<Mid)Then
+Sort(L,Mid);
+If(Mid+1<R)Then
+Sort(Mid+1,R);
+Merge(L,Mid,R);
+ForMid:=LToRDo
+Dat[Mid]:=Tmp[Mid];
+End;
+ProcedureInit;
+Var
+I:TIndex;
+Begin
+FillChar(Dat,SizeOf(Dat),0);
+Readln(N);
+ForI:=1ToNDo
+Read(Dat[I]);
+End;
+ProcedureMain;
+Begin
+Sort(1,N);
+End;
+ProcedureFinal;
+Var
+I:TIndex;
+Begin
+ForI:=1ToNDo
+Write(Dat[I],'');
+Writeln;
+End;
+Begin
+Assign(Input,FI);
+Assign(Output,FO);
+Reset(Input);
+Rewrite(Output);
+Init;
+Main;
+Final;
+Close(Input);
+Close(Output);
+End.
+Delphi
+归并排序完整源代码例子：
+
+//合并子函数
+procedureTForm1.MergePass(vardatas:arrayofInteger;left,mid,
+right:Integer);
+var
+tmpArr:arrayofInteger;
+arrLen:Integer;
+i,k:Integer;
+begin1,begin2,end1,end2:Integer;
+begin
+arrLen:=right-left+1;
+SetLength(tmpArr,arrLen);
+begin1:=left;
+end1:=mid;
+begin2:=mid+1;
+end2:=right;
+k:=0;
+while((begin1<=end1)and(begin2<=end2))do
+begin
+if(datas[begin1]<datas[begin2])then
+begin
+tmpArr[k]:=datas[begin1];
+Inc(begin1);
+end
+else
+begin
+tmpArr[k]:=datas[begin2];
+Inc(begin2);
+end;
+inc(k);
+end;
+while(begin1<=end1)do
+begin
+tmpArr[k]:=datas[begin1];
+Inc(begin1);
+Inc(k);
+end;
+while(begin2<=end2)do
+begin
+tmpArr[k]:=datas[begin2];
+Inc(begin2);
+Inc(k);
+end;
+fori:=0to(right-left)do
+begin
+datas[left+i]:=tmpArr[i];
+end;
+end;
+//排序主函数，left是数组左下标，0开始。right是数组右下标。
+procedureTForm1.MergeSort(vardatas:arrayofInteger;left,right:Integer);
+var
+mid:Integer;
+i:Integer;
+begin
+mid:=0;
+if(left<right)then
+begin
+mid:=(right+left)div2;
+showLog('中间索引：'+inttostr(mid));
+MergeSort(datas,left,mid);
+MergeSort(datas,mid+1,right);
+MergePass(datas,left,mid,right);
+showLog('--->'+getArrayString(datas));//显示数组中间状态
+end;
+end;
+//调用方法：procedureTForm1.btn1Click(Sender:TObject);
+var
+inArr:array[0..9]ofInteger;
+begin
+CopyMemory(@inArr[0],@CTabls[0],SizeOf(Integer)*10);
+showLog('输入数据：'+getArrayString(inArr));
+MergeSort(inArr,0,High(inArr));
+showLog('输出数据：'+getArrayString(inArr));
+end;
+复杂度编辑
+时间复杂度为O(nlog₂n) 这是该算法中最好、最坏和平均的时间性能。
+空间复杂度为 O(n)
+比较操作的次数介于(nlogn) / 2和nlogn - n + 1。
+赋值操作的次数是(2nlogn)。归并算法的空间复杂度为：0 (n)
+归并排序比较占用内存，但却是一种效率高且稳定的算法。
+归并算法编辑
+定义
+所谓归并排序是指将两个或两个以上有序的数列（或有序表），合并成一个仍然有序的数列（或有序表）。这样的排序方法经常用于多个有序的数据文件归并成一个有序的数据文件。归并排序的算法比较简单。
+基本思想方法：
+（1）假设已经有两个有序数列，分别存放在两个数组s，r中；并设i，j分别为指向数组的第一个单元的下标；s有n个元素，r有m个元素。
+（2）再另设一个数组a，k指向该数组的第一个单元下标。
+（3）算法分析（过程）：
+
+proceduremerge(s,r,a,i,j,k);
+begin
+i1:=i;
+j1:=j;
+k1:=k;
+while(i1<n)and(j1<m)do
+ifs[i1]<=r[j1]then
+begin
+a[k]:=s[i1];
+i1:=i1+1;
+k:=k+1;
+end
+else
+begin
+a[k]:=r[j1];
+j1:=j1+1;
+k:=k+1;
+end;
+whilei1<=ndo
+begin
+a[k]:=s[i1];
+i1:=i1+1;
+k:=k+1;
+end;
+whilej1<=mdo
+begin
+a[k]:=r[j1];
+j1:=j1+1;
+k:=k+1;
+end;
+end;
+完整的C++源代码
+
+#include<iostream.h>
+voidMerge(intr[],intr1[],ints,intm,intt){
+inti=s;
+intj=m+1;
+intk=s;
+while(i<=m&&j<=t){
+if(r[i]<=r[j])
+r1[k++]=r[i++];
+else
+r1[k++]=r[j++];
+}
+if(i<=m)
+while(i<=m)
+r1[k++]=r[i++];
+else
+while(j<=t)
+r1[k++]=r[j++];
+for(intn=s;n<=t;n++)
+r[n]=r1[n];
+}
+ 
+voidMergeSort(intr[],intr1[],ints,intt){
+if(s<t){
+intm=(s+t)/2;
+MergeSort(r,r1,s,m);
+MergeSort(r,r1,m+1,t);
+Merge(r,r1,s,m,t);
+}
+}
+voidmain(){
+intr[8]={10,3,5,1,9,34,54,565},r1[8];
+MergeSort(r,r1,0,7);
+for(intq=0;q<8;q++)
+cout<<""<<r[q];
+return0；
+}
+　
+归并排序的实现方法：
+1.自底向上算法
+
+#include<stdio.h>
+#include<time.h>
+voidMerge(int*a,intlow,intmid,inthigh){
+inti=low,j=mid+1,k=0;
+int*temp=(int*)malloc((high-low+1)*sizeof(int));
+while(i<=mid&&j<=high)
+a[i]<=a[j]?(temp[k++]=a[i++]):(temp[k++]=a[j++]);
+while(i<=mid)
+temp[k++]=a[i++];
+while(j<=high)
+temp[k++]=a[j++];
+memcpy(a+low,temp,(high-low+1)*sizeof(int));
+free(temp);
+}
+voidMergeSort(int*a,intn){
+intlength;
+for(length=1;length<n;length*=2){
+inti;
+for(i=0;i+2*length-1<=n-1;i+=2*length)
+Merge(a,i,i+length-1,i+2*length-1);
+if(i+length<=n-1)//尚有两个子文件，其中后一个长度小于length
+　Merge(a,i,i+length-1,n-1);
+}
+}
+intmain(){
+intn;
+cin>>n;
+int*data=new
+int[n];
+if(!data)
+exit(1);
+intk=n;
+while(k--){
+cin>>data[n-k-1];
+}
+clock_ts=clock();
+MergeSort(data,n);
+clock_te=clock();
+k=n;
+while(k--){
+cout<<data[n-k-1]<<'';
+}
+cout<<endl;
+cout<<"thealgrothemused"<<e-s<<"miliseconds."<<endl;
+deletedata;
+return0;
+}
+2.自顶向下
+
+voidMerge(intr[],intr1[],ints,intm,intt){
+inti=s;
+intj=m+1;
+intk=s;
+while(i<=m&&j<=t){
+if(r[i]<=r[j])
+r1[k++]=r[i++];
+else
+r1[k++]=r[j++];
+}
+while(i<=m)
+r1[k++]=r[i++];
+while(j<=t)
+r1[k++]=r[j++];
+for(intl=0;l<8;l++)
+r[l]=r1[l];
+}
+ 
+voidMergeSort(intr[],intr1[],ints,intt){
+if(s==t)
+;
+else{
+intm=(s+t)/2;
+MergeSort(r,r1,s,m);
+MergeSort(r,r1,m+1,t);
+Merge(r,r1,s,m,t);
+}
+}
+应用实例编辑
+NOIP2013 提高组火柴排队
+
+#include<bits/stdc++.h>
+using namespace std;
+int c[1000005],t[1000005],mod=99999997;
+long long cnt=0;
+struct edge{
+    int num,i;
+}a[1000005],b[1000005];
+void merge(int l,int r)
+{
+    if(l==r)
+        return;
+    int mid=(l+r)/2;
+    merge(l,mid);
+    merge(mid+1,r);
+    int x=l,y=mid+1,tot=l;
+    while(x<=mid&&y<=r)
+        if(c[x]<=c[y])
+            t[tot++]=c[x++];
+        else
+        {
+             cnt+=(mid-x+1)%mod;
+             cnt%=mod;
+             t[tot++]=c[y++];
+        }
+    while(x<=mid)
+        t[tot++]=c[x++];
+    while(y<=r)
+        t[tot++]=c[y++];
+    for(int i=l;i<= r;++i)
+        c[i]=t[i];
+}
+bool cmp(edge a,edge b)
+{
+    return a.num<b.num;
+}
+int main()
+{
+    int n;
+    cin>>n;
+    for(int i=1;i<=n;++i)
+    {
+        cin>>a[i].num;
+        a[i].i=i;
+    }
+    for(int i=1;i<=n;++i)
+    {
+        cin>>b[i].num;
+        b[i].i=i;
+    }
+    sort(a+1,a+n+1,cmp);
+    sort(b+1,b+n+1,cmp);
+    for(int i=1;i<=n;++i)
+        c[a[i].i]=b[i].i;
+    merge(1,n);
+    cout<<cnt<<endl;
+    return 0;
+}

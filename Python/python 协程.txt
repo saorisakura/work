@@ -1,0 +1,1604 @@
+目录：
+	Python黑魔法 --- 异步IO（ asyncio） 协程
+	理解yield（生成器)
+	如何理解Python关键字yield
+
+
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+# -*- Author:Seiya -*-
+import asyncio
+import time
+import random
+
+
+now = lambda : time.time()
+
+
+async def worker(n):
+    while True:
+        print("sleep {} s".format(n))
+        await asyncio.sleep(n)
+
+
+def main():
+    asyncio.ensure_future(worker(1))
+    asyncio.ensure_future(worker(2))
+
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt as e:
+        print(asyncio.gather(*asyncio.Task.all_tasks()).cancel())
+        loop.stop()
+        loop.run_forever()
+    finally:
+        loop.close()
+
+
+if __name__ == '__main__':
+    # main()
+    from threading import Thread
+
+
+    def start_loop(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+
+    def more_work(x):
+        print('More work {}'.format(x))
+        time.sleep(x)
+        print('Finished more work {}'.format(x))
+
+
+    start = now()
+    new_loop = asyncio.new_event_loop()
+    t = Thread(target=start_loop, args=(new_loop,))
+    t.start()
+    print('TIME: {}'.format(time.time() - start))
+
+    new_loop.call_soon_threadsafe(more_work, 6)
+    new_loop.call_soon_threadsafe(more_work, 3)
+    while True:
+        n = random.randint(1, 10)
+        new_loop.call_soon_threadsafe(more_work, n)
+
+
+Python黑魔法 --- 异步IO（ asyncio） 协程
+
+python asyncio
+网络模型有很多中，为了实现高并发也有很多方案，多线程，多进程。无论多线程和多进程，IO的调度更多取决于系统，而协程的方式，调度来自用户，用户可以在函数中yield一个状态。使用协程可以实现高效的并发任务。Python的在3.4中引入了协程的概念，可是这个还是以生成器对象为基础，3.5则确定了协程的语法。下面将简单介绍asyncio的使用。实现协程的不仅仅是asyncio，tornado和gevent都实现了类似的功能。
+event_loop 事件循环：程序开启一个无限的循环，程序员会把一些函数注册到事件循环上。当满足事件发生的时候，调用相应的协程函数。
+coroutine 协程：协程对象，指一个使用async关键字定义的函数，它的调用不会立即执行函数，而是会返回一个协程对象。协程对象需要注册到事件循环，由事件循环调用。
+task 任务：一个协程对象就是一个原生可以挂起的函数，任务则是对协程进一步封装，其中包含任务的各种状态。
+future： 代表将来执行或没有执行的任务的结果。它和task上没有本质的区别
+async/await 关键字：python3.5 用于定义协程的关键字，async定义一个协程，await用于挂起阻塞的异步调用接口。
+上述的概念单独拎出来都不好懂，比较他们之间是相互联系，一起工作。下面看例子，再回溯上述概念，更利于理解。
+定义一个协程
+定义一个协程很简单，使用async关键字，就像定义普通函数一样：
+import time
+import asyncio
+
+now = lambda : time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+start = now()
+
+coroutine = do_some_work(2)
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(coroutine)
+
+print('TIME: ', now() - start)
+
+
+通过async关键字定义一个协程（coroutine），协程也是一种对象。协程不能直接运行，需要把协程加入到事件循环（loop），由后者在适当的时候调用协程。asyncio.get_event_loop方法可以创建一个事件循环，然后使用run_until_complete将协程注册到事件循环，并启动事件循环。因为本例只有一个协程，于是可以看见如下输出：
+Waiting:  2
+TIME:  0.0004658699035644531
+
+创建一个task
+协程对象不能直接运行，在注册事件循环的时候，其实是run_until_complete方法将协程包装成为了一个任务（task）对象。所谓task对象是Future类的子类。保存了协程运行后的状态，用于未来获取协程的结果。
+import asyncio
+import time
+
+now = lambda : time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+start = now()
+
+coroutine = do_some_work(2)
+loop = asyncio.get_event_loop()
+# task = asyncio.ensure_future(coroutine)
+task = loop.create_task(coroutine)
+print(task)
+loop.run_until_complete(task)
+print(task)
+print('TIME: ', now() - start)
+
+可以看到输出结果为：
+<Task pending coro=<do_some_work() running at /Users/ghost/Rsj217/python3.6/async/async-main.py:17>>
+Waiting:  2
+<Task finished coro=<do_some_work() done, defined at /Users/ghost/Rsj217/python3.6/async/async-main.py:17> result=None>
+TIME:  0.0003490447998046875 
+
+创建task后，task在加入事件循环之前是pending状态，因为do_some_work中没有耗时的阻塞操作，task很快就执行完毕了。后面打印的finished状态。
+asyncio.ensure_future(coroutine) 和 loop.create_task(coroutine)都可以创建一个task，run_until_complete的参数是一个futrue对象。当传入一个协程，其内部会自动封装成task，task是Future的子类。isinstance(task, asyncio.Future)将会输出True。
+绑定回调
+绑定回调，在task执行完毕的时候可以获取执行的结果，回调的最后一个参数是future对象，通过该对象可以获取协程返回值。如果回调需要多个参数，可以通过偏函数导入。
+import time
+import asyncio
+
+now = lambda : time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+    return 'Done after {}s'.format(x)
+
+def callback(future):
+    print('Callback: ', future.result())
+
+start = now()
+
+coroutine = do_some_work(2)
+loop = asyncio.get_event_loop()
+task = asyncio.ensure_future(coroutine)
+task.add_done_callback(callback)
+loop.run_until_complete(task)
+
+print('TIME: ', now() - start)
+
+
+def callback(t, future):
+    print('Callback:', t, future.result())
+
+task.add_done_callback(functools.partial(callback, 2))
+
+可以看到，coroutine执行结束时候会调用回调函数。并通过参数future获取协程执行的结果。我们创建的task和回调里的future对象，实际上是同一个对象。
+future 与 result
+回调一直是很多异步编程的恶梦，程序员更喜欢使用同步的编写方式写异步代码，以避免回调的恶梦。回调中我们使用了future对象的result方法。前面不绑定回调的例子中，我们可以看到task有fiinished状态。在那个时候，可以直接读取task的result方法。
+async def do_some_work(x):
+    print('Waiting {}'.format(x))
+    return 'Done after {}s'.format(x)
+
+start = now()
+
+coroutine = do_some_work(2)
+loop = asyncio.get_event_loop()
+task = asyncio.ensure_future(coroutine)
+loop.run_until_complete(task)
+
+print('Task ret: {}'.format(task.result()))
+print('TIME: {}'.format(now() - start))
+
+可以看到输出的结果：
+Waiting:  2
+Task ret:  Done after 2s
+TIME:  0.0003650188446044922
+
+阻塞和await
+使用async可以定义协程对象，使用await可以针对耗时的操作进行挂起，就像生成器里的yield一样，函数让出控制权。协程遇到await，事件循环将会挂起该协程，执行别的协程，直到其他的协程也挂起或者执行完毕，再进行下一个协程的执行。
+耗时的操作一般是一些IO操作，例如网络请求，文件读取等。我们使用asyncio.sleep函数来模拟IO操作。协程的目的也是让这些IO操作异步化。
+import asyncio
+import time
+
+now = lambda: time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+    await asyncio.sleep(x)
+    return 'Done after {}s'.format(x)
+
+start = now()
+
+coroutine = do_some_work(2)
+loop = asyncio.get_event_loop()
+task = asyncio.ensure_future(coroutine)
+loop.run_until_complete(task)
+
+print('Task ret: ', task.result())
+print('TIME: ', now() - start)  
+
+在 sleep的时候，使用await让出控制权。即当遇到阻塞调用的函数的时候，使用await方法将协程的控制权让出，以便loop调用其他的协程。现在我们的例子就用耗时的阻塞操作了。
+并发和并行
+并发和并行一直是容易混淆的概念。并发通常指有多个任务需要同时进行，并行则是同一时刻有多个任务执行。用上课来举例就是，并发情况下是一个老师在同一时间段辅助不同的人功课。并行则是好几个老师分别同时辅助多个学生功课。简而言之就是一个人同时吃三个馒头还是三个人同时分别吃一个的情况，吃一个馒头算一个任务。
+asyncio实现并发，就需要多个协程来完成任务，每当有任务阻塞的时候就await，然后其他协程继续工作。创建多个协程的列表，然后将这些协程注册到事件循环中。
+import asyncio
+
+import time
+
+now = lambda: time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+    await asyncio.sleep(x)
+    return 'Done after {}s'.format(x)
+
+start = now()
+
+coroutine1 = do_some_work(1)
+coroutine2 = do_some_work(2)
+coroutine3 = do_some_work(4)
+
+tasks = [
+    asyncio.ensure_future(coroutine1),
+    asyncio.ensure_future(coroutine2),
+    asyncio.ensure_future(coroutine3)
+]
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(asyncio.wait(tasks))
+
+for task in tasks:
+    print('Task ret: ', task.result())
+
+print('TIME: ', now() - start)
+
+
+结果如下
+Waiting:  1
+Waiting:  2
+Waiting:  4
+Task ret:  Done after 1s
+Task ret:  Done after 2s
+Task ret:  Done after 4s
+TIME:  4.003541946411133
+
+
+总时间为4s左右。4s的阻塞时间，足够前面两个协程执行完毕。如果是同步顺序的任务，那么至少需要7s。此时我们使用了aysncio实现了并发。asyncio.wait(tasks) 也可以使用 asyncio.gather(*tasks) ,前者接受一个task列表，后者接收一堆task。
+协程嵌套
+使用async可以定义协程，协程用于耗时的io操作，我们也可以封装更多的io操作过程，这样就实现了嵌套的协程，即一个协程中await了另外一个协程，如此连接起来。
+import asyncio
+
+import time
+
+now = lambda: time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+    await asyncio.sleep(x)
+    return 'Done after {}s'.format(x)
+
+async def main():
+    coroutine1 = do_some_work(1)
+    coroutine2 = do_some_work(2)
+    coroutine3 = do_some_work(4)
+
+    tasks = [
+        asyncio.ensure_future(coroutine1),
+        asyncio.ensure_future(coroutine2),
+        asyncio.ensure_future(coroutine3)
+    ]
+
+    dones, pendings = await asyncio.wait(tasks)
+
+    for task in dones:
+        print('Task ret: ', task.result())
+
+start = now()
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+
+print('TIME: ', now() - start)
+
+
+如果使用的是 asyncio.gather创建协程对象，那么await的返回值就是协程运行的结果。
+不在main协程函数里处理结果，直接返回await的内容，那么最外层的run_until_complete将会返回main协程的结果。
+async def main():
+    coroutine1 = do_some_work(1)
+    coroutine2 = do_some_work(2)
+    coroutine3 = do_some_work(2)
+
+    tasks = [
+        asyncio.ensure_future(coroutine1),
+        asyncio.ensure_future(coroutine2),
+        asyncio.ensure_future(coroutine3)
+    ]
+
+    return await asyncio.gather(*tasks)
+
+start = now()
+
+loop = asyncio.get_event_loop()
+results = loop.run_until_complete(main())
+
+for result in results:
+    print('Task ret: ', result)
+
+
+或者返回使用asyncio.wait方式挂起协程。
+async def main():
+    coroutine1 = do_some_work(1)
+    coroutine2 = do_some_work(2)
+    coroutine3 = do_some_work(4)
+
+    tasks = [
+        asyncio.ensure_future(coroutine1),
+        asyncio.ensure_future(coroutine2),
+        asyncio.ensure_future(coroutine3)
+    ]
+
+    return await asyncio.wait(tasks)
+
+start = now()
+
+loop = asyncio.get_event_loop()
+done, pending = loop.run_until_complete(main())
+
+for task in done:
+    print('Task ret: ', task.result())
+
+也可以使用asyncio的as_completed方法
+async def main():
+    coroutine1 = do_some_work(1)
+    coroutine2 = do_some_work(2)
+    coroutine3 = do_some_work(4)
+
+    tasks = [
+        asyncio.ensure_future(coroutine1),
+        asyncio.ensure_future(coroutine2),
+        asyncio.ensure_future(coroutine3)
+    ]
+    for task in asyncio.as_completed(tasks):
+        result = await task
+        print('Task ret: {}'.format(result))
+
+start = now()
+
+loop = asyncio.get_event_loop()
+done = loop.run_until_complete(main())
+print('TIME: ', now() - start)
+
+
+由此可见，协程的调用和组合十分灵活，尤其是对于结果的处理，如何返回，如何挂起，需要逐渐积累经验和前瞻的设计。
+协程停止
+上面见识了协程的几种常用的用法，都是协程围绕着事件循环进行的操作。future对象有几个状态：
+Pending
+Running
+Done
+Cancelled
+创建future的时候，task为pending，事件循环调用执行的时候当然就是running，调用完毕自然就是done，如果需要停止事件循环，就需要先把task取消。可以使用asyncio.Task获取事件循环的task
+import asyncio
+
+import time
+
+now = lambda: time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+    await asyncio.sleep(x)
+    return 'Done after {}s'.format(x)
+
+coroutine1 = do_some_work(1)
+coroutine2 = do_some_work(2)
+coroutine3 = do_some_work(2)
+
+tasks = [
+    asyncio.ensure_future(coroutine1),
+    asyncio.ensure_future(coroutine2),
+    asyncio.ensure_future(coroutine3)
+]
+
+start = now()
+
+loop = asyncio.get_event_loop()
+try:
+    loop.run_until_complete(asyncio.wait(tasks))
+except KeyboardInterrupt as e:
+    print(asyncio.Task.all_tasks())
+    for task in asyncio.Task.all_tasks():
+        print(task.cancel())
+    loop.stop()
+    loop.run_forever()
+finally:
+    loop.close()
+
+print('TIME: ', now() - start)
+
+
+启动事件循环之后，马上ctrl+c，会触发run_until_complete的执行异常 KeyBorardInterrupt。然后通过循环asyncio.Task取消future。可以看到输出如下：
+Waiting:  1
+Waiting:  2
+Waiting:  2
+{<Task pending coro=<do_some_work() running at /Users/ghost/Rsj217/python3.6/async/async-main.py:18> wait_for=<Future pending cb=[<TaskWakeupMethWrapper object at 0x101230648>()]> cb=[_wait.<locals>._on_completion() at /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/asyncio/tasks.py:374]>, <Task pending coro=<do_some_work() running at /Users/ghost/Rsj217/python3.6/async/async-main.py:18> wait_for=<Future pending cb=[<TaskWakeupMethWrapper object at 0x1032b10a8>()]> cb=[_wait.<locals>._on_completion() at /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/asyncio/tasks.py:374]>, <Task pending coro=<wait() running at /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/asyncio/tasks.py:307> wait_for=<Future pending cb=[<TaskWakeupMethWrapper object at 0x103317d38>()]> cb=[_run_until_complete_cb() at /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/asyncio/base_events.py:176]>, <Task pending coro=<do_some_work() running at /Users/ghost/Rsj217/python3.6/async/async-main.py:18> wait_for=<Future pending cb=[<TaskWakeupMethWrapper object at 0x103317be8>()]> cb=[_wait.<locals>._on_completion() at /Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/asyncio/tasks.py:374]>}
+True
+True
+True
+True
+TIME:  0.8858370780944824
+
+True表示cannel成功，loop stop之后还需要再次开启事件循环，最后在close，不然还会抛出异常：
+Task was destroyed but it is pending!
+task: <Task pending coro=<do_some_work() done,
+
+循环task，逐个cancel是一种方案，可是正如上面我们把task的列表封装在main函数中，main函数外进行事件循环的调用。这个时候，main相当于最外出的一个task，那么处理包装的main函数即可。
+import asyncio
+
+import time
+
+now = lambda: time.time()
+
+async def do_some_work(x):
+    print('Waiting: ', x)
+
+    await asyncio.sleep(x)
+    return 'Done after {}s'.format(x)
+
+async def main():
+    coroutine1 = do_some_work(1)
+    coroutine2 = do_some_work(2)
+    coroutine3 = do_some_work(2)
+
+    tasks = [
+        asyncio.ensure_future(coroutine1),
+        asyncio.ensure_future(coroutine2),
+        asyncio.ensure_future(coroutine3)
+    ]
+    done, pending = await asyncio.wait(tasks)
+    for task in done:
+        print('Task ret: ', task.result())
+
+start = now()
+
+loop = asyncio.get_event_loop()
+task = asyncio.ensure_future(main())
+try:
+    loop.run_until_complete(task)
+except KeyboardInterrupt as e:
+    print(asyncio.Task.all_tasks())
+    print(asyncio.gather(*asyncio.Task.all_tasks()).cancel())
+    loop.stop()
+    loop.run_forever()
+finally:
+    loop.close()
+
+不同线程的事件循环
+from threading import Thread
+
+def start_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+def more_work(x):
+    print('More work {}'.format(x))
+    time.sleep(x)
+    print('Finished more work {}'.format(x))
+
+start = now()
+new_loop = asyncio.new_event_loop()
+t = Thread(target=start_loop, args=(new_loop,))
+t.start()
+print('TIME: {}'.format(time.time() - start))
+
+new_loop.call_soon_threadsafe(more_work, 6)
+new_loop.call_soon_threadsafe(more_work, 3)
+
+
+启动上述代码之后，当前线程不会被block，新线程中会按照顺序执行call_soon_threadsafe方法注册的more_work方法，后者因为time.sleep操作是同步阻塞的，因此运行完毕more_work需要大致6 + 3
+新线程协程
+def start_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+async def do_some_work(x):
+    print('Waiting {}'.format(x))
+    await asyncio.sleep(x)
+    print('Done after {}s'.format(x))
+
+def more_work(x):
+    print('More work {}'.format(x))
+    time.sleep(x)
+    print('Finished more work {}'.format(x))
+
+start = now()
+new_loop = asyncio.new_event_loop()
+t = Thread(target=start_loop, args=(new_loop,))
+t.start()
+print('TIME: {}'.format(time.time() - start))
+
+asyncio.run_coroutine_threadsafe(do_some_work(6), new_loop)
+asyncio.run_coroutine_threadsafe(do_some_work(4), new_loop)
+
+
+master-worker主从模式
+对于并发任务，通常是用生成消费模型，对队列的处理可以使用类似master-worker的方式，master主要用户获取队列的msg，worker用户处理消息。
+为了简单起见，并且协程更适合单线程的方式，我们的主线程用来监听队列，子线程用于处理队列。这里使用redis的队列。主线程中有一个是无限循环，用户消费队列。
+    while True:
+        task = rcon.rpop("queue")
+        if not task:
+            time.sleep(1)
+            continue
+        asyncio.run_coroutine_threadsafe(do_some_work(int(task)), new_loop)
+
+给队列添加一些数据：
+127.0.0.1:6379[3]> lpush queue 2
+(integer) 1
+127.0.0.1:6379[3]> lpush queue 5
+(integer) 1
+127.0.0.1:6379[3]> lpush queue 1
+(integer) 1
+127.0.0.1:6379[3]> lpush queue 1
+
+可以看见输出：
+Waiting  2
+Done 2
+Waiting  5
+Waiting  1
+Done 1
+Waiting  1
+Done 1
+Done 5
+
+我们发起了一个耗时5s的操作，然后又发起了连个1s的操作，可以看见子线程并发的执行了这几个任务，其中5s awati的时候，相继执行了1s的两个任务。
+停止子线程
+如果一切正常，那么上面的例子很完美。可是，需要停止程序，直接ctrl+c，会抛出KeyboardInterrupt错误，我们修改一下主循环：
+try:
+    while True:
+        task = rcon.rpop("queue")
+        if not task:
+            time.sleep(1)
+            continue
+        asyncio.run_coroutine_threadsafe(do_some_work(int(task)), new_loop)
+except KeyboardInterrupt as e:
+    print(e)
+    new_loop.stop()
+
+
+可是实际上并不好使，虽然主线程try了KeyboardInterrupt异常，但是子线程并没有退出，为了解决这个问题，可以设置子线程为守护线程，这样当主线程结束的时候，子线程也随机退出。
+new_loop = asyncio.new_event_loop()
+t = Thread(target=start_loop, args=(new_loop,))
+t.setDaemon(True)    # 设置子线程为守护线程
+t.start()
+
+try:
+    while True:
+        # print('start rpop')
+        task = rcon.rpop("queue")
+        if not task:
+            time.sleep(1)
+            continue
+        asyncio.run_coroutine_threadsafe(do_some_work(int(task)), new_loop)
+except KeyboardInterrupt as e:
+    print(e)
+    new_loop.stop()
+
+线程停止程序的时候，主线程退出后，子线程也随机退出才了，并且停止了子线程的协程任务。
+aiohttp
+在消费队列的时候，我们使用asyncio的sleep用于模拟耗时的io操作。以前有一个短信服务，需要在协程中请求远程的短信api，此时需要是需要使用aiohttp进行异步的http请求。大致代码如下：
+server.py
+import time
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/<int:x>')
+def index(x):
+    time.sleep(x)
+    return "{} It works".format(x)
+
+@app.route('/error')
+def error():
+    time.sleep(3)
+    return "error!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+/接口表示短信接口，/error表示请求/失败之后的报警。
+async-custoimer.py
+import time
+import asyncio
+from threading import Thread
+import redis
+import aiohttp
+
+def get_redis():
+    connection_pool = redis.ConnectionPool(host='127.0.0.1', db=3)
+    return redis.Redis(connection_pool=connection_pool)
+
+rcon = get_redis()
+
+def start_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+async def fetch(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            print(resp.status)
+            return await resp.text()
+
+async def do_some_work(x):
+    print('Waiting ', x)
+    try:
+        ret = await fetch(url='http://127.0.0.1:5000/{}'.format(x))
+        print(ret)
+    except Exception as e:
+        try:
+            print(await fetch(url='http://127.0.0.1:5000/error'))
+        except Exception as e:
+            print(e)
+    else:
+        print('Done {}'.format(x))
+
+new_loop = asyncio.new_event_loop()
+t = Thread(target=start_loop, args=(new_loop,))
+t.setDaemon(True)
+t.start()
+
+try:
+    while True:
+        task = rcon.rpop("queue")
+        if not task:
+            time.sleep(1)
+            continue
+        asyncio.run_coroutine_threadsafe(do_some_work(int(task)), new_loop)
+except Exception as e:
+    print('error')
+    new_loop.stop()
+finally:
+    pass
+
+有一个问题需要注意，我们在fetch的时候try了异常，如果没有try这个异常，即使发生了异常，子线程的事件循环也不会退出。主线程也不会退出，暂时没找到办法可以把子线程的异常raise传播到主线程。（如果谁找到了比较好的方式，希望可以带带我）。
+对于redis的消费，还有一个block的方法：
+try:
+    while True:
+        _, task = rcon.brpop("queue")
+        asyncio.run_coroutine_threadsafe(do_some_work(int(task)), new_loop)
+except Exception as e:
+    print('error', e)
+    new_loop.stop()
+finally:
+    pass
+
+使用 brpop方法，会block住task，如果主线程有消息，才会消费。测试了一下，似乎brpop的方式更适合这种队列消费的模型。
+127.0.0.1:6379[3]> lpush queue 5
+(integer) 1
+127.0.0.1:6379[3]> lpush queue 1
+(integer) 1
+127.0.0.1:6379[3]> lpush queue 1
+
+可以看到结果
+Waiting  5
+Waiting  1
+Waiting  1
+200
+1 It works
+Done 1
+200
+1 It works
+Done 1
+200
+5 It works
+Done 5
+
+协程消费
+主线程用于监听队列，然后子线程的做事件循环的worker是一种方式。还有一种方式实现这种类似master-worker的方案。即把监听队列的无限循环逻辑一道协程中。程序初始化就创建若干个协程，实现类似并行的效果。
+import time
+import asyncio
+import redis
+
+now = lambda : time.time()
+
+def get_redis():
+    connection_pool = redis.ConnectionPool(host='127.0.0.1', db=3)
+    return redis.Redis(connection_pool=connection_pool)
+
+rcon = get_redis()
+
+async def worker():
+    print('Start worker')
+
+    while True:
+        start = now()
+        task = rcon.rpop("queue")
+        if not task:
+            await asyncio.sleep(1)
+            continue
+        print('Wait ', int(task))
+        await asyncio.sleep(int(task))
+        print('Done ', task, now() - start)
+
+def main():
+    asyncio.ensure_future(worker())
+    asyncio.ensure_future(worker())
+
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt as e:
+        print(asyncio.gather(*asyncio.Task.all_tasks()).cancel())
+        loop.stop()
+        loop.run_forever()
+    finally:
+        loop.close()
+
+if __name__ == '__main__':
+    main()
+
+这样做就可以多多启动几个worker来监听队列。一样可以到达效果。
+总结
+上述简单的介绍了asyncio的用法，主要是理解事件循环，协程和任务，future的关系。异步编程不同于常见的同步编程，设计程序的执行流的时候，需要特别的注意。毕竟这和以往的编码经验有点不一样。可是仔细想想，我们平时处事的时候，大脑会自然而然的实现异步协程。比如等待煮茶的时候，可以多写几行代码。
+相关代码文件的Gist
+参考：Threaded Asynchronous Magic and How to Wield It
+
+
+
+
+
+
+
+
+
+
+
+
+
+Python中的random模块用于生成随机数。下面介绍一下random模块中最常用的几个函数。
+
+random.random
+random.random()用于生成一个0到1的随机符点数: 0 <= n < 1.0
+
+random.uniform
+　　random.uniform的函数原型为：random.uniform(a, b)，用于生成一个指定范围内的随机符点数，两个参数其中一个是上限，一个是下限。如果a > b，则生成的随机数n: a <= n <= b。如果 a <b， 则 b <= n <= a。
+
+print random.uniform(10, 20)  
+print random.uniform(20, 10)  
+#---- 结果（不同机器上的结果不一样）  
+#18.7356606526  
+#12.5798298022  
+print random.uniform(10, 20) print random.uniform(20, 10) #---- 结果（不同机器上的结果不一样） #18.7356606526 #12.5798298022
+random.randint
+　　random.randint()的函数原型为：random.randint(a, b)，用于生成一个指定范围内的整数。其中参数a是下限，参数b是上限，生成的随机数n: a <= n <= b
+
+print random.randint(12, 20)  #生成的随机数n: 12 <= n <= 20  
+print random.randint(20, 20)  #结果永远是20  
+#print random.randint(20, 10)  #该语句是错误的。下限必须小于上限。  
+print random.randint(12, 20) #生成的随机数n: 12 <= n <= 20 print random.randint(20, 20) #结果永远是20 #print random.randint(20, 10) #该语句是错误的。下限必须小于上限。
+random.randrange
+　　random.randrange的函数原型为：random.randrange([start], stop[, step])，从指定范围内，按指定基数递增的集合中 获取一个随机数。如：random.randrange(10, 100, 2)，结果相当于从[10, 12, 14, 16, ... 96, 98]序列中获取一个随机数。random.randrange(10, 100, 2)在结果上与 random.choice(range(10, 100, 2) 等效。
+
+random.choice
+　　random.choice从序列中获取一个随机元素。其函数原型为：random.choice(sequence)。参数sequence表示一个有序类型。这里要说明 一下：sequence在python不是一种特定的类型，而是泛指一系列的类型。list, tuple, 字符串都属于sequence。有关sequence可以查看python手册数据模型这一章。下面是使用choice的一些例子：
+
+print random.choice("学习Python")   
+print random.choice(["JGood", "is", "a", "handsome", "boy"])  
+print random.choice(("Tuple", "List", "Dict"))  
+print random.choice("学习Python") print random.choice(["JGood", "is", "a", "handsome", "boy"]) print random.choice(("Tuple", "List", "Dict"))
+random.shuffle
+　　random.shuffle的函数原型为：random.shuffle(x[, random])，用于将一个列表中的元素打乱。如:
+
+p = ["Python", "is", "powerful", "simple", "and so on..."]  
+random.shuffle(p)  
+print p  
+#---- 结果（不同机器上的结果可能不一样。）  
+#['powerful', 'simple', 'is', 'Python', 'and so on...']  
+p = ["Python", "is", "powerful", "simple", "and so on..."] random.shuffle(p) print p #---- 结果（不同机器上的结果可能不一样。） #['powerful', 'simple', 'is', 'Python', 'and so on...']
+random.sample
+　　random.sample的函数原型为：random.sample(sequence, k)，从指定序列中随机获取指定长度的片断。sample函数不会修改原有序列。
+
+list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  
+slice = random.sample(list, 5)  #从list中随机获取5个元素，作为一个片断返回  
+print slice  
+print list #原有序列并没有改变。  
+ 
+
+ 
+
+随机整数：
+>>> import random
+>>> random.randint(0,99)
+21
+
+随机选取0到100间的偶数：
+>>> import random
+>>> random.randrange(0, 101, 2)
+42
+
+随机浮点数：
+>>> import random
+>>> random.random() 
+0.85415370477785668
+>>> random.uniform(1, 10)
+5.4221167969800881
+
+随机字符：
+>>> import random
+>>> random.choice('abcdefg&#%^*f')
+'d'
+
+多个字符中选取特定数量的字符：
+>>> import random
+random.sample('abcdefghij',3) 
+['a', 'd', 'b']
+
+多个字符中选取特定数量的字符组成新字符串：
+>>> import random
+>>> import string
+>>> string.join(random.sample(['a','b','c','d','e','f','g','h','i','j'], 3)).r
+eplace(" ","")
+'fih'
+
+随机选取字符串：
+>>> import random
+>>> random.choice ( ['apple', 'pear', 'peach', 'orange', 'lemon'] )
+'lemon'
+
+洗牌：
+>>> import random
+>>> items = [1, 2, 3, 4, 5, 6]
+>>> random.shuffle(items)
+>>> items
+[3, 2, 5, 6, 4, 1]
+
+多任务并发（非并行），每个任务在合适的时候挂起（发起I/O）和恢复(I/O结束)
+
+Python中的协程经历了很长的一段发展历程。其大概经历了如下三个阶段：
+
+最初的生成器变形yield/send
+引入@asyncio.coroutine和yield from
+在最近的Python3.5版本中引入async/await关键字
+从yield说起
+先看一段普通的计算斐波那契续列的代码：
+
+Python
+
+def old_fib(n):
+	res = [0] * n
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		res[index] = b
+		a, b = b, a + b
+		index += 1
+	return res
+
+print('-'*10 + 'test old fib' + '-'*10)
+for fib_res in old_fib(20):
+	print(fib_res)
+
+def old_fib(n):
+	res = [0] * n
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		res[index] = b
+		a, b = b, a + b
+		index += 1
+	return res
+ 
+print('-'*10 + 'test old fib' + '-'*10)
+for fib_res in old_fib(20):
+	print(fib_res)
+如果我们仅仅是需要拿到斐波那契序列的第n位，或者仅仅是希望依此产生斐波那契序列，那么上面这种传统方式就会比较耗费内存。
+
+这时，yield就派上用场了。
+
+Python
+
+def fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		yield b
+		a, b = b, a + b
+		index += 1
+
+print('-'*10 + 'test yield fib' + '-'*10)
+for fib_res in fib(20):
+	print(fib_res)
+
+def fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		yield b
+		a, b = b, a + b
+		index += 1
+ 
+print('-'*10 + 'test yield fib' + '-'*10)
+for fib_res in fib(20):
+	print(fib_res)
+当一个函数中包含yield语句时，python会自动将其识别为一个生成器。这时fib(20)并不会真正调用函数体，而是以函数体生成了一个生成器对象实例。
+
+yield在这里可以保留fib函数的计算现场，暂停fib的计算并将b返回。而将fib放入for…in循环中时，每次循环都会调用next(fib(20))，唤醒生成器，执行到下一个yield语句处，直到抛出StopIteration异常。此异常会被for循环捕获，导致跳出循环。
+
+Send来了
+从上面的程序中可以看到，目前只有数据从fib(20)中通过yield流向外面的for循环；如果可以向fib(20)发送数据，那不是就可以在Python中实现协程了嘛。
+
+于是，Python中的生成器有了send函数，yield表达式也拥有了返回值。
+
+我们用这个特性，模拟一个额慢速斐波那契数列的计算：
+
+Python
+
+def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_cnt = yield b
+		print('let me think {0} secs'.format(sleep_cnt))
+		time.sleep(sleep_cnt)
+		a, b = b, a + b
+		index += 1
+print('-'*10 + 'test yield send' + '-'*10)
+N = 20
+sfib = stupid_fib(N)
+fib_res = next(sfib)
+while True:
+	print(fib_res)
+	try:
+		fib_res = sfib.send(random.uniform(0, 0.5))
+	except StopIteration:
+		break
+
+def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_cnt = yield b
+		print('let me think {0} secs'.format(sleep_cnt))
+		time.sleep(sleep_cnt)
+		a, b = b, a + b
+		index += 1
+print('-'*10 + 'test yield send' + '-'*10)
+N = 20
+sfib = stupid_fib(N)
+fib_res = next(sfib)
+while True:
+	print(fib_res)
+	try:
+		fib_res = sfib.send(random.uniform(0, 0.5))
+	except StopIteration:
+		break
+其中next(sfib)相当于sfib.send(None)，可以使得sfib运行至第一个yield处返回。后续的sfib.send(random.uniform(0, 0.5))则将一个随机的秒数发送给sfib，作为当前中断的yield表达式的返回值。这样，我们可以从“主”程序中控制协程计算斐波那契数列时的思考时间，协程可以返回给“主”程序计算结果，Perfect！
+
+yield from是个什么鬼？
+yield from用于重构生成器，简单的，可以这么使用：
+
+Python
+
+def copy_fib(n):
+	print('I am copy from fib')
+	yield from fib(n)
+	print('Copy end')
+print('-'*10 + 'test yield from' + '-'*10)
+for fib_res in copy_fib(20):
+	print(fib_res)
+
+def copy_fib(n):
+	print('I am copy from fib')
+	yield from fib(n)
+	print('Copy end')
+print('-'*10 + 'test yield from' + '-'*10)
+for fib_res in copy_fib(20):
+	print(fib_res)
+这种使用方式很简单，但远远不是yield from的全部。yield from的作用还体现可以像一个管道一样将send信息传递给内层协程，并且处理好了各种异常情况，因此，对于stupid_fib也可以这样包装和使用：
+
+Python
+
+def copy_stupid_fib(n):
+	print('I am copy from stupid fib')
+	yield from stupid_fib(n)
+	print('Copy end')
+print('-'*10 + 'test yield from and send' + '-'*10)
+N = 20
+csfib = copy_stupid_fib(N)
+fib_res = next(csfib)
+while True:
+	print(fib_res)
+	try:
+		fib_res = csfib.send(random.uniform(0, 0.5))
+	except StopIteration:
+		break
+
+def copy_stupid_fib(n):
+	print('I am copy from stupid fib')
+	yield from stupid_fib(n)
+	print('Copy end')
+print('-'*10 + 'test yield from and send' + '-'*10)
+N = 20
+csfib = copy_stupid_fib(N)
+fib_res = next(csfib)
+while True:
+	print(fib_res)
+	try:
+		fib_res = csfib.send(random.uniform(0, 0.5))
+	except StopIteration:
+		break
+如果没有yield from，这里的copy_yield_from将会特别复杂（因为要自己处理各种异常）。
+
+asyncio.coroutine和yield from
+yield from在asyncio模块中得以发扬光大。先看示例代码：
+
+Python
+
+@asyncio.coroutine
+def smart_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.2)
+		yield from asyncio.sleep(sleep_secs)
+		print('Smart one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+
+@asyncio.coroutine
+def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.4)
+		yield from asyncio.sleep(sleep_secs)
+		print('Stupid one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+
+if __name__ == '__main__':
+	loop = asyncio.get_event_loop()
+	tasks = [
+		asyncio.async(smart_fib(10)),
+		asyncio.async(stupid_fib(10)),
+	]
+	loop.run_until_complete(asyncio.wait(tasks))
+	print('All fib finished.')
+	loop.close()
+
+@asyncio.coroutine
+def smart_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.2)
+		yield from asyncio.sleep(sleep_secs)
+		print('Smart one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+ 
+@asyncio.coroutine
+def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.4)
+		yield from asyncio.sleep(sleep_secs)
+		print('Stupid one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+ 
+if __name__ == '__main__':
+	loop = asyncio.get_event_loop()
+	tasks = [
+		asyncio.async(smart_fib(10)),
+		asyncio.async(stupid_fib(10)),
+	]
+	loop.run_until_complete(asyncio.wait(tasks))
+	print('All fib finished.')
+	loop.close()
+asyncio是一个基于事件循环的实现异步I/O的模块。通过yield from，我们可以将协程asyncio.sleep的控制权交给事件循环，然后挂起当前协程；之后，由事件循环决定何时唤醒asyncio.sleep,接着向后执行代码。
+
+这样说可能比较抽象，好在asyncio是一个由python实现的模块，那么我们来看看asyncio.sleep中都做了些什么：
+
+Python
+
+@coroutine
+def sleep(delay, result=None, *, loop=None):
+    """Coroutine that completes after a given time (in seconds)."""
+    future = futures.Future(loop=loop)
+    h = future._loop.call_later(delay,
+                                future._set_result_unless_cancelled, result)
+    try:
+        return (yield from future)
+    finally:
+        h.cancel()
+
+@coroutine
+def sleep(delay, result=None, *, loop=None):
+    """Coroutine that completes after a given time (in seconds)."""
+    future = futures.Future(loop=loop)
+    h = future._loop.call_later(delay,
+                                future._set_result_unless_cancelled, result)
+    try:
+        return (yield from future)
+    finally:
+        h.cancel()
+首先，sleep创建了一个Future对象，作为更内层的协程对象，通过yield from交给了事件循环；其次，它通过调用事件循环的call_later函数，注册了一个回调函数。
+
+通过查看Future类的源码，可以看到，Future是一个实现了__iter__对象的生成器：
+
+Python
+
+  class Future:
+	#blabla...
+    def __iter__(self):
+        if not self.done():
+            self._blocking = True
+            yield self  # This tells Task to wait for completion.
+        assert self.done(), "yield from wasn't used with future"
+        return self.result()  # May raise too.
+
+  class Future:
+	#blabla...
+    def __iter__(self):
+        if not self.done():
+            self._blocking = True
+            yield self  # This tells Task to wait for completion.
+        assert self.done(), "yield from wasn't used with future"
+        return self.result()  # May raise too.
+那么当我们的协程yield from asyncio.sleep时，事件循环其实是与Future对象建立了练习。每次事件循环调用send(None)时，其实都会传递到Future对象的__iter__函数调用；而当Future尚未执行完毕的时候，就会yield self，也就意味着暂时挂起，等待下一次send(None)的唤醒。
+
+当我们包装一个Future对象产生一个Task对象时，在Task对象初始化中，就会调用Future的send(None),并且为Future设置好回调函数。
+
+Python
+
+  class Task(futures.Future):
+	#blabla...
+    def _step(self, value=None, exc=None):
+		#blabla...
+        try:
+            if exc is not None:
+                result = coro.throw(exc)
+            elif value is not None:
+                result = coro.send(value)
+            else:
+                result = next(coro)
+		#exception handle
+        else:
+            if isinstance(result, futures.Future):
+                # Yielded Future must come from Future.__iter__().
+                if result._blocking:
+                    result._blocking = False
+                    result.add_done_callback(self._wakeup)
+		#blabla...
+
+    def _wakeup(self, future):
+        try:
+            value = future.result()
+        except Exception as exc:
+            # This may also be a cancellation.
+            self._step(None, exc)
+        else:
+            self._step(value, None)
+        self = None  # Needed to break cycles when an exception occurs.
+
+  class Task(futures.Future):
+	#blabla...
+    def _step(self, value=None, exc=None):
+		#blabla...
+        try:
+            if exc is not None:
+                result = coro.throw(exc)
+            elif value is not None:
+                result = coro.send(value)
+            else:
+                result = next(coro)
+		#exception handle
+        else:
+            if isinstance(result, futures.Future):
+                # Yielded Future must come from Future.__iter__().
+                if result._blocking:
+                    result._blocking = False
+                    result.add_done_callback(self._wakeup)
+		#blabla...
+ 
+    def _wakeup(self, future):
+        try:
+            value = future.result()
+        except Exception as exc:
+            # This may also be a cancellation.
+            self._step(None, exc)
+        else:
+            self._step(value, None)
+        self = None  # Needed to break cycles when an exception occurs.
+预设的时间过后，事件循环将调用Future._set_result_unless_cancelled:
+
+Python
+
+class Future:
+	#blabla...
+    def _set_result_unless_cancelled(self, result):
+        """Helper setting the result only if the future was not cancelled."""
+        if self.cancelled():
+            return
+        self.set_result(result)
+
+    def set_result(self, result):
+        """Mark the future done and set its result.
+
+        If the future is already done when this method is called, raises
+        InvalidStateError.
+        """
+        if self._state != _PENDING:
+            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+        self._result = result
+        self._state = _FINISHED
+        self._schedule_callbacks()
+
+class Future:
+	#blabla...
+    def _set_result_unless_cancelled(self, result):
+        """Helper setting the result only if the future was not cancelled."""
+        if self.cancelled():
+            return
+        self.set_result(result)
+ 
+    def set_result(self, result):
+        """Mark the future done and set its result.
+ 
+        If the future is already done when this method is called, raises
+        InvalidStateError.
+        """
+        if self._state != _PENDING:
+            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+        self._result = result
+        self._state = _FINISHED
+        self._schedule_callbacks()
+这将改变Future的状态，同时回调之前设定好的Tasks._wakeup；在_wakeup中，将会再次调用Tasks._step，这时，Future的状态已经标记为完成，因此，将不再yield self，而return语句将会触发一个StopIteration异常，此异常将会被Task._step捕获用于设置Task的结果。同时，整个yield from链条也将被唤醒，协程将继续往下执行。
+
+async和await
+弄清楚了asyncio.coroutine和yield from之后，在Python3.5中引入的async和await就不难理解了：可以将他们理解成asyncio.coroutine/yield from的完美替身。当然，从Python设计的角度来说，async/await让协程表面上独立于生成器而存在，将细节都隐藏于asyncio模块之下，语法更清晰明了。
+
+Python
+
+async def smart_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.2)
+		await asyncio.sleep(sleep_secs)
+		print('Smart one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+
+async def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.4)
+		await asyncio.sleep(sleep_secs)
+		print('Stupid one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+
+if __name__ == '__main__':
+	loop = asyncio.get_event_loop()
+	tasks = [
+		asyncio.ensure_future(smart_fib(10)),
+		asyncio.ensure_future(stupid_fib(10)),
+	]
+	loop.run_until_complete(asyncio.wait(tasks))
+	print('All fib finished.')
+	loop.close()
+
+async def smart_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.2)
+		await asyncio.sleep(sleep_secs)
+		print('Smart one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+ 
+async def stupid_fib(n):
+	index = 0
+	a = 0
+	b = 1
+	while index < n:
+		sleep_secs = random.uniform(0, 0.4)
+		await asyncio.sleep(sleep_secs)
+		print('Stupid one think {} secs to get {}'.format(sleep_secs, b))
+		a, b = b, a + b
+		index += 1
+ 
+if __name__ == '__main__':
+	loop = asyncio.get_event_loop()
+	tasks = [
+		asyncio.ensure_future(smart_fib(10)),
+		asyncio.ensure_future(stupid_fib(10)),
+	]
+	loop.run_until_complete(asyncio.wait(tasks))
+	print('All fib finished.')
+	loop.close()
+总结
+至此，Python中的协程就介绍完毕了。示例程序中都是以sleep为异步I/O的代表，在实际项目中，可以使用协程异步的读写网络、读写文件、渲染界面等，而在等待协程完成的同时，CPU还可以进行其他的计算。协程的作用正在于此。
+
+Python
+
+def old_fib(n):
+	res = [0] * n
+	index = 0
+	a = 0
+	b = 1
+	while index          <------------------------整篇 index为0是false,并且少个:
+		res[index] = b
+		a, b = b, a + b
+		index += 1
+	return res
+ 
+print('-'*10 + 'test old fib' + '-'*10)
+for fib_res in old_fib(20):
+	print(fib_res)
+
+def old_fib(n):
+	res = [0] * n
+	index = 0
+	a = 0
+	b = 1
+	while index          <------------------------整篇 index为0是false,并且少个:
+		res[index] = b
+		a, b = b, a + b
+		index += 1
+	return res
+ 
+print('-'*10 + 'test old fib' + '-'*10)
+for fib_res in old_fib(20):
+	print(fib_res)
+
+
+理解yield（生成器)
+
+ yield
+任何使用yield关键字的函数都称之为生成器，如：
+
+def count(n):
+    while n > 0:
+        yield n   #生成值：n
+        n -= 1
+另外一种说法：生成器就是一个返回迭代器的函数，与普通函数的区别是生成器包含yield语句，更简单点理解生成器就是一个迭代器。（有关迭代器和生成器的区别可以看文章末尾处补充）
+
+使用yield，可以让函数生成一个序列，该函数返回的对象类型是”generator”，通过该对象连续调用next()方法返回序列值。
+
+c = count(5)
+c.next()
+>>> 5
+c.next()
+>>>4
+生成器函数只有在调用next()方法的时候才开始执行函数里面的语句，比如：
+
+def count(n):
+    print "cunting"
+    while n > 0:
+        yield n   #生成值：n
+        n -= 1
+在调用count函数时：c=count(5)，并不会打印”counting”只有等到调用c.next()时才真正执行里面的语句。每次调用next()方法时，count函数会运行到语句yield n处为止，next()的返回值就是生成值n，再次调用next()方法时，函数继续执行yield之后的语句（熟悉Java的朋友肯定知道Thread.yield()方法，作用是暂停当前线程的运行，让其他线程执行。python中的协程和yield的有着千丝万缕的联系），如：
+
+def count(n):
+    print "cunting"
+    while n > 0:
+        print 'before yield'
+        yield n   #生成值：n
+        n -= 1
+        print 'after yield'
+上述代码在第一次调用next方法时，并不会打印”after yield”。如果一直调用next方法，当执行到没有可迭代的值后，程序就会报错：
+
+Traceback (most recent call last): File “”, line 1, in StopIteration 所以一般不会手动的调用next方法，而使用for循环：
+
+for i in count(5):
+    print i,
+实例：
+
+用yield生成器模拟Linux中命令：tail -f | grep python?用于查找监控日志文件中出现有python字样的行。
+
+import time
+def tail(f):
+    f.seek(0,2)#移动到文件EOF，参考：[seek](http://docs.python.org/2/library/stdtypes.html?highlight=file#file.seek)
+    while True:
+        line = f.readline()  #读取文件中新的文本行
+        if not line:
+            time.sleep(0.1)
+            continue
+        yield line
+
+def grep(lines,searchtext):
+    for line in lines:
+        if searchtext in line:
+            yield line
+调用：
+
+flog = tail(open('warn.log'))
+pylines = grep(flog,'python')
+for line in pylines:
+    print line,
+实例二：
+
+用yield实现斐波那契数列：
+
+def fibonacci():
+    a=b=1
+    yield a
+    yield b
+    while True:
+        a,b = b,a+b
+        yield b
+调用：
+
+for num in fibonacci():
+    if num > 100:
+        break
+    print num,
+yield中return的作用
+
+作为生成器，因为每次迭代就会返回一个值，所以不能显示的在生成器函数中return 某个值，包括None值也不行，否则会抛出“SyntaxError”的异常，但是在函数中可以出现单独的return，那么久抛出StopIteration表示终止迭代。 通过固定长度的缓冲区不断读文件，防止一次性读取出现内存溢出的例子：
+
+def read_file(path):
+    size = 1024
+    with open(path,'r') as f:
+        while True:
+            block = f.read(SIZE)
+            if block:
+                yield block
+            else:
+                return
+如果是在函数中return 具体某个值，就直接抛异常了
+
+>>> def test_return():
+...      yield 4
+...      return 0
+...
+  File "<stdin>", line 3
+SyntaxError: 'return' with argument inside generator
+补充：生成器与迭代器的异同
+
+迭代器的类是有一个next()方法和__iter__()的对象，iter()返回对象本身self，所有生成器都是迭代器，但是反过来迭代器不一定是生成器。生成器就如文章开头的定义。前段时间CPyUG邮件列表对这个问题讨论比较激烈，有兴趣的可以去看看。与yield有关的一个很重要的概念叫协程，下篇文章将系统的学习下。
+
+本篇文章是改编于自己的原来的博客http://liuzhijun.iteye.com/blog/1852369，现做了部分修改。
+
+
+如何理解Python关键字yield
+By liuzhijun, 2015-06-11, 分类： Python技术
+
+ yield
+两年前开始接触Python，在SO上看到一篇关于yield的文章，讲解不错，于是尝试将其翻译成了中文，发布在伯乐在线，后来译文收到了不少吐槽，于是两年后的今天对其文重新理解一篇，遂有了此文，译文加入了大量译注信息，帮助读者更好的理解。
+（译注：以下代码必须在Python3环境下运行）在理解yield之前，你需要明白生成器(generator)是什么？生成器又源自于迭代对象。
+
+可迭代对象（ITERBLES）
+创建一个列表（list）时，你可以逐个地读取里面的每一项元素，这个过程称之为迭代（iteration）。
+
+>>> mylist = [1, 2, 3]
+>>> for i in mylist:
+...    print(i)
+1
+2
+3
+mylist是一个可迭代对象。当使用列表推导式（list comprehension）创建了一个列表时，它就是一个可迭代对象：
+
+>>> mylist = [x*x for x in range(3)]
+>>> for i in mylist:
+...    print(i)
+0
+1
+4
+任何可以使用在for...in...语句中的对象都可以叫做可迭代对象，例如：lists，strings，files等等。这些可迭代对象使用非常方便因为它能如你所愿的尽可能读取其中的元素，但是你不得不把所有的值存储在内存中，当它有大量元素的时候这并不一定总是你想要的。
+
+译者补充：dict对象以及任何实现了__iter__()或者__getitem__()方法的类都是可迭代对象，此外，可迭代对象还可以用在zip,map等函数中，当一个可迭代对象作为参数传递给内建函数iter()时，它会返回一个迭代器对象。通常没必要自己来处理迭代器本身或者手动调用iter()，for语句会自动调用iter()，它会创建一个临时的未命名的变量来持有这个迭代器用于循环期间。 为了更好的理解yield，译者引入了迭代器的介绍。
+
+迭代器（ITERATOR）
+迭代器代表一个数据流对象，不断重复调用迭代器的next()方法可以逐次地返回数据流中的每一项，当没有更多数据可用时，next()方法会抛出异常StopIteration。此时迭代器对象已经枯竭了，之后调用next()方法都会抛出异常StopIteration。迭代器需要有一个__iter()__方法用来返回迭代器本身。因此它也是一个可迭代的对象。
+
+生成器（GENERATORS）
+生成器也是一个迭代器，但是你只可以迭代他们一次，不能重复迭代，因为它并没有把所有值存储在内存中，而是实时地生成值：
+
+>>> mygenerator = (x*x for x in range(3))
+>>> for i in mygenerator:
+...    print(i)
+0
+1
+4
+从结果上看用()代替[]效果是一样的，但是，你不可能第二次执行for i in mygenerator（译注：这里作者所表达的意思是第二次执行达不到期望的效果）因为生成器只能使用一次：首先计算出0，然后计算出1，最后计算出4。
+
+YIELD
+Yield是关键字，它类似于return，只是函数会返回一个生成器。
+
+>>> def createGenerator():
+...    mylist = range(3)
+...    for i in mylist:
+...        yield i*i
+...
+>>> mygenerator = createGenerator() # create a generator
+>>> print(mygenerator) # mygenerator is an object!
+<generator object createGenerator at 0xb7555c34>
+>>> for i in mygenerator:
+...     print(i)
+0
+1
+4
+这里的例子并没有什么实际用途，但是它很方便地让你知道当函数会返回一大批量数据时你只需要读取一次。为了完全弄懂yield，你必须清楚的是：当函数被调用时，函数体中的代码是不会运行的，函数仅仅是返回一个生成器对象。这里理解起来可能稍微有点复杂。函数中的代码每次会在for循环中被执行，接下来是最难的一部分：
+
+for第一次调用生成器对象时，代码将会从函数的开始处运行直到遇到yield为止，然后返回此次循环的第一个值，接着循环地执行函数体，返回下一个值，直到没有值返回为止。 
+一旦函数运行再也没有遇到yield时，生成器就被认为是空的。这有可能是因为循环终止，或者因为没有满足任何if/else。
+
+控制生成器的穷举
+>>> class Bank(): # 创建银行，构建ATM机，只要没有危机，就可以不断地每次从中取100
+...    crisis = False
+...    def create_atm(self):
+...        while not self.crisis:
+...            yield "$100"
+>>> hsbc = Bank() # when everything's ok the ATM gives you as much as you want
+>>> corner_street_atm = hsbc.create_atm()
+>>> print(corner_street_atm.next())
+$100
+>>> print(corner_street_atm.next())
+$100
+>>> print([corner_street_atm.next() for cash in range(5)])
+['$100', '$100', '$100', '$100', '$100']
+>>> hsbc.crisis = True # 危机来临，没有更多的钱了
+>>> print(corner_street_atm.next())
+<type 'exceptions.StopIteration'>
+>>> wall_street_atm = hsbc.create_atm() # 即使创建一个新的ATM，银行还是没钱
+>>> print(wall_street_atm.next())
+<type 'exceptions.StopIteration'>
+>>> hsbc.crisis = False # 危机过后，银行还是空的，因为该函数之前已经不满足while条件
+>>> print(corner_street_atm.next())
+<type 'exceptions.StopIteration'>
+>>> brand_new_atm = hsbc.create_atm() # 必须构建一个新的atm，恢复取钱业务
+>>> for cash in brand_new_atm:
+...    print cash
+$100
+$100
+$100
+$100
+$100
+$100
+$100
+$100
+$100
+...
+对于类似资源的访问控制等场景，生成器显得很实用。
+
+ITERTOOLS是你最好的朋友
+itertools模块包含一些特殊的函数用来操作可迭代对象。曾经想复制一个生成器？两个生成器链接？在内嵌列表中一行代码处理分组？不会创建另外一个列表的Map/Zip函数？你要做的就是import itertools 。无例子无真相，我们来看看4匹马赛跑到达终点所有可能的顺序：
+
+>>> horses = [1, 2, 3, 4]
+>>> races = itertools.permutations(horses)
+>>> print(races)
+<itertools.permutations object at 0xb754f1dc>
+>>> print(list(itertools.permutations(horses)))
+[(1, 2, 3, 4),
+ (1, 2, 4, 3),
+ (1, 3, 2, 4),
+ (1, 3, 4, 2),
+ (1, 4, 2, 3),
+ (1, 4, 3, 2),
+ (2, 1, 3, 4),
+ (2, 1, 4, 3),
+ (2, 3, 1, 4),
+ (2, 3, 4, 1),
+ (2, 4, 1, 3),
+ (2, 4, 3, 1),
+ (3, 1, 2, 4),
+ (3, 1, 4, 2),
+ (3, 2, 1, 4),
+ (3, 2, 4, 1),
+ (3, 4, 1, 2),
+ (3, 4, 2, 1),
+ (4, 1, 2, 3),
+ (4, 1, 3, 2),
+ (4, 2, 1, 3),
+ (4, 2, 3, 1),
+ (4, 3, 1, 2),
+ (4, 3, 2, 1)]
+理解迭代的内部机制
+迭代是操作可迭代对象（实现了__iter__()方法）和迭代器（实现了__next__()方法）的过程。可迭代对象是任何你可以从其得到一个迭代器对象的任意对象（译注：调用内建函数iter()），迭代器是能让你在可迭代对象上进行迭代的对象（译注：这里好绕，迭代器实现了__iter__()方法，因此它也是一个可迭代对象）。

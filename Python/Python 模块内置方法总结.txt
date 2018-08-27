@@ -1,0 +1,183 @@
+Python 中 __all__ 的作用 
+
+你要是看Python的源码或者相关框架的源码，总是在 __init__.py 或者是源文件的开头看到一个 __all__ 变量的定义，今天就说说它的作用. orangleliu
+
+问题出处
+Can someone explain all in Python?
+
+问题
+我越来越多的使用Python了，经常看到 __all__ 变量再各种 __init__.py 文件中，谁能解释为什么那么做呢？
+
+解答
+它是一个string元素组成的list变量，定义了当你使用 from <module> import * 导入某个模块的时候能导出的符号（这里代表变量，函数，类等）。
+
+举个例子，下面的代码在 foo.py 中，明确的导出了符号 bar, baz
+
+__all__ = ['bar', 'baz']
+
+waz = 5
+bar = 10
+def baz(): return 'baz'
+
+导入实现如下：
+
+from foo import *
+
+print bar
+print baz
+
+# The following will trigger an exception, as "waz" is not exported by the module
+# 下面的代码就会抛出异常，因为 "waz"并没有从模块中导出，因为 __all__ 没有定义
+print waz
+
+如果把 foo.py 中 __all__ 给注释掉，那么上面的代码执行起来就不会有问题， import * 默认的行为是从给定的命名空间导出所有的符号（当然下划线开头的私有变量除外）。
+
+注意
+需要注意的是 __all__ 只影响到了 from <module> import * 这种导入方式，对于 from <module> import <member> 导入方式并没有影响，仍然可以从外部导入。
+
+
+
+刚开始学Python的时候, 看到if __name__ == '__main__': main()就不明觉厉了, 一直好奇__name__这货到底是个什么东东
+
+实际上, __name__是Python中模块的内置属性, 除此之外, 经常用到的还有__file__, __doc__, __all__, __package__等等
+
+__name__
+__name__是模块内置的一个属性, 一般如果模块是被引用的时候, 它的值是模块名, 如果这个python文件被直接运行, 那么它的值是'__main__'
+
+>>> __name__
+'__main__'
+>>> import os
+>>> os.__name__
+'os'
+所以我们写一个脚本的时候,通过判断__name__来确定脚本是被引用, 还是被直接运行
+
+if __name__ == `__main__`:
+    main()
+__file__
+被引用模块文件的路径
+
+>>> import os
+>>> os.__file__
+'/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/os.pyc'
+__doc__
+模块的注释文档
+
+class MyClass:
+    """这是MyClass的注释, 
+    调用下面myClass.__doc__的时候会返回这段内容"""
+
+    def funcA(self):
+        """这是funcA的注释文档"""
+        return "hello"
+
+myClass = MyClass()
+调用myClass.__doc__会返回MyClass的注释文档, myClass.funcA.__doc__会返回funcA的注释文档
+
+如果执行help(MyClass), 所看到的文档实际就是DocStrings收集该类下所有的注释生成的文档
+
+__all__
+当你写一个Python的模块的时候, 一般在__init__.py中指定__all__来表示当这个模块被import * from xxx的时候, 有哪些模块会被import进来,
+
+当然, 我们推荐尽量不使用import *
+
+__package__
+__package__主要是为了相对引用而设置的一个属性, 如果所在的文件是一个package的话, 它和__name__的值是一样的, 如果是子模块的话, 它的值就跟父模块一致
+
+比如 modA/modB/aa.py中__name__的值是modA.modB.aa __package__是modA.modB
+modA/modB/__init__.py中__name__和__package__的值都是modA.modB
+
+
+__new__() 是在新式类中新出现的方法，它作用在构造方法建造实例之前，可以这么理解，在 Python 中存在于类里面的构造方法 __init__() 负责将类的实例化，而在 __init__() 启动之前，__new__() 决定是否要使用该 __init__() 方法，因为__new__() 可以调用其他类的构造方法或者直接返回别的对象来作为本类的实例。
+
+ 
+
+如果将类比喻为工厂，那么__init__()方法则是该工厂的生产工人，__init__()方法接受的初始化参数则是生产所需原料，__init__()方法会按照方法中的语句负责将原料加工成实例以供工厂出货。而__new__()则是生产部经理，__new__()方法可以决定是否将原料提供给该生产部工人，同时它还决定着出货产品是否为该生产部的产品，因为这名经理可以借该工厂的名义向客户出售完全不是该工厂的产品。
+
+ 
+
+__new__() 方法的特性：
+
+__new__() 方法是在类准备将自身实例化时调用。
+__new__() 方法始终都是类的静态方法，即使没有被加上静态方法装饰器。
+类的实例化和它的构造方法通常都是这个样子：
+class MyClass(object):
+    def __init__(self, *args, **kwargs):
+        ...
+
+# 实例化
+myclass = MyClass(*args, **kwargs)
+　　
+
+正如以上所示，一个类可以有多个位置参数和多个命名参数，而在实例化开始之后，在调用 __init__() 方法之前，Python 首先调用 __new__() 方法：
+
+def __new__(cls, *args, **kwargs):
+    ...
+　　
+
+第一个参数cls是当前正在实例化的类。
+
+如果要得到当前类的实例，应当在当前类中的 __new__() 方法语句中调用当前类的父类的 __new__() 方法。
+　　例如，如果当前类是直接继承自 object，那当前类的 __new__() 方法返回的对象应该为：
+
+def __new__(cls, *args, **kwargs):
+    ...
+    return object.__new__(cls)
+　　
+
+注意：
+
+　　事实上如果（新式）类中没有重写__new__()方法，即在定义新式类时没有重新定义__new__()时，Python默认是调用该类的直接父类的__new__()方法来构造该类的实例，如果该类的父类也没有重写__new__()，那么将一直按此规矩追溯至object的__new__()方法，因为object是所有新式类的基类。
+
+ 
+
+　　而如果新式类中重写了__new__()方法，那么你可以自由选择任意一个的其他的新式类（必定要是新式类，只有新式类必定都有__new__()，因为所有新式类都是object的后代，而经典类则没有__new__()方法）的__new__()方法来制造实例，包括这个新式类的所有前代类和后代类，只要它们不会造成递归死循环。具体看以下代码解释：
+
+ 
+
+复制代码
+class Foo(object):
+    def __init__(self, *args, **kwargs):
+        ...
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls, *args, **kwargs)    
+
+# 以上return等同于 
+# return object.__new__(Foo, *args, **kwargs)
+# return Stranger.__new__(cls, *args, **kwargs)
+# return Child.__new__(cls, *args, **kwargs)
+
+class Child(Foo):
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls, *args, **kwargs)
+# 如果Child中没有定义__new__()方法，那么会自动调用其父类的__new__()方法来制造实例，即 Foo.__new__(cls, *args, **kwargs)。
+# 在任何新式类的__new__()方法，不能调用自身的__new__()来制造实例，因为这会造成死循环。因此必须避免类似以下的写法：
+# 在Foo中避免：return Foo.__new__(cls, *args, **kwargs)或return cls.__new__(cls, *args, **kwargs)。Child同理。
+# 使用object或者没有血缘关系的新式类的__new__()是安全的，但是如果是在有继承关系的两个类之间，应避免互调造成死循环，例如:(Foo)return Child.__new__(cls), (Child)return Foo.__new__(cls)。
+class Stranger(object):
+    ...
+# 在制造Stranger实例时，会自动调用 object.__new__(cls)
+复制代码
+ 
+
+ 通常来说，新式类开始实例化时，__new__()方法会返回cls（cls指代当前类）的实例，然后该类的__init__()方法作为构造方法会接收这个实例（即self）作为自己的第一个参数，然后依次传入__new__()方法中接收的位置参数和命名参数。
+ 
+
+注意：如果__new__()没有返回cls（即当前类）的实例，那么当前类的__init__()方法是不会被调用的。如果__new__()返回其他类（新式类或经典类均可）的实例，那么只会调用被返回的那个类的构造方法。
+
+复制代码
+class Foo(object):
+    def __init__(self, *args, **kwargs):
+        ...
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(Stranger, *args, **kwargs)  
+
+class Stranger(object):
+    ...
+
+foo = Foo()
+print type(foo)    
+
+# 打印的结果显示foo其实是Stranger类的实例。
+
+# 因此可以这么描述__new__()和__ini__()的区别，在新式类中__new__()才是真正的实例化方法，为类提供外壳制造出实例框架，然后调用该框架内的构造方法__init__()使其丰满。
+# 如果以建房子做比喻，__new__()方法负责开发地皮，打下地基，并将原料存放在工地。而__init__()方法负责从工地取材料建造出地皮开发招标书中规定的大楼，__init__()负责大楼的细节设计，建造，装修使其可交付给客户。

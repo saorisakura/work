@@ -1,0 +1,183 @@
+#!/bin/sh
+# File: setup-python3.sh
+# Desc: Install/Config Python 3.X for CentOS
+# Created by MrLiu on Aug 31, 2017
+# Modified by MrLiu on Apr 13, 2018
+
+RED='\E[1;31m'
+GRN='\E[1;32m'
+RES='\E[0m'
+
+PyVerA=3
+PyVerB=$PyVerA.6
+PyVerC=$PyVerB.5
+PYELNK='/usr/bin/python'$PyVerA
+PYEXEC='/usr/local/bin/python'$PyVerB
+PIPLNK='/usr/bin/pip'$PyVerA
+PIPEXEC='/usr/local/bin/pip'$PyVerB
+PKGDIR='/usr/local/lib/python'$PyVerB'/site-packages'
+
+# Check command-line parameters
+if [ $# -eq 1 ]; then
+    if [ $1 == 'force' ]; then
+        runme='force'
+        opt='no'
+    elif [ $1 == 'forceopt' ]; then
+        runme='force'
+        opt='yes'
+    elif [ $1 == 'opt' ]; then
+        runme='noforce'
+        opt='yes'
+    else
+        runme='noforce'
+        opt='no'
+    fi
+else
+    runme='noforce'
+    opt='no'
+fi
+
+# Clean startup setting
+sed -i '/setup-python3.sh/d' /etc/rc.d/rc.local
+
+VER=`cat /etc/redhat-release | awk -F '.' '{ print $1 }' |awk -F '' '{ print $NF }'`
+if [ "$VER" == "5" -o "$VER" == "6" -o "$VER" == "7" ]; then
+    echo -e "${GRN}Python $PyVerC Config Script for CentOS.${RES}"
+else
+    echo -e "${RED}This Script run in CentOS $VER only, exit!${RES}\n"
+    exit 0
+fi
+
+# Adjust Lib Path
+sed -i '/^\/usr\/local\/lib$/d' /etc/ld.so.conf
+echo '/usr/local/lib' >> /etc/ld.so.conf
+ldconfig
+
+PyV=''
+if [ "$VER" == "5" -a ! -e /usr/local/ssl/bin/openssl ]; then
+    PyV='26'
+    cd /root/softwares/
+    rm -rf openssl*
+    wget -O /root/softwares/openssl-1.0.2n.tar.gz http://oper.6rooms.com/others/openssl-1.0.2n.tar.gz
+    tar zxf openssl-1.0.2n.tar.gz
+    cd openssl-1.0.2n
+    ./config -fPIC --prefix=/usr/local/ssl --openssldir=/usr/local/ssl enable-shared
+    make -j32
+    make install
+    sed -i '/^\/usr\/local\/ssl\/lib$/d' /etc/ld.so.conf
+    echo '/usr/local/ssl/lib' >> /etc/ld.so.conf
+    ldconfig
+fi
+
+if [ -x $PYEXEC ]; then
+    PyVer=`$PYEXEC -V | awk '{ print $2 }'`
+else
+    PyVer=x.x.x
+fi
+
+
+if [ ! -e $PYEXEC -o -e $PYEXEC -a "$PyVer" != "$PyVerC" -o $runme == 'force' ]; then
+    if [ ! -e $PYEXEC ]; then
+        echo -e "${GRN}Install Python $PyVerC ...${RES}"
+    elif [ $runme == 'force' ]; then
+        echo -e "${GRN}Force Install Python $PyVerC ...${RES}"
+    else
+        echo -e "${GRN}Upgrade Python Version from $PyVer to $PyVerC ...${RES}"
+    fi
+
+    echo -e "${GRN}Install General Packages for Python $PyVerC ...${RES}"
+    yum -y --disablerepo=rpmforge install libffi-devel
+    yum -y --disablerepo=epel install python$PyV-distribute  python$PyV-devel
+    yum -y install python$PyV-babel python$PyV-backports-ssl_match_hostname python$PyV-chardet libyaml
+    yum -y install tcl-devel tk-devel readline-devel bzip2-devel gcc openssl-devel
+
+    cd /root/softwares
+    rm -rf Python-*
+    wget -O /root/softwares/Python-$PyVerC.tgz http://oper.6rooms.com/others/python/Python-$PyVerC-fixed.tgz
+    tar zxf Python-$PyVerC.tgz
+    cd Python-$PyVerC
+    if [ "$VER" == "5" ]; then
+        mv Modules/Setup.dist Modules/Setup.dist.default
+        mv Modules/Setup.dist.centos5 Modules/Setup.dist
+    fi
+    if [ $opt == 'yes' ]; then
+        ./configure --prefix=/usr/local --enable-shared LDFLAGS="-Wl,-rpath /usr/local/lib" --enable-optimizations
+    else
+        ./configure --prefix=/usr/local --enable-shared LDFLAGS="-Wl,-rpath /usr/local/lib"
+    fi
+    make -j32
+    make altinstall
+else
+    echo -e "${GRN}The latest Python(Ver $PyVerC) is already installed.${RES}"
+fi
+
+#[ -e /usr/local/bin/python3 ] && rm -f /usr/local/bin/python3 && cd /usr/bin && ln -s /usr/local/bin/python3.6 python3
+#[ -e /usr/local/bin/pip3 ] && rm -f /usr/local/bin/pip3 && cd /usr/bin && ln -s /usr/local/bin/pip3.6 pip3
+if [ ! -e $PYELNK ]; then
+    [ -e /usr/local/bin/python3 ] && rm -f /usr/local/bin/python3
+    [ -e /usr/local/bin/pip3 ] && rm -f /usr/local/bin/pip3
+    # create python3 soft link
+    echo -e "${GRN}Create Python3 soft link ...${RES}"
+    ln -s $PYEXEC $PYELNK
+    ln -s $PIPEXEC $PIPLNK
+fi
+
+if [ ! -x /usr/local/bin/rtmpdump ]; then
+    echo -e "${GRN}Install Rtmpdump libs for python-librtmp ...${RES}"
+    cd /root/softwares
+    rm -rf rtmpdump-* python-librtmp-* 
+    wget -O /root/softwares/rtmpdump-2.3.tgz http://oper.6rooms.com/others/rtmpdump-2.3.tgz
+    #wget -O /root/softwares/python-librtmp-0.3.0.tar.gz http://oper.6rooms.com/others/python/python-librtmp-0.3.0.tar.gz
+    tar zxf rtmpdump-2.3.tgz
+    cd rtmpdump-2.3
+    make SYS=posix
+    make install
+
+    ldconfig
+    ldconfig
+
+    #if [ ! -e $PKGDIR/python_librtmp-0.3.0-py3.6-linux-x86_64.egg/librtmp/__init__.py ]; then
+    #    echo -e "${GRN}Install python-librtmp module for Python $PyVerC ...${RES}"
+    #    cd /root/softwares
+    #    tar zxf python-librtmp-0.3.0.tar.gz
+    #    cd python-librtmp-0.3.0
+    #    $PYEXEC setup.py install
+    #fi
+fi
+
+if [ ! -e $PKGDIR/requests/__init__.py ]; then
+    echo -e "${GRN}Install requests and others modules for Python $PyVerC ...${RES}"
+    $PIPEXEC install --upgrade pip
+    $PIPEXEC install six
+    $PIPEXEC install idna
+    $PIPEXEC install asn1crypto
+    $PIPEXEC install cryptography
+    $PIPEXEC install pyOpenSSL
+    $PIPEXEC install pycparser
+    $PIPEXEC install cffi
+    $PIPEXEC install certifi
+    $PIPEXEC install chardet
+    $PIPEXEC install urllib3
+    $PIPEXEC install requests
+    $PIPEXEC install python_librtmp
+fi
+
+echo "[`date "+%Y.%m.%d %H:%M:%S"`] Install Python 3 ... Done" >> /usr/local/work/SixRooms
+
+wget -O /root/softwares/pip-9.0.1-fix.tar.gz http://oper.6rooms.com/others/python/pip-9.0.1-fix.tar.gz
+wget -O /root/softwares/setuptools-38.5.1.zip http://oper.6rooms.com/others/python/setuptools-38.5.1.zip
+cd /root/softwares
+unzip setuptools-38.5.1.zip
+tar zxf pip-9.0.1-fix.tar.gz
+
+cd /root/softwares/setuptools-38.5.1
+python setup.py install
+
+cd /root/softwares/pip-9.0.1
+python setup.py install
+
+cd /root/softwares
+pip2 install python-librtmp requests
+
+echo "[`date "+%Y.%m.%d %H:%M:%S"`] Install librtmp for Python 2 ... Done" >> /usr/local/work/SixRooms
+

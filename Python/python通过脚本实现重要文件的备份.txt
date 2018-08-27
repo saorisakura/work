@@ -1,0 +1,41 @@
+#!/usr/bin/python3
+# Filename: backup_ver3.py
+
+# Function: Help us backup some important document more conveniently
+# declare The modules os and time
+import os
+import time
+
+# source is the document that we want to backup
+# today_dir is the path of the new folder
+# today is the folder that we want to establish
+# now is the name of the zip
+source = ['/Users/apple/Desktop/python']
+today_dir = '/Users/apple/Desktop/python/'
+today = today_dir + time.strftime('%Y%m%d')
+now = time.strftime('%H%M%S')
+
+# Judge whether the folder of time is exist, if not, establish it 
+if not os.path.exists(today):
+    os.mkdir(today)
+    print ('Successful mikdir!')
+
+# The comment we want to add to the backup
+string = input('Please enter what you want to note:')
+
+# judge whether the users have entered the comment,if not, carry out the original way, else add the comment to the name of backup
+# os.sep represents the seperation of address,because in different system, the seperation is different
+if len(string) == 0:
+    target = today + os.sep + now + '.zip'
+else :
+    target = today + os.sep + now + '_' + \
+             string.replace(' ', '_') + '.zip'
+
+# The command is the string that excute in terminal
+command = 'zip -qr %s %s' % (target, ''.join(source))
+
+# if the backup is success, the system will return 0
+if os.system(command) == 0:
+    print ('Sucessfully backup to', target)
+else:
+    print ('Backup failed')

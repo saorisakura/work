@@ -1,0 +1,675 @@
+golang
+字符串连接哪一种方式最高效
+Go里面string是最基础的类型，是一个只读类型，针对他的每一个操作都会创建一个新的string
+
+所以，如果我在不知道结果是多少长字符串的情况下不断的连接字符串，怎么样的方式是最好的呢？
+
+最常用的可能是如下这样：
+
+s := ""
+for i := 0; i < 1000; i++ {
+    s += otherString()
+}
+return s
+但是这样好像非常的慢
+
+2016-10-29 添加评论 分享
+18 个回复
+ 
+sheepbao - https://sheepbao.github.io 爱go，爱编程，领域网络开发，流媒体、分布式、网络加速
+
+赞同来自: astaxie	、lwhile	、davidcai1993	、wida	、haohongfan	更多 »
+
+package main
+
+import (
+    "bytes"
+    "fmt"
+    "strings"
+    "time"
+)
+
+var way map[int]string
+
+func benchmarkStringFunction(n int, index int) (d time.Duration) {
+    v := "ni shuo wo shi bu shi tai wu liao le a?"
+    var s string
+    var buf bytes.Buffer
+
+    t0 := time.Now()
+    for i := 0; i < n; i++ {
+        switch index {
+        case 0: // fmt.Sprintf
+            s = fmt.Sprintf("%s[%s]", s, v)
+        case 1: // string +
+            s = s + "[" + v + "]"
+        case 2: // strings.Join
+            s = strings.Join([]string{s, "[", v, "]"}, "")
+        case 3: // stable bytes.Buffer
+            buf.WriteString("[")
+            buf.WriteString(v)
+            buf.WriteString("]")
+        }
+
+    }
+    d = time.Since(t0)
+    if index == 3 {
+        s = buf.String()
+    }
+    fmt.Printf("string len: %d\t", len(s))
+    fmt.Printf("time of [%s]=\t %v\n", way[index], d)
+    return d
+}
+
+func main() {
+    way = make(map[int]string, 5)
+    way[0] = "fmt.Sprintf"
+    way[1] = "+"
+    way[2] = "strings.Join"
+    way[3] = "bytes.Buffer"
+
+    k := 4
+    d := [5]time.Duration{}
+    for i := 0; i < k; i++ {
+        d[i] = benchmarkStringFunction(10000, i)
+    }
+}
+结果：
+
+string len: 410000      time of [fmt.Sprintf]=   426.001476ms                                                      
+string len: 410000      time of [+]=     307.044147ms                                                              
+string len: 410000      time of [strings.Join]=  738.44362ms                                                       
+string len: 410000      time of [bytes.Buffer]=  742.248µs   
+strings.Join 最慢
+fmt.Sprintf 和 string + 差不多
+bytes.Buffer又比上者快约500倍
+2016-10-30 13 6
+ 
+傅小黑
+
+赞同来自: qi19901212	、xieyanke	、tupunco	、小蚂蚁	、皇虫	更多 »
+
+如果是少量小文本拼接，用 “+” 就好
+
+如果是大量小文本拼接，用 strings.Join
+
+如果是大量大文本拼接，用 bytes.Buffer
+
+2016-10-31 16 0
+ 
+stevewang
+
+赞同来自: judas	、sundyli	、gostar	、wawayi	、ningyusui	更多 »
+
+应该用strings.Join，而且和+、bytes.Buffer相比，strings.Join是最快的，bytes.Buffer的性能略差但是接近，+最慢是strings.Join执行时间的两倍还多。
+
+为什么strings.Join最快？看看它的源码就知道了，很难用go语言实现一个更快的函数了。它的实现是先计算出要分配的内存空间，然后依次复制字符串。几乎完全没有多余的内存分配也没有多余的字符串拷贝，还能再怎么快呢？ 另外，测试还是应该用testing.B而不是自己去写测试框架；而且，测试性能要避免I/O的影响。
+
+我的测试结果是：
+
+strings.Join:
+10000000           275 ns/op
+bytes.Buffer:
+ 5000000           388 ns/op
++:
+ 2000000           985 ns/op
+测试代码如下：
+
+package main
+
+import(
+    "bytes"
+    "fmt"
+    "strings"
+    "testing"
+)
+
+var (
+    strs = []string{
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+    }
+)
+
+func TestStringsJoin(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        strings.Join(strs, "")
+    }
+}
+
+func TestStringsPlus(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        var s string
+        for j := 0; j < len(strs); j++ {
+            s += strs[j]
+        }
+    }
+}
+
+func TestBytesBuffer(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        var b bytes.Buffer
+        for j := 0; j < len(strs); j++ {
+            b.WriteString(strs[j])
+        }
+    }
+}
+
+func main() {
+    fmt.Println("strings.Join:")
+    fmt.Println(testing.Benchmark(TestStringsJoin))
+    fmt.Println("bytes.Buffer:")
+    fmt.Println(testing.Benchmark(TestBytesBuffer))
+    fmt.Println("+:")
+    fmt.Println(testing.Benchmark(TestStringsPlus))
+}
+2016-10-30 7 7
+ 
+lwhile
+
+赞同来自: sheepbao	、cz000	、sundyli
+
+分享StackOverflow上的一个类似问题下的答案.在作者的测试中,bytes.Buffer的性能并不是最好的. How to efficiently concatenate strings in Go?
+
+2016-10-30 3 1
+ 
+lichao2018
+
+赞同来自: 黑泥巴	、fastcgi
+
+比较+操作符, bytes.Buffer, strings.Join, fmt.Sprintf的字符串连接性能，必须从源码着手
++操作符 通过汇编可知实现在runtime/string.go中， 主要是concatstrings函数 短字符串优化，没有借助[]byte造成转换string的消耗，故单次调用+操作符是最快的。灵活性最差
+
+// concatstrings implements a Go string concatenation x+y+z+...
+// The operands are passed in the slice a.
+// If buf != nil, the compiler has determined that the result does not
+// escape the calling function, so the string data can be stored in buf
+// if small enough.
+func concatstrings(buf *tmpBuf, a []string) string {
+idx := 0
+l := 0
+count := 0
+for i, x := range a {
+    n := len(x)
+    if n == 0 {
+        continue
+    }
+    if l+n < l {
+        throw("string concatenation too long")
+    }
+    l += n
+    count++
+    idx = i
+}
+if count == 0 {
+    return ""
+}
+
+// If there is just one string and either it is not on the stack
+// or our result does not escape the calling frame (buf != nil),
+// then we can return that string directly.
+if count == 1 && (buf != nil || !stringDataOnStack(a[idx])) {
+    return a[idx]
+}
+s, b := rawstringtmp(buf, l)
+for _, x := range a {
+    copy(b, x)
+    b = b[len(x):]
+}
+return s
+}
+bytes.Buffer 源码实现在bytes/buffer.go中 小内存优化，能提前预分配内存，内存不足时*2倍增长，但是最后获取string结果有[]byte转string的消耗，故bytes.Buffer在一次初始化（提前计算总长度，一次性预分配好内存更好），多次字符串连接操作，最后一次性获取string结果的场景中是最快的。灵活性是最强的
+func (b *Buffer) Grow(n int) {
+if n < 0 {
+    panic("bytes.Buffer.Grow: negative count")
+}
+m := b.grow(n)
+b.buf = b.buf[0:m]
+}
+func (b *Buffer) WriteString(s string) (n int, err error) {
+b.lastRead = opInvalid
+m, ok := b.tryGrowByReslice(len(s))
+if !ok {
+    m = b.grow(len(s))
+}
+return copy(b.buf[m:], s), nil
+}
+func (b *Buffer) grow(n int) int {
+m := b.Len()
+// If buffer is empty, reset to recover space.
+if m == 0 && b.off != 0 {
+    b.Reset()
+}
+// Try to grow by means of a reslice.
+if i, ok := b.tryGrowByReslice(n); ok {
+    return i
+}
+// Check if we can make use of bootstrap array.
+if b.buf == nil && n <= len(b.bootstrap) {
+    b.buf = b.bootstrap[:n]
+    return 0
+}
+if m+n <= cap(b.buf)/2 {
+    // We can slide things down instead of allocating a new
+    // slice. We only need m+n <= cap(b.buf) to slide, but
+    // we instead let capacity get twice as large so we
+    // don't spend all our time copying.
+    copy(b.buf[:], b.buf[b.off:])
+} else {
+    // Not enough space anywhere, we need to allocate.
+    buf := makeSlice(2*cap(b.buf) + n)
+    copy(buf, b.buf[b.off:])
+    b.buf = buf
+}
+// Restore b.off and len(b.buf).
+b.off = 0
+b.buf = b.buf[:m+n]
+return m
+}
+func (b *Buffer) String() string {
+if b == nil {
+    // Special case, useful in debugging.
+    return "<nil>"
+}
+return string(b.buf[b.off:])
+}
+strings.Join 源码实现在strings/strings.go中 少量字符串连接优化，一次性分配内存，有[]byte转换string的消耗，故单次调用能达到bytes.Buffer的最好效果，但是它不够灵活
+
+func Join(a []string, sep string) string {
+switch len(a) {
+case 0:
+    return ""
+case 1:
+    return a[0]
+case 2:
+    // Special case for common small values.
+    // Remove if golang.org/issue/6714 is fixed
+    return a[0] + sep + a[1]
+case 3:
+    // Special case for common small values.
+    // Remove if golang.org/issue/6714 is fixed
+    return a[0] + sep + a[1] + sep + a[2]
+}
+n := len(sep) * (len(a) - 1)
+for i := 0; i < len(a); i++ {
+    n += len(a[i])
+}
+
+b := make([]byte, n)
+bp := copy(b, a[0])
+for _, s := range a[1:] {
+    bp += copy(b[bp:], sep)
+    bp += copy(b[bp:], s)
+}
+return string(b)
+}
+fmt.Sprintf 源码实现在fmt/print.go中 因为a...interface{}有参数转换的消耗， 借助[]byte每次添加调用append，逻辑相对复杂，最后获取结果有[]byte转string的消耗，故fmt.Sprintf一般要慢于bytes.Buffer和strings.Join，灵活性和strings.Join差不多
+func Sprintf(format string, a ...interface{}) string {
+p := newPrinter()
+p.doPrintf(format, a)
+s := string(p.buf)
+p.free()
+return s
+}
+func (b *buffer) WriteString(s string) {
+*b = append(*b, s...)
+}
+结论 单次调用性能：操作符+>strings.Join>=bytes.Buffer>fmt.Sprintf 灵活性：bytes.Buffer>fmt.Sprintf>=strings.Join>操作符+
+正确使用，多次连接字符串操作的情况下，bytes.Buffer应该是最快的。
+
+2018-02-02 2 0
+ 
+tupunco
+
+赞同来自: kylefeng
+
+学习过 JAVA 或者 C# 就知道, 拼长字符串用 StringBuilder/StringBuffer. go 中 bytes.Buffer 性能最好.
+
+2016-10-30 1 0
+ 
+mintzhao - 区块链开发者
+
+赞同来自: tupunco
+
+fmt.Sprintf("%s%s", "abc", "def")
+在99%的业务场景中，考虑这些完全是吹毛求疵吧
+
+2016-10-31 1 0
+ 
+ningyusui
+
+赞同来自: alphayan
+
+@sheepbao 的测试代码有问题。strings.Join不可能最慢，最慢的话，直接用+法重新实现不就快起来了吗，官方会提供一个性能这么差的包吗？他的测试结果strings.Join最慢,是因为每次构造了一个新的数组,时间都消耗在构建数组上了。把[]string{s, "[", v, "]"}移到循环外面，会比Sprintf及+快得多，只需要1ms
+
+先说结果（linux下）：
+
+bytes.Buffer 最快
+strings.Join 其次，耗时是bytes.Buffer的2倍
++ 比 strings.Join 慢很多，耗时是bytes.Buffer的800倍
+Sprintf最慢，耗时是bytes.Buffer的1100倍
+linux:
+
+string len: 410000  time of [fmt.Sprintf]=   705.610927ms
+string len: 410000  time of [+]=     503.151717ms
+string len: 41  time of [strings.Join]=  1.362129ms
+string len: 410000  time of [bytes.Buffer]=  562.707µs
+windows:
+
+string len: 410000  time of [fmt.Sprintf]=   306.0175ms
+string len: 410000  time of [+]=     206.0118ms
+string len: 41  time of [strings.Join]=  1ms
+string len: 410000  time of [bytes.Buffer]=  0s
+改写的测试代码：
+
+package main
+
+import (
+"bytes"
+"fmt"
+"strings"
+"time"
+)
+
+var way map[int]string
+
+func benchmarkStringFunction(n int, index int) (d time.Duration) {
+    v := "ni shuo wo shi bu shi tai wu liao le a?"
+    var s string
+    var buf bytes.Buffer
+    data := []string{s, "[", v, "]"}
+
+    t0 := time.Now()
+    for i := 0; i < n; i++ {
+        switch index {
+        case 0: // fmt.Sprintf
+            s = fmt.Sprintf("%s[%s]", s, v)
+        case 1: // string +
+            s = s + "[" + v + "]"
+        case 2: // strings.Join
+            s = strings.Join(data, "")
+        case 3: // stable bytes.Buffer
+            buf.WriteString("[")
+            buf.WriteString(v)
+            buf.WriteString("]")
+        }
+
+    }
+    d = time.Since(t0)
+    if index == 3 {
+        s = buf.String()
+    }
+    fmt.Printf("string len: %d\t", len(s))
+    fmt.Printf("time of [%s]=\t %v\n", way[index], d)
+    return d
+}
+
+func main() {
+    way = make(map[int]string, 5)
+    way[0] = "fmt.Sprintf"
+    way[1] = "+"
+    way[2] = "strings.Join"
+    way[3] = "bytes.Buffer"
+
+    k := 4
+    d := [5]time.Duration{}
+    for i := 0; i < k; i++ {
+        d[i] = benchmarkStringFunction(10000, i)
+    }
+}
+2018-01-31 1 1
+ 分享
+ 
+smallnest
+
+赞同来自: ilovekitty328
+
+另一个方案， go 1.10中的 strings.Builder
+
+https://www.reddit.com/r/golang/comments/7j65d0/new_in_go_110_stringsbuilder_efficiently_build/
+
+2018-02-01 1 0
+ 
+willee
+
+赞同来自: CodyGuo
+
+利用bytes.buffer，消耗时间最短
+
+2016-10-29 1 0
+ 
+lwhile
+
+strings.Join()并不是用来做字符串拼接的.
+
+如果对字符串的拼接有效率要求,那么最好转换成字节来操作.
+
+s1 := ""
+for i := 0; i < 100000; i++ {
+    s1 += "test"
+}
+//6.824335291s
+
+s2 := ""
+var b2 []byte
+b2 = append(b2,[]byte(s2)...)
+for i:=0; i < 100000; i++ {
+    b2 = append(b2, []byte("test")...)
+}
+s2 = string(b2)
+//5.885215ms
+2016-10-29 0 0
+ 
+2gua - 码农2gua
+
+推荐strings.Join。
+
+2016-12-13 0 0
+ 
+philc - https://github.com/philchia
+
+
+func JoinStrings(strs ...string) string {
+    ln := 0
+    for i := 0; i < len(strs); i++ {
+        ln += len(strs[i])
+    }
+    bts := make([]byte, ln)
+    ln = 0
+    for _, str := range strs {
+        ln += copy(bts[ln:], str)
+    }
+
+    return string(bts)
+}
+2016-12-13 0 0
+ 
+ianwoolf
+
+我测过 +连接是最快的 快了很多 fmt最慢，非常慢 buffer和strings处于中间，相差不是很多
+
+2017-02-23 0 2
+ 
+seeyoup 
+
+strings.Join要使用slice，slice长度不固定的话，每次append字符串，内部都要重新改变数组，这样也有影响吗？
+
+2017-03-01 0 0
+ 
+toyijiu - 编程爱好者
+
+还没有写代码具体测试过，个人感觉是如果一次把所有要添加的string[]搞进去的话，Join比较快。如果是每次只添加一个string，bytes.Buffer的WriteString比较快，但是当buffer太大时可能会报panic
+
+源码里面Join会先计算总的结果长度，只需要make一次。bytes.Buffer的WriteString每次只能加一个string，只有当前添加后总的长度大于cap后会重新申请内存。Sprintf的核心是doPrintf函数，看了下比较复杂，IO流对象的函数一般都很慢，涉及很多判断，还要根据字符做for循环，应该很慢
+// Join concatenates the elements of a to create a single string.   The separator string
+// sep is placed between elements in the resulting string.
+func Join(a []string, sep string) string {
+        if len(a) == 0 {
+            return ""
+        }
+        if len(a) == 1 {
+            return a[0]
+        }
+        n := len(sep) * (len(a) - 1)
+        for i := 0; i < len(a); i++ {
+            n += len(a[i])
+        }
+
+        b := make([]byte, n)
+        bp := copy(b, a[0])
+        for _, s := range a[1:] {
+            bp += copy(b[bp:], sep)
+            bp += copy(b[bp:], s)
+        }
+        return string(b)
+    }
+    // WriteString appends the contents of s to the buffer.  The return
+    // value n is the length of s; err is always nil.
+    // If the buffer becomes too large, WriteString will panic with
+    // ErrTooLarge.
+    func (b *Buffer) WriteString(s string) (n int, err error) {
+        b.lastRead = opInvalid
+        m := b.grow(len(s))
+        return copy(b.buf[m:], s), nil
+    }
+
+    func (b *Buffer) grow(n int) int {
+        m := b.Len()
+        // If buffer is empty, reset to recover space.
+        if m == 0 && b.off != 0 {
+            b.Truncate(0)
+        }
+        if len(b.buf)+n > cap(b.buf) {
+            var buf []byte
+            if b.buf == nil && n <= len(b.bootstrap) {
+                buf = b.bootstrap[0:]
+            } else {
+                // not enough space anywhere
+                buf = makeSlice(2*cap(b.buf) + n)
+                copy(buf, b.buf[b.off:])
+            }
+            b.buf = buf
+            b.off = 0
+        }
+        b.buf = b.buf[0 : b.off+m+n]
+        return b.off + m
+    }
+995 func (p *pp) doPrintf(format string, a []interface{}) {
+996     end := len(format)
+997     fieldnum := 0 // we process one field per non-trivial format
+998     for i := 0; i < end; {
+999         lasti := i
+1000            for i < end && format[i] != '%' {
+1001                i++
+1002            }
+1003            if i > lasti {
+1004                p.buf.WriteString(format[lasti:i])
+1005            }
+1006            if i >= end {
+1007                // done processing format string
+1008                break
+1009            }
+1010    
+1011            // Process one verb
+1012            i++
+1013            // flags and widths
+1014            p.fmt.clearflags()
+1015        F:
+1016            for ; i < end; i++ {
+1017                switch format[i] {
+1018                case '#':
+1019                    p.fmt.sharp = true
+1020                case '0':
+1021                    p.fmt.zero = true
+1022                case '+':
+1023                    p.fmt.plus = true
+1024                case '-':
+1025                    p.fmt.minus = true
+1026                case ' ':
+1027                    p.fmt.space = true
+1028                default:
+1029                    break F
+1030                }
+1031            }
+1032            // do we have width?
+1033            if i < end && format[i] == '*' {
+1034                p.fmt.wid, p.fmt.widPresent, i, fieldnum = intFromArg(a, end, i, fieldnum)
+1035                if !p.fmt.widPresent {
+1036                    p.buf.Write(widthBytes)
+1037                }
+1038            } else {
+1039                p.fmt.wid, p.fmt.widPresent, i = parsenum(format, i, end)
+1040            }
+1041            // do we have precision?
+1042            if i < end && format[i] == '.' {
+1043                if format[i+1] == '*' {
+1044                    p.fmt.prec, p.fmt.precPresent, i, fieldnum = intFromArg(a, end, i+1, fieldnum)
+1045                    if !p.fmt.precPresent {
+1046                        p.buf.Write(precBytes)
+1047                    }
+1048                } else {
+1049                    p.fmt.prec, p.fmt.precPresent, i = parsenum(format, i+1, end)
+1050                    if !p.fmt.precPresent {
+1051                        p.fmt.prec = 0
+1052                        p.fmt.precPresent = true
+1053                    }
+1054                }
+1055            }
+1056            if i >= end {
+1057                p.buf.Write(noVerbBytes)
+1058                continue
+1059            }
+1060            c, w := utf8.DecodeRuneInString(format[i:])
+1061            i += w
+1062            // percent is special - absorbs no operand
+1063            if c == '%' {
+1064                p.buf.WriteByte('%') // We ignore width and prec.
+1065                continue
+1066            }
+1067            if fieldnum >= len(a) { // out of operands
+1068                p.buf.WriteByte('%')
+1069                p.add(c)
+1070                p.buf.Write(missingBytes)
+1071                continue
+1072            }
+1073            field := a[fieldnum]
+1074            fieldnum++
+1075    
+1076            goSyntax := c == 'v' && p.fmt.sharp
+1077            plus := c == 'v' && p.fmt.plus
+1078            p.printField(field, c, plus, goSyntax, 0)
+1079        }
+1080    
+1081        if fieldnum < len(a) {
+1082            p.buf.Write(extraBytes)
+1083            for ; fieldnum < len(a); fieldnum++ {
+1084                field := a[fieldnum]
+1085                if field != nil {
+1086                    p.buf.WriteString(reflect.TypeOf(field).String())
+1087                    p.buf.WriteByte('=')
+1088                }
+1089                p.printField(field, 'v', false, false, 0)
+1090                if fieldnum+1 < len(a) {
+1091                    p.buf.Write(commaSpaceBytes)
+1092                }
+1093            }
+1094            p.buf.WriteByte(')')
+1095        }
+1096    }
+2017-03-02 0 0
+ 
+qi19901212 - 一个喜欢讲产品代码敲的不怎么样的.......
+
+strings.Join(a []string, sep string)
+
+2016-10-29 0 0
+ 
+sheepbao - https://sheepbao.github.io 爱go，爱编程，领域网络开发，流媒体、分布式、网络加速	
