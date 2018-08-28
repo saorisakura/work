@@ -313,3 +313,120 @@ sched.add_job(job_function, 'interval', hours=2)
 sched.add_job(job_function, 'interval', hours=2, start_date='2010-10-10 09:30:00', end_date='2014-06-15 11:00:00')
 sched.start()
 PythonPython
+
+
+为什么使用 APScheduler
+无他, 只因 Python 标准库里面的 sched 模块不太好用而已, 而且抽象层级不高. 接口设计得也不是很优雅, 徒增心智负担. ( 其实 Python 的很多标准库都不好用, 接口很不优雅 )
+
+我们希望在一种更高的抽象层次完成我们的调度意图, 所以就需要封装, 把心智负担都封装隐藏起来.
+
+任务的几种触发机制
+触发机制, 不如说是「触发规则」. 根据我们有限的人生阅历来看, 可以分为如下几类:
+
+在未来某个特定的时间点执行, 所谓点状
+以一种有规律的间隔机制, 循环下去( 可以添加end_time ), 所谓线状
+cron job. 这是 Linux/Unix 中的概念, 最为复杂最为强大, 前两种分类, 理论上不过是它的子分类
+但是第 1 和第 2 种分类单独拎出来, 是有意义的, 因为它们在现实生活中的占比很大.
+
+下面说说 APScheduler 进行封装后所泛化出来的接口.
+
+首先是各种 Scheduler, 可以将它们理解为一种容器, 不断地往里面喂 Job 就行了.
+
+然后是 Job , 我理解为一种比较上层的抽象概念, 即要做一件什么样的事
+
+最后是一些其他概念, 如 Executor, Trigger, JobStore, 不过我觉得都不难理解, 也不是最为核心的概念, 不赘述.
+
+APScheduler 的最佳实践
+版本要选对, 越新越好
+肯定选 3. 我们公司的版本是 2.0.1, 最近做好几个有类似场景的需求, 2 的源码都翻了好几遍, 总结就是: 经被坑成傻逼了. ( BTW, 公司使用的是被淘汰的 Python2.6, 我反正是各种不幸福, 想跑路了 :P )
+
+一些很必要的操作接口, 2 都没有, 所以往往需要以一种很扭曲的方式, 来实现你的逻辑, 像吃 shit 一样.
+
+一般步骤( 套路 )
+这个官方文档都有讲, 但是文档又长又臭又冗长, 我反正是阅读了好几遍. 官网的 Github 仓库倒是有几个 demo, 但是太过简洁, 而且还藏了好几个坑( 后文说明 )
+
+其实套路也就那样, 有什么复杂的呢 ? 我希望借这一段讲清楚套路, 如果能节省别人的看文档时间, 也算是积了功德心, 所以这一段在本文中最为重要.
+
+不妨先抛开一切, 让我们来想一想: 如果我要在未来 10 小时内( 假设现在是 1:00:00 ), 每隔 1 小时发送一封邮件出去, 我应该怎么做.
+
+首先, 调度器得有一个, 总管家一样的, 我们的心腹, 得力干将.
+
+然后, 调度什么呢, 肯定是 Job 啊, 上文讲述的那种抽象概念, 其实你怎么理解都可以, 只要意思是哪个意思就可以了.
+
+最后, 我们的规则怎么抽象? 其实大部分需求所抽象出的规则, 都可以落在上文讲述的 3 中规则上的某一个( 除非你想在未来的随机时间段内的随机时间点做一件事情, 那我们只能手动再见了 :P )
+
+执行器, 任务存储在哪, 都是不太重要的问题.
+
+我们再来看看, 在 APScheduler 中怎么有机组合我们上面的想法, 不多说了, Show the code.
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# date: 2017/3/1
+# author: he.zhiming
+
+from __future__ import absolute_import, unicode_literals
+import time
+import random
+from datetime import datetime
+from datetime import timedelta
+# 我们的调度器( 以Tornado为蓝本 ), 另外 APScheduler提供了集中调度器( 其实都大同小异 )
+from apscheduler.schedulers.tornado import TornadoScheduler
+# 我们的触发器(触发规则)
+from apscheduler.triggers.interval import IntervalTrigger
+import tornado.ioloop
+
+# 这里忽略, 我个人习惯使用日志来代替print, 另外不太习惯于使用 pdb 单步调试
+import logging
+LOG_FMT = "%(levelname)s %(asctime)s  %(processName)s %(threadName)s %(filename)s:%(lineno)s:%(funcName)s [%(message)s]"
+logging.basicConfig(format=LOG_FMT, level=logging.DEBUG)
+mylogger = logging.getLogger(__name__)
+mylogger.setLevel(logging.DEBUG)
+
+# 要做一件什么事情( 可以替换为你需要做的其他任何事情 )
+def testfunc(a, b, c):
+    print('DOING: %s' % locals())
+
+if __name__ == '__main__':
+    # OK, 调度器有了
+    sched = TornadoScheduler()
+    for _ in range(30):
+        # 往调度器里面喂 Job 了
+        sched.add_job(
+            func=testfunc,          # 被调度的函数
+            args=(1, 2, 3),         # 被调度函数所需要的参数
+
+            trigger=IntervalTrigger( # 触发规则, 推荐这种我个人总结的写法, 不要用官方示例的那种
+                # 开始时间
+                start_date=datetime.now() + timedelta(seconds=random.randint(1, 5)), 
+                # 结束时间
+                end_date=datetime.now() + timedelta(seconds=random.randint(5, 10)),
+                # 每隔多少时间
+                seconds=random.randint(1, 5)
+            ),
+            
+            name='testfunc',        # 这个 Job, 起个别名
+        )
+       
+    # 调度器启动
+    sched.start()
+
+    # Tornado开启 IOLoop, 本例中我们也是使用 TornadoScheduler
+    # 其实官方还提供了各种各样的调度器
+    # 但是都大同小异, 只要掌握了套路, 便可不变因万变
+    try:
+        tornado.ioloop.IOLoop.current().start()
+    except (KeyboardInterrupt, SystemExit) as e:
+        sched.shutdown()
+资源良心推荐
+官方 Github 仓库中的 demos ( 记住不要随便去撸源码, 伤身体, 至少先要把 demo 过一遍啊 )
+官方文档
+官方 Github 仓库的 issues
+没有必要各种 Google 搜各种博客了, 把 1, 2, 3 过一遍, 对 APScheduler 的掌握就是「手中无剑, 而心中有剑」的程度了 :P
+
+为什么不用 APScheduler
+原因太简单了.
+
+假如你每天有好几万个(甚至更多)的定时任务, 而你还在用 APScheduler 吭哧吭哧地解决时, 别人早已经用上 异步队列(如RabbitMQ)了, 并且成功地提前下班和妹子约会去了. 只能说, 你是块加班的料 :P
+
+APScheduler 是一把瑞士军刀, 所以注意其使用局限性( 不要提标准库的 sched, 它充其量不过是一块刀片而已, 相信我, 用刀片大部分时候都得不到幸福感 )
