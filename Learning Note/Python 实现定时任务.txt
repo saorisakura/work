@@ -1,3 +1,8 @@
+tarball install
+If, for some reason, pip won’t work, you can manually download the APScheduler distribution from PyPI, extract and then install it:
+
+$ python setup.py install
+
 Python 实现定时任务
 循环 sleep
 这种方式最简单，在循环里面放入要执行的任务，然后 sleep 一段时间再执行
