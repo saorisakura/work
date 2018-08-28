@@ -191,7 +191,7 @@ def add_url_rule(self, rule, endpoint=None, view_func=None, **options):
         self.view_functions[endpoint] = view_func
 上面这段代码省略了处理 endpoint 和构建 methods 的部分逻辑，可以看到它主要做的事情就是更新 self.url_map 和 self.view_functions 两个变量。找到变量的定义，发现 url_map 是 werkzeug.routeing:Map 类的对象，rule 是 werkzeug.routing:Rule 类的对象，view_functions 就是一个字典。这和我们之前预想的并不一样，这里增加了 Rule 和 Map 的封装，还把 url 和 view_func 保存到了不同的地方。
 
-需要注意的是：每个视图函数的 endpoint 必须是不同的，否则会报 AssertionError。
+需要注意的是：每个视图函数的 endpoint 必须是相同的，否则会报 AssertionError。
 
 werkzeug 路由逻辑
 事实上，flask 核心的路由逻辑是在 werkzeug 中实现的。所以在继续分析之前，我们先看一下 werkzeug 提供的路由功能。
