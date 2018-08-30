@@ -1,3 +1,35 @@
 使用git clone命令克隆gitlab上面的项目的时候， 
 出现了remote: HTTP Basic: Access denied fatal: Authentication failed for类似字眼的错误 
 git clone http://账号:密码@git.ops.test.com.cn/root/puppet.git
+
+卸载CentOS自带的Git
+
+通过git –-version查看系统带的版本，Cento6.5自带的是git版本是1.7.1
+
+yum remove git
+
+安装前环境配置
+
+ $ yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel asciidoc xmlto perl-devel perl-CPAN autoconf*
+
+下载git2.2.1并将git添加到环境变量中
+
+># wget https://github.com/git/git/archive/v2.2.1.tar.gz
+># tar zxvf v2.2.1.tar.gz
+># cd git-2.2.1
+># make configure
+># ./configure --prefix=/usr/local/git --with-iconv=/usr/local/libiconv
+># make all doc
+># make install install-doc install-html
+># echo "export PATH=$PATH:/usr/local/git/bin" >> /etc/bashrc
+># source /etc/bashrc
+
+查看版本号
+
+># git --version
+>git version 2.2.1
+
+作者：nummy
+链接：https://www.jianshu.com/p/7bdc8c5a92d1
+來源：简书
+简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。
