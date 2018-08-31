@@ -1,0 +1,571 @@
+python 日志模块 logging 详解
+
+Java 中最通用的日志模块莫过于 Log4j 了，在 python 中，也自带了 logging 模块，该模块的用法其实和 Log4j 类似。
+
+Python 使用logging模块记录日志涉及四个主要类，使用官方文档中的概括最为合适：
+
+logger提供了应用程序可以直接使用的接口；
+
+handler将(logger创建的)日志记录发送到合适的目的输出；
+
+filter提供了细度设备来决定输出哪条日志记录；
+
+formatter决定日志记录的最终输出格式。
+
+logging模块是在2.3新引进的功能，下面是一些常用的类和模块级函数
+
+模块级函数
+logging.getLogger([name]):返回一个logger对象，如果没有指定名字将返回root logger
+logging.debug()、logging.info()、logging.warning()、logging.error()、logging.critical()：设定root logger的日志级别
+logging.basicConfig():用默认Formatter为日志系统建立一个StreamHandler，设置基础配置并加到root logger中
+
+Logger
+
+每个程序在输出信息之前都要获得一个Logger。Logger通常对应了程序的模块名，比如聊天工具的图形界面模块可以这样获得它的Logger：
+LOG=logging.getLogger(”chat.gui”)
+而核心模块可以这样：
+LOG=logging.getLogger(”chat.kernel”)
+Logger.setLevel(lel):指定最低的日志级别，低于lel的级别将被忽略。debug是最低的内置级别，critical为最高
+Logger.addFilter(filt)、Logger.removeFilter(filt):添加或删除指定的filter
+Logger.addHandler(hdlr)、Logger.removeHandler(hdlr)：增加或删除指定的handler
+Logger.debug()、Logger.info()、Logger.warning()、Logger.error()、Logger.critical()：可以设置的日志级别
+设置logger的level， level有以下几个级别：
+
+NOTSET < DEBUG < INFO < WARNING < ERROR < CRITICAL
+如果把looger的级别设置为INFO， 那么小于INFO级别的日志都不输出， 大于等于INFO级别的日志都输出
+
+Handlers
+handler对象负责发送相关的信息到指定目的地。Python的日志系统有多种Handler可以使用。有些Handler可以把信息输出到控制台，有些Logger可以把信息输出到文件，还有些 Handler可以把信息发送到网络上。如果觉得不够用，还可以编写自己的Handler。可以通过addHandler()方法添加多个多handler
+Handler.setLevel(lel):指定被处理的信息级别，低于lel级别的信息将被忽略
+Handler.setFormatter()：给这个handler选择一个格式
+Handler.addFilter(filt)、Handler.removeFilter(filt)：新增或删除一个filter对象
+
+Formatters
+
+Formatter对象设置日志信息最后的规则、结构和内容，默认的时间格式为%Y-%m-%d %H:%M:%S，下面是Formatter常用的一些信息
+
+%(name)s
+	
+
+Logger的名字
+
+%(levelno)s
+	
+
+数字形式的日志级别
+
+%(levelname)s
+	
+
+文本形式的日志级别
+
+%(pathname)s
+	
+
+调用日志输出函数的模块的完整路径名，可能没有
+
+%(filename)s
+	
+
+调用日志输出函数的模块的文件名
+
+%(module)s
+	
+
+调用日志输出函数的模块名
+
+%(funcName)s
+	
+
+调用日志输出函数的函数名
+
+%(lineno)d
+	
+
+调用日志输出函数的语句所在的代码行
+
+%(created)f
+	
+
+当前时间，用UNIX标准的表示时间的浮 点数表示
+
+%(relativeCreated)d
+	
+
+输出日志信息时的，自Logger创建以 来的毫秒数
+
+%(asctime)s
+	
+
+字符串形式的当前时间。默认格式是 “2003-07-08 16:49:45,896”。逗号后面的是毫秒
+
+%(thread)d
+	
+
+线程ID。可能没有
+
+%(threadName)s
+	
+
+线程名。可能没有
+
+%(process)d
+	
+
+进程ID。可能没有
+
+%(message)s
+	
+
+用户输出的消息
+
+设置过滤器
+细心的朋友一定会发现前文调用logging.getLogger()时参数的格式类似于“A.B.C”。采取这样的格式其实就是为了可以配置过滤器。看一下这段代码：
+LOG=logging.getLogger(”chat.gui.statistic”)
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter(’%(asctime)s %(levelname)s %(message)s’)
+console.setFormatter(formatter)
+filter=logging.Filter(”chat.gui”)
+console.addFilter(filter)
+LOG.addHandler(console)
+和前面不同的是我们在Handler上添加了一个过滤器。现在我们输出日志信息的时候就会经过过滤器的处理。名为“A.B”的过滤器只让名字带有 “A.B”前缀的Logger输出信息。可以添加多个过滤器，只要有一个过滤器拒绝，日志信息就不会被输出。另外，在Logger中也可以添加过滤器。
+
+每个Logger可以附加多个Handler。接下来我们就来介绍一些常用的Handler：
+1)    logging.StreamHandler
+使用这个Handler可以向类似与sys.stdout或者sys.stderr的任何文件对象(file object)输出信息。它的构造函数是：
+StreamHandler([strm])
+其中strm参数是一个文件对象。默认是sys.stderr
+2)   logging.FileHandler
+和StreamHandler类似，用于向一个文件输出日志信息。不过FileHandler会帮你打开这个文件。它的构造函数是：
+FileHandler(filename[,mode])
+filename是文件名，必须指定一个文件名。
+mode是文件的打开方式。参见Python内置函数open()的用法。默认是’a'，即添加到文件末尾。
+3)   logging.handlers.RotatingFileHandler
+这个Handler类似于上面的FileHandler，但是它可以管理文件大小。当文件达到一定大小之后，它会自动将当前日志文件改名，然后创建 一个新的同名日志文件继续输出。比如日志文件是chat.log。当chat.log达到指定的大小之后，RotatingFileHandler自动把 文件改名为chat.log.1。不过，如果chat.log.1已经存在，会先把chat.log.1重命名为chat.log.2。。。最后重新创建 chat.log，继续输出日志信息。它的构造函数是：
+RotatingFileHandler( filename[, mode[, maxBytes[, backupCount]]])
+其中filename和mode两个参数和FileHandler一样。
+maxBytes用于指定日志文件的最大文件大小。如果maxBytes为0，意味着日志文件可以无限大，这时上面描述的重命名过程就不会发生。
+backupCount用于指定保留的备份文件的个数。比如，如果指定为2，当上面描述的重命名过程发生时，原有的chat.log.2并不会被更名，而是被删除。
+4)   logging.handlers.TimedRotatingFileHandler
+这个Handler和RotatingFileHandler类似，不过，它没有通过判断文件大小来决定何时重新创建日志文件，而是间隔一定时间就 自动创建新的日志文件。重命名的过程与RotatingFileHandler类似，不过新的文件不是附加数字，而是当前时间。它的构造函数是：
+TimedRotatingFileHandler( filename [,when [,interval [,backupCount]]])
+其中filename参数和backupCount参数和RotatingFileHandler具有相同的意义。
+interval是时间间隔。
+when参数是一个字符串。表示时间间隔的单位，不区分大小写。它有以下取值：
+S 秒
+M 分
+H 小时
+D 天
+W 每星期（interval==0时代表星期一）
+midnight 每天凌晨
+5)   logging.handlers.SocketHandler
+6)   logging.handlers.DatagramHandler
+以上两个Handler类似，都是将日志信息发送到网络。不同的是前者使用TCP协议，后者使用UDP协议。它们的构造函数是：
+Handler(host, port)
+其中host是主机名，port是端口名
+7)  logging.handlers.SysLogHandler
+8)  logging.handlers.NTEventLogHandler
+9)  logging.handlers.SMTPHandler
+10) logging.handlers.MemoryHandler
+11) logging.handlers.HTTPHandler
+
+最后举个例子吧：
+
+# encoding:utf-8
+#import logging
+
+#FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
+#logging.basicConfig(format=FORMAT)
+#d = {'clientip': '192.168.0.1', 'user': 'fbloggs'}
+#logger = logging.getLogger('tcpserver')
+#logger.warning('Protocol problem: %s', 'connection reset', extra=d)
+
+#FORMAT = '%(asctime)-15s %(message)s'
+#logging.basicConfig(filename = "C:\\Users\\june\\Desktop\\1.txt", level = logging.DEBUG, filemode = "a", format=FORMAT)  
+#logging.debug('this is a message')  
+#logging.debug('test')  
+
+#import logging
+#import datetime
+#
+#curDate = datetime.date.today() - datetime.timedelta(days=0)
+#logName =  'C:\\Users\\june\\Desktop\\error_%s.log' %curDate
+#
+#logging.basicConfig(level=logging.INFO,
+#				format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+#				#datefmt='%a, %d %b %Y %H:%M:%S',
+#				filename=logName,
+#				filemode='a')
+#
+##2013-10-21 03:25:51,509 writeLog.py[line:14] INFO This is info message
+##2013-10-21 03:25:51,510 writeLog.py[line:15] WARNING This is warning message
+#logging.debug('This is debug message')
+#logging.info('This is info message')
+#logging.warning('This is warning message')import logging
+
+import logging
+logger = logging.getLogger('mylogger')
+logger.setLevel(logging.DEBUG)
+
+# print(os.path.join(results.output_dir, 'debug.log'))
+fh = logging.FileHandler(os.path.join(results.output_dir, 'debug.log'))
+fh.setLevel(logging.INFO)
+
+sh = logging.StreamHandler()
+sh.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+sh.setFormatter(formatter)
+
+logger.addHandler(fh)
+logger.addHandler(sh)
+
+logger.debug(results.output_dir + 'debug.log')
+
+ 
+
+# 定义logger模块，root是父类，必需存在的，其它的是自定义。
+# logging.getLogger(NAME)便相当于向logging模块注册了一种日志打印
+# name 中用 . 表示 log 的继承关系
+[loggers]
+keys=root,infoLogger,errorLogger
+
+# 定义handler
+[handlers]
+keys=infoHandler,errorHandler
+
+# 定义格式化输出
+[formatters]
+keys=infoFmt,errorFmt
+
+#--------------------------------------------------
+# 实现上面定义的logger模块，必需是[logger_xxxx]这样的形式
+#--------------------------------------------------
+# [logger_xxxx] logger_模块名称
+# level     级别，级别有DEBUG、INFO、WARNING、ERROR、CRITICAL
+# handlers  处理类，可以有多个，用逗号分开
+# qualname  logger名称，应用程序通过 logging.getLogger获取。对于不能获取的名称，则记录到root模块。
+# propagate 是否继承父类的log信息，0:否 1:是
+[logger_root]
+level=INFO
+handlers=errorHandler
+
+[logger_errorLogger]
+level=ERROR
+handlers=errorHandler
+propagate=0
+qualname=errorLogger
+
+[logger_infoLogger]
+level=INFO
+handlers=infoHandler
+propagate=0
+qualname=infoLogger
+
+#--------------------------------------------------
+# handler
+#--------------------------------------------------
+# [handler_xxxx]
+# class handler类名
+# level 日志级别
+# formatter，上面定义的formatter
+# args handler初始化函数参数
+
+[handler_infoHandler]
+class=StreamHandler
+level=INFO
+formatter=infoFmt
+args=(sys.stdout,)
+
+[handler_errorHandler]
+class=logging.handlers.TimedRotatingFileHandler
+level=ERROR
+formatter=errorFmt
+# When computing the next rollover time for the first time (when the handler is created),
+# the last modification time of an existing log file, or else the current time,
+# is used to compute when the next rotation will occur.
+# 这个功能太鸡肋了，是从handler被创建的时间算起，不能按自然时间 rotation 切分，除非程序一直运行，否则这个功能会有问题
+# 临时解决方案参考下面的链接：Python 多进程日志记录
+# http://blogread.cn/it/article/4175?f=wb2
+args=('C:\\Users\\june\\Desktop\\error.log', 'M', 1, 5)
+
+#--------------------------------------------------
+# 日志格式
+#--------------------------------------------------
+# %(asctime)s       年-月-日 时-分-秒,毫秒 2013-04-26 20:10:43,745
+# %(filename)s      文件名，不含目录
+# %(pathname)s      目录名，完整路径
+# %(funcName)s      函数名
+# %(levelname)s     级别名
+# %(lineno)d        行号
+# %(module)s        模块名
+# %(message)s       消息体
+# %(name)s          日志模块名
+# %(process)d       进程id
+# %(processName)s   进程名
+# %(thread)d        线程id
+# %(threadName)s    线程名
+
+[formatter_infoFmt]
+format=%(asctime)s %(levelname)s %(message)s
+datefmt=
+class=logging.Formatter
+
+[formatter_errorFmt]
+format=%(asctime)s %(levelname)s %(message)s
+datefmt=
+class=logging.Formatter
+
+##############################################################################
+##############################################################################
+
+# -*- coding:utf8 -*-
+
+[loggers]
+keys=root,infoLogger,errorLogger
+
+[handlers]
+keys=infoHandler,errorHandler
+
+[formatters]
+keys=infoFmt,errorFmt
+
+[logger_root]
+level=INFO
+handlers=errorHandler
+
+[logger_errorLogger]
+level=DEBUG
+handlers=errorHandler,infoHandler
+propagate=0
+qualname=errorLogger
+
+[logger_infoLogger]
+level=INFO
+handlers=infoHandler
+propagate=0
+qualname=infoLogger
+
+#--------------------------------------------------
+# handler
+#--------------------------------------------------
+
+
+[handler_infoHandler]
+class=StreamHandler
+level=INFO
+formatter=infoFmt
+args=(sys.stdout,)
+
+[handler_errorHandler]
+class=FileHandler
+level=DEBUG
+formatter=errorFmt
+args=(r'C:\Users\Jun\Desktop\debug.log', 'a')
+
+
+[formatter_infoFmt]
+format=%(asctime)s %(levelname)s %(message)s
+datefmt=
+class=logging.Formatter
+
+[formatter_errorFmt]
+format=%(asctime)s %(levelname)s %(message)s
+datefmt=
+class=logging.Formatter
+
+ 
+
+# encoding: utf-8
+# parse_slow_log.py -f C:\Users\Jun\Desktop\tjtx-103-26-slow.log.2017-08-29 -d C:\Users\Jun\Desktop
+# 解析 MySQL 慢查询日志
+import os, sys, argparse
+import logging
+import logging.config
+
+# logging.config.fileConfig("logging.conf")
+
+script_path = os.path.split(os.path.realpath(__file__))[0]
+
+DEBUG = True  # 标记是否在开发环境
+
+
+# 给过滤器使用的判断
+class RequireDebugTrue(logging.Filter):
+    # 实现filter方法
+    def filter(self, record):
+        return DEBUG
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-f', action='store', dest='slowlog',
+                    help='slowlog')
+parser.add_argument('-d', action='store', dest='output_dir',
+                    help='output_dir', default=script_path)
+
+results = parser.parse_args()
+if results.slowlog is None:
+    parser.exit(1, parser.format_usage())
+
+debug_log_path = os.path.join(results.output_dir if results.output_dir else script_path, 'debug.log')
+
+log_config_dict = {
+    "version": 1,
+    'disable_existing_loggers': False,  # 是否禁用现有的记录器
+
+    # 日志管理器集合
+    'loggers': {
+        # 管理器
+        'default': {
+            'handlers': ['console', 'log'],
+            'level': 'DEBUG',
+            'propagate': True,  # 是否传递给父记录器
+        },
+    },
+
+    # 处理器集合
+    'handlers': {
+        # 输出到控制台
+        'console': {
+            'level': 'DEBUG',  # 输出信息的最低级别
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',  # 使用standard格式
+            'filters': ['require_debug_true', ],  # 仅当 DEBUG = True 该处理器才生效
+        },
+        # 输出到文件
+        'log': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'standard',
+            'filename': debug_log_path,  # 输出位置
+            'maxBytes': 1024 * 1024 * 5,  # 文件大小 5M
+            'backupCount': 5,  # 备份份数
+            'encoding': 'utf8',  # 文件编码
+        },
+    },
+    # 过滤器
+    'filters': {
+        'require_debug_true': {
+            '()': RequireDebugTrue,
+        }
+    },
+
+    # 日志格式集合
+    'formatters': {
+        # 标准输出格式
+        'standard': {
+            # [具体时间][线程名:线程ID][日志名字:日志级别名称(日志级别ID)] [输出的模块:输出的函数]:日志内容
+            'format': '[%(asctime)s][%(threadName)s:%(thread)d][%(name)s:%(levelname)s(%(lineno)d)]--[%(module)s:%(funcName)s]:%(message)s'
+        }
+    }
+}
+
+logging.config.dictConfig(log_config_dict)
+logger_info = logging.getLogger("default")
+
+
+class Parse_MySQL_Slow_Log:
+    __auther = "June"
+
+    sql_count = 0
+    file_rows = 0
+    word_list = None
+    file_list = None
+    word_file_dict = None
+
+    def __init__(self, slowlog):
+        self.slowlog = slowlog
+        self.word_list = ['select', 'load', 'delete', 'update', 'insert', 'other']
+        self.file_list = [os.path.join(results.output_dir, str(i) + ".sql") for i in self.word_list]
+        self.word_file_dict = dict(zip(self.word_list, self.file_list))
+
+    @staticmethod
+    def rm_file(file_list):
+        for _ in file_list:
+            if os.path.exists(_):
+                os.remove(_)
+                logger_info.debug(_)
+
+    def write_file(self, file_name, data):
+        with open(file_name, 'a') as file_handler:
+            if type(data) is list:
+                for item in data:
+                    file_handler.write(item)
+                file_handler.write("\n")
+                # 文件条数计数器
+                Parse_MySQL_Slow_Log.sql_count += 1
+                logger_info.info("sql count:" + str(Parse_MySQL_Slow_Log.sql_count))
+            else:
+                file_handler.write(data)
+
+    def parse_log(self):
+        with open(self.slowlog, encoding="utf8") as f:
+            tmp_list = []
+            flag = 0
+            flag_word = ""
+            self.rm_file(self.file_list)
+            for line in f:
+                Parse_MySQL_Slow_Log.file_rows += 1
+                logger_info.info(">>>>>>>>>>>> file rows:" + str(Parse_MySQL_Slow_Log.file_rows))
+                if line.startswith('#'):
+                    flag += 1
+
+                for word in self.word_list:
+                    if word in line.lower():
+                        flag_word = word
+                        logger_info.debug("----------------------------" + word)
+
+                if 0 < flag <= 3:
+                    tmp_list.append(line)
+
+                elif flag == 4:
+                    flag = 1
+                    self.write_file(self.word_file_dict.get(flag_word, self.word_file_dict.get("other")), tmp_list)
+                    tmp_list.clear()
+                    tmp_list.append(line)
+                    flag_word = ""
+
+            self.write_file(self.word_file_dict.get(flag_word, self.word_file_dict.get("other")), tmp_list)
+
+
+if __name__ == '__main__':
+    parse_log = Parse_MySQL_Slow_Log(results.slowlog)
+    parse_log.parse_log()
+
+ 
+
+Python标准模块logging    http://blog.csdn.net/fxjtoday/article/details/6307285
+
+Logging Cookbook http://docs.python.org/2/howto/logging-cookbook.html
+
+REF：
+
+[1] [精华] [翻译]python的logging模块配置文件的格式
+
+http://www.python88.com/topic/85
+
+[2] Python多进程log日志切分错误的解决方案
+
+http://bit.ly/2wtkNDJ
+
+[3] Python 多进程日志记录
+
+http://blogread.cn/it/article/4175?f=wb2
+
+[4] Python日志管理(logging模块)
+
+http://yshblog.com/blog/125
+
+[5] argparse - 命令行选项与参数解析（译）
+
+http://blog.xiayf.cn/2013/03/30/argparse/
+
+[6] 一个著名的日志系统是怎么设计出来的？
+
+http://bit.ly/2yLSO3x
+
+[7] 关于 logging 的一些琐事
+
+https://www.keakon.net/2013/02/21/%E5%85%B3%E4%BA%8Elogging%E7%9A%84%E4%B8%80%E4%BA%9B%E7%90%90%E4%BA%8B
