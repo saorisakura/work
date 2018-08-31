@@ -1,0 +1,357 @@
+python logging日志模块以及多进程日志
+
+本篇文章主要对 python logging 的介绍加深理解。更主要是 讨论在多进程环境下如何使用logging 来输出日志， 如何安全地切分日志文件。
+1. logging日志模块介绍
+
+python的logging模块提供了灵活的标准模块，使得任何Python程序都可以使用这个第三方模块来实现日志记录。python logging 官方文档
+
+logging框架中主要由四个部分组成：
+
+    Loggers: 可供程序直接调用的接口
+    Handlers: 决定将日志记录分配至正确的目的地
+    Filters: 提供更细粒度的日志是否输出的判断
+    Formatters: 制定最终记录打印的格式布局
+
+2. logging的组成
+loggers
+
+loggers 就是程序可以直接调用的一个日志接口，可以直接向logger写入日志信息。logger并不是直接实例化使用的，而是通过logging.getLogger(name)来获取对象，事实上logger对象是单例模式，logging是多线程安全的，也就是无论程序中哪里需要打日志获取到的logger对象都是同一个。但是不幸的是logger并不支持多进程，这个在后面的章节再解释，并给出一些解决方案。
+【注意】loggers对象是有父子关系的，当没有父logger对象时它的父对象是root，当拥有父对象时父子关系会被修正。举个例子logging.getLogger("abc.xyz")会创建两个logger对象，一个是abc父对象，一个是xyz子对象，同时abc没有父对象所以它的父对象是root。但是实际上abc是一个占位对象（虚的日志对象），可以没有handler来处理日志。但是root不是占位对象，如果某一个日志对象打日志时，它的父对象会同时收到日志，所以有些使用者发现创建了一个logger对象时会打两遍日志，就是因为他创建的logger打了一遍日志，同时root对象也打了一遍日志。
+
+每个logger都有一个日志的级别。logging中定义了如下级别
+Level 	Numeric value
+NOTSET 	0
+DEBUG 	10
+INFO 	20
+WARNING 	30
+ERROR 	40
+CRITICAL 	50
+
+当一个logger收到日志信息后先判断是否符合level，如果决定要处理就将信息传递给Handlers进行处理。
+Handlers
+
+Handlers 将logger发过来的信息进行准确地分配，送往正确的地方。举个栗子，送往控制台或者文件或者both或者其他地方(进程管道之类的)。它决定了每个日志的行为，是之后需要配置的重点区域。
+
+每个Handler同样有一个日志级别，一个logger可以拥有多个handler也就是说logger可以根据不同的日志级别将日志传递给不同的handler。当然也可以相同的级别传递给多个handlers这就根据需求来灵活的设置了。
+Filters
+
+Filters 提供了更细粒度的判断，来决定日志是否需要打印。原则上handler获得一个日志就必定会根据级别被统一处理，但是如果handler拥有一个Filter可以对日志进行额外的处理和判断。例如Filter能够对来自特定源的日志进行拦截or修改甚至修改其日志级别（修改后再进行级别判断）。
+
+logger和handler都可以安装filter甚至可以安装多个filter串联起来。
+Formatters
+
+Formatters 指定了最终某条记录打印的格式布局。Formatter会将传递来的信息拼接成一条具体的字符串，默认情况下Format只会将信息%(message)s直接打印出来。Format中有一些自带的LogRecord属性可以使用，如下表格:
+Attribute 	Format 	Description
+asctime 	%(asctime)s 	将日志的时间构造成可读的形式，默认情况下是‘2016-02-08 12:00:00,123’精确到毫秒
+filename 	%(filename)s 	包含path的文件名
+funcName 	%(funcName)s 	由哪个function发出的log
+levelname 	%(levelname)s 	日志的最终等级（被filter修改后的）
+message 	%(message)s 	日志信息
+lineno 	%(lineno)d 	当前日志的行号
+pathname 	%(pathname)s 	完整路径
+process 	%(process)s 	当前进程
+thread 	%(thread)s 	当前线程
+
+一个Handler只能拥有一个Formatter 因此如果要实现多种格式的输出只能用多个Handler来实现。
+3. logging 配置
+简易配置
+
+首先在 loggers 章节里说明了一点，我们拥有一个缺省的日志对象root，这个root日志对象的好处是我们直接可以使用logging来进行配置和打日志。例如：
+
+logging.basicConfig(level=logging.INFO,filename='logger.log')
+logging.info("info message")
+
+所以这里的简易配置所指的就是root日志对象，随拿随用。每个logger都是单例对象所以配置过一遍之后程序内任何地方调用都可以。我们只需要调用basicConfig就可以对root日志对象进行简易的配置，事实上这种方式相当有效易用。它使得调用任何logger时保证至少一定会有一个Handler能够处理日志。
+简易配置大致可以这么设置：
+
+logging.basicConfig(level=logging.INFO,
+         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+         datefmt='[%Y-%m_%d %H:%M:%S]',
+         filename='../log/my.log',
+         filemode='a')
+
+代码配置
+
+另一种更加细致地设置方式是在代码中配置，但这种设置方式是使用的最少的方式，毕竟谁也不希望把设置写死到代码里面去。但是这里也稍微介绍一下，虽然用的不多，在必要的时候也可以用一把。(以后补上)
+配置文件配置
+
+python中logging的配置文件是基于ConfigParser的功能。也就是说配置文件的格式也是按照这种方式来编写。先奉上一个比较一般的配置文件再细说
+
+##############################################
+[loggers]
+keys=root, log02
+
+[logger_root]
+level=INFO
+handlers=handler01
+
+
+[logger_log02]
+level=DEBUG
+handler=handler02
+qualname=log02
+##############################################
+[handlers]
+keys=handler01,handler02
+
+[handler_handler01]
+class=FileHandler
+level=INFO
+formatter=form01
+args=('../log/cv_parser_gm_server.log',"a")
+
+[handler_handler02]
+class=StreamHandler
+level=NOTSET
+formatter=form01
+args=(sys.stdout,)
+##############################################
+[formatters]
+keys=form01,form02
+
+[formatter_form01]
+format=%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(process)d %(message)s
+datefmt=[%Y-%m-%d %H:%M:%S]
+
+[formatter_form02]
+format=(message)s
+##############################################
+
+相信看一遍以后，也找出规律了，我将几个大块用#分了出来。每一个logger或者handler或者formatter都有一个key名字。以logger为例，首先需要在[loggers]配置中加上key名字代表了这个logger。然后用[loggers_xxxx]其中xxxx为key名来具体配置这个logger，在log02中我配置了level和一个handler名，当然你可以配置多个hander。根据这个handler名再去 [handlers]里面去找具体handler的配置，以此类推。
+然后在代码中，这样加载配置文件即可：
+
+logging.config.fileConfig(log_conf_file)
+
+在handler中有一个class配置，可能有些读者并不是很懂。其实这个是logging里面原先就写好的一些handler类，你可以在这里直接调用。class指向的类相当于具体处理的Handler的执行者。在logging的文档中可以知道这里所有的Handler类都是线程安全的，大家可以放心使用。那么问题就来了，如果多进程怎么办呢。在下一章我主要就是重写Handler类，来实现在多进程环境下使用logging。 我们自己重写或者全部新建一个Handler类，然后将class配置指向自己的Handler类就可以加载自己重写的Handler了。
+4. logging遇到多进程（important）
+
+这部分其实是我写这篇文章的初衷。python中由于某种历史原因，多线程的性能基本可以无视。所以一般情况下python要实现并行操作或者并行计算的时候都是使用多进程。但是 python 中logging 并不支持多进程，所以会遇到不少麻烦。
+本次就以 TimedRotatingFileHandler 这个类的问题作为例子。这个Handler本来的作用是：按天切割日志文件。（当天的文件是xxxx.log 昨天的文件是xxxx.log.2016-06-01）。这样的好处是，一来可以按天来查找日志，二来可以让日志文件不至于非常大, 过期日志也可以按天删除。
+但是问题来了，如果是用多进程来输出日志，则只有一个进程会切换，其他进程会在原来的文件中继续打，还有可能某些进程切换的时候早就有别的进程在新的日志文件里打入东西了，那么他会无情删掉之，再建立新的日志文件。反正将会很乱很乱，完全没法开心的玩耍。
+所以这里就想了几个办法来解决多进程logging问题
+原因
+
+在解决之前，我们先看看为什么会导致这样的原因。
+先将 TimedRotatingFileHandler 的源代码贴上来，这部分是切换时所作的操作：
+
+    def doRollover(self):
+        """
+        do a rollover; in this case, a date/time stamp is appended to the filename
+        when the rollover happens.  However, you want the file to be named for the
+        start of the interval, not the current time.  If there is a backup count,
+        then we have to get a list of matching filenames, sort them and remove
+        the one with the oldest suffix.
+        """
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        # get the time that this sequence started at and make it a TimeTuple
+        currentTime = int(time.time())
+        dstNow = time.localtime(currentTime)[-1]
+        t = self.rolloverAt - self.interval
+        if self.utc:
+            timeTuple = time.gmtime(t)
+        else:
+            timeTuple = time.localtime(t)
+            dstThen = timeTuple[-1]
+            if dstNow != dstThen:
+                if dstNow:
+                    addend = 3600
+                else:
+                    addend = -3600
+                timeTuple = time.localtime(t + addend)
+        dfn = self.baseFilename + "." + time.strftime(self.suffix, timeTuple)
+        if os.path.exists(dfn):
+            os.remove(dfn)
+        # Issue 18940: A file may not have been created if delay is True.
+        if os.path.exists(self.baseFilename):
+            os.rename(self.baseFilename, dfn)
+        if self.backupCount > 0:
+            for s in self.getFilesToDelete():
+                os.remove(s)
+        if not self.delay:
+            self.stream = self._open()
+        newRolloverAt = self.computeRollover(currentTime)
+        while newRolloverAt <= currentTime:
+            newRolloverAt = newRolloverAt + self.interval
+        #If DST changes and midnight or weekly rollover, adjust for this.
+        if (self.when == 'MIDNIGHT' or self.when.startswith('W')) and not self.utc:
+            dstAtRollover = time.localtime(newRolloverAt)[-1]
+            if dstNow != dstAtRollover:
+                if not dstNow:  # DST kicks in before next rollover, so we need to deduct an hour
+                    addend = -3600
+                else:           # DST bows out before next rollover, so we need to add an hour
+                    addend = 3600
+                newRolloverAt += addend
+        self.rolloverAt = newRolloverAt
+
+我们观察 if os.path.exists(dfn) 这一行开始，这里的逻辑是如果 dfn 这个文件存在，则要先删除掉它，然后将 baseFilename 这个文件重命名为 dfn 文件。然后再重新打开 baseFilename这个文件开始写入东西。那么这里的逻辑就很清楚了
+
+    假设当前日志文件名为 current.log 切分后的文件名为 current.log.2016-06-01
+    判断 current.log.2016-06-01 是否存在，如果存在就删除
+    将当前的日志文件名 改名为current.log.2016-06-01
+    重新打开新文件（我观察到源代码中默认是"a" 模式打开，之前据说是"w"）
+
+于是在多进程的情况下，一个进程切换了，其他进程的句柄还在 current.log.2016-06-01 还会继续往里面写东西。又或者一个进程执行切换了，会把之前别的进程重命名的 current.log.2016-06-01 文件直接删除。又或者还有一个情况，当一个进程在写东西，另一个进程已经在切换了，会造成不可预估的情况发生。还有一种情况两个进程同时在切文件，第一个进程正在执行第3步，第二进程刚执行完第2步，然后第一个进程 完成了重命名但还没有新建一个新的 current.log 第二个进程开始重命名，此时第二个进程将会因为找不到 current 发生错误。如果第一个进程已经成功创建了 current.log 第二个进程会将这个空文件另存为 current.log.2016-06-01。那么不仅删除了日志文件，而且，进程一认为已经完成过切分了不会再切，而事实上他的句柄指向的是current.log.2016-06-01。
+好了这里看上去很复杂，实际上就是因为对于文件操作时，没有对多进程进行一些约束，而导致的问题。
+那么如何优雅地解决这个问题呢。我提出了两种方案，当然我会在下面提出更多可行的方案供大家尝试。
+解决方案1
+
+先前我们发现 TimedRotatingFileHandler 中逻辑的缺陷。我们只需要稍微修改一下逻辑即可：
+
+    判断切分后的文件 current.log.2016-06-01 是否存在，如果不存在则进行重命名。（如果存在说明有其他进程切过了，我不用切了，换一下句柄即可）
+    以"a"模式 打开 current.log
+    发现修改后就这么简单~
+    talking is cheap show me the code:
+
+class SafeRotatingFileHandler(TimedRotatingFileHandler):
+    def __init__(self, filename, when='h', interval=1, backupCount=0, encoding=None, delay=False, utc=False):
+        TimedRotatingFileHandler.__init__(self, filename, when, interval, backupCount, encoding, delay, utc)
+    """
+    Override doRollover
+    lines commanded by "##" is changed by cc
+    """
+    def doRollover(self):
+        """
+        do a rollover; in this case, a date/time stamp is appended to the filename
+        when the rollover happens.  However, you want the file to be named for the
+        start of the interval, not the current time.  If there is a backup count,
+        then we have to get a list of matching filenames, sort them and remove
+        the one with the oldest suffix.
+        
+        Override,   1. if dfn not exist then do rename
+                    2. _open with "a" model
+        """
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        # get the time that this sequence started at and make it a TimeTuple
+        currentTime = int(time.time())
+        dstNow = time.localtime(currentTime)[-1]
+        t = self.rolloverAt - self.interval
+        if self.utc:
+            timeTuple = time.gmtime(t)
+        else:
+            timeTuple = time.localtime(t)
+            dstThen = timeTuple[-1]
+            if dstNow != dstThen:
+                if dstNow:
+                    addend = 3600
+                else:
+                    addend = -3600
+                timeTuple = time.localtime(t + addend)
+        dfn = self.baseFilename + "." + time.strftime(self.suffix, timeTuple)
+##        if os.path.exists(dfn):
+##            os.remove(dfn)
+            
+        # Issue 18940: A file may not have been created if delay is True.
+##        if os.path.exists(self.baseFilename):
+        if not os.path.exists(dfn) and os.path.exists(self.baseFilename):
+            os.rename(self.baseFilename, dfn)
+        if self.backupCount > 0:
+            for s in self.getFilesToDelete():
+                os.remove(s)
+        if not self.delay:
+            self.mode = "a"
+            self.stream = self._open()
+        newRolloverAt = self.computeRollover(currentTime)
+        while newRolloverAt <= currentTime:
+            newRolloverAt = newRolloverAt + self.interval
+        #If DST changes and midnight or weekly rollover, adjust for this.
+        if (self.when == 'MIDNIGHT' or self.when.startswith('W')) and not self.utc:
+            dstAtRollover = time.localtime(newRolloverAt)[-1]
+            if dstNow != dstAtRollover:
+                if not dstNow:  # DST kicks in before next rollover, so we need to deduct an hour
+                    addend = -3600
+                else:           # DST bows out before next rollover, so we need to add an hour
+                    addend = 3600
+                newRolloverAt += addend
+        self.rolloverAt = newRolloverAt
+
+不要以为代码那么长，其实修改部分就是 "##" 注释的地方而已，其他都是照抄源代码。这个类继承了 TimedRotatingFileHandler 重写了这个切分的过程。这个解决方案十分优雅，改换的地方非常少，也十分有效。但有网友提出，这里有一处地方依然不完美，就是rename的那一步，如果就是这么巧，同时两个或者多个进程进入了 if 语句，先后开始 rename 那么依然会发生删除掉日志的情况。确实这种情况确实会发生，由于切分文件一天才一次，正好切分的时候同时有两个Handler在操作，又正好同时走到这里，也是蛮巧的，但是为了完美，可以加上一个文件锁，if 之后加锁，得到锁之后再判断一次，再进行rename这种方式就完美了。代码就不贴了，涉及到锁代码，影响美观。
+解决方案2
+
+我认为最简单有效的解决方案。重写FileHandler类（这个类是所有写入文件的Handler都需要继承的TimedRotatingFileHandler 就是继承的这个类；我们增加一些简单的判断和操作就可以。
+我们的逻辑是这样的：
+
+    判断当前时间戳是否与指向的文件名是同一个时间
+    如果不是，则切换 指向的文件即可
+    结束，是不是很简单的逻辑。
+    talking is cheap show me the code:
+
+class SafeFileHandler(FileHandler):
+    def __init__(self, filename, mode, encoding=None, delay=0):
+        """
+        Use the specified filename for streamed logging
+        """
+        if codecs is None:
+            encoding = None
+        FileHandler.__init__(self, filename, mode, encoding, delay)
+        self.mode = mode
+        self.encoding = encoding
+        self.suffix = "%Y-%m-%d"
+        self.suffix_time = ""
+
+    def emit(self, record):
+        """
+        Emit a record.
+
+        Always check time 
+        """
+        try:
+            if self.check_baseFilename(record):
+                self.build_baseFilename()
+            FileHandler.emit(self, record)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
+            
+    def check_baseFilename(self, record):
+        """
+        Determine if builder should occur.
+        
+        record is not used, as we are just comparing times, 
+        but it is needed so the method signatures are the same
+        """
+        timeTuple = time.localtime()
+        
+        if self.suffix_time != time.strftime(self.suffix, timeTuple) or not os.path.exists(self.baseFilename+'.'+self.suffix_time):
+            return 1
+        else:
+            return 0
+    def build_baseFilename(self):
+        """
+        do builder; in this case, 
+        old time stamp is removed from filename and
+        a new time stamp is append to the filename
+        """
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        
+        # remove old suffix
+        if self.suffix_time != "":
+            index = self.baseFilename.find("."+self.suffix_time)
+            if index == -1:
+                index = self.baseFilename.rfind(".")
+            self.baseFilename = self.baseFilename[:index]
+        
+        # add new suffix
+        currentTimeTuple = time.localtime()
+        self.suffix_time = time.strftime(self.suffix, currentTimeTuple)
+        self.baseFilename  = self.baseFilename + "." + self.suffix_time
+        
+        self.mode = 'a'
+        if not self.delay:
+            self.stream = self._open()
+
+check_baseFilename 就是执行逻辑1判断；build_baseFilename 就是执行逻辑2换句柄。就这么简单完成了。
+这种方案与之前不同的是，当前文件就是 current.log.2016-06-01 ，到了明天当前文件就是current.log.2016-06-02 没有重命名的情况，也没有删除的情况。十分简洁优雅。也能解决多进程的logging问题。
+解决方案其他
+
+当然还有其他的解决方案，例如由一个logging进程统一打日志，其他进程将所有的日志内容打入logging进程管道由它来打理。还有将日志打入网络socket当中也是同样的道理。
+5. 参考资料
+
+python logging 官方文档
+林中小灯的切分方案，方案一就是从这儿来的
