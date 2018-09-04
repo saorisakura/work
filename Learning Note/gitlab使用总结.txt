@@ -1,6 +1,7 @@
 使用git clone命令克隆gitlab上面的项目的时候， 
 出现了remote: HTTP Basic: Access denied fatal: Authentication failed for类似字眼的错误 
 git clone http://账号:密码@git.ops.test.com.cn/root/puppet.git
+git remote add kwd http://root:Gitlab,6Ro0ms@gitlab.example.com/root/kwd.git
 
 卸载CentOS自带的Git
 
@@ -28,3 +29,36 @@ yum remove git
 
 ># git --version
 >git version 2.2.1
+
+
+Command line instructions
+	Git global setup
+
+	git config --global user.name "Administrator"
+	git config --global user.email "admin@example.com"
+
+	Create a new repository
+
+	git clone http://gitlab.example.com/root/kwd.git
+	cd kwd
+	touch README.md
+	git add README.md
+	git commit -m "add README"
+	git push -u origin master
+
+	Existing folder
+
+	cd existing_folder
+	git init
+	git remote add origin http://gitlab.example.com/root/kwd.git
+	git add .
+	git commit -m "Initial commit"
+	git push -u origin master
+
+	Existing Git repository
+
+	cd existing_repo
+	git remote rename origin old-origin
+	git remote add origin http://gitlab.example.com/root/kwd.git
+	git push -u origin --all
+	git push -u origin --tags
