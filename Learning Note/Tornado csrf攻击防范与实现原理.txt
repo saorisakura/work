@@ -1,0 +1,141 @@
+Tornado csrf攻击防范与实现原理
+
+csrf 跨站请求伪造
+跨站请求伪造（英语：Cross-site request forgery），也被称为 one-click attack 或者 session riding，通常缩写为 CSRF 或者 XSRF， 是一种挟制用户在当前已登录的Web应用程序上执行非本意的操作的攻击方法。[1] 跟跨网站脚本（XSS）相比，XSS 利用的是用户对指定网站的信任，CSRF 利用的是网站对用户网页浏览器的信任。
+
+Tornado 防范
+Tornado 防范 csrf 攻击主要是通过添加校验 token 的方式，可以通过打开 xsrf_cookies=True 选项开启此功能，在生成表单的时候在 template 中调用 module xsrf_form_html() 可以生成一个隐藏的数据项 token， 当客户端提交表单时此数据项会一起提交进行校验。正常的访问时，客户端浏览器能够正确得到并传回这个伪乱数而通过CSRF传来的欺骗性攻击中，攻击者无从事先得知这个伪乱数的值，服务器端就会因为校验token的值为空或者错误，拒绝这个可疑请求。
+
+实现原理
+正常情况下，我们的表单提交过程是这样的：
+
+客户端获取页面，Tornado 结合 cookies中的 _xsrf 在表单中生成一个隐藏的 token 字段（第一次访问页面会得到一个 cookies 数据项 _xsrf=2|eb9cbd43|daab7d1c94cbc7a78f20ea4d932c5597|1465017068，表单中的 token 格式与此相似）
+客户端 post 表单数据到服务器，隐藏的 token 也会提交
+服务器开始校验在 post 方法中得到 token 参数值，将 token 解码后得到真正的 token，与 cookies 中的 _xsrf 进行比对校验，相等则接受提交数据，否则返回 403
+具体实现
+主要实现参考 tornado.web.RequestHandler
+
+第一次访问页面如果客户端没有 cookies 数据项 _xsrf，在这里将会进行设置，
+下面代码主要是获取 xsrf_token，如果没有就初始化并设置客户端 cookies,通过该函数可以大致了解 _xsrf 各个部分的具体含义
+
+@property
+def xsrf_token(self):
+    """The XSRF-prevention token for the current user/session.
+
+    To prevent cross-site request forgery, we set an '_xsrf' cookie
+    and include the same '_xsrf' value as an argument with all POST
+    requests. If the two do not match, we reject the form submission
+    as a potential forgery.
+
+    See http://en.wikipedia.org/wiki/Cross-site_request_forgery
+
+    .. versionchanged:: 3.2.2
+       The xsrf token will now be have a random mask applied in every
+       request, which makes it safe to include the token in pages
+       that are compressed.  See http://breachattack.com for more
+       information on the issue fixed by this change.  Old (version 1)
+       cookies will be converted to version 2 when this method is called
+       unless the ``xsrf_cookie_version`` `Application` setting is
+       set to 1.
+    """
+    if not hasattr(self, "_xsrf_token"):
+        version, token, timestamp = self._get_raw_xsrf_token()
+        output_version = self.settings.get("xsrf_cookie_version", 2)
+        if output_version == 1:
+            self._xsrf_token = binascii.b2a_hex(token)
+        elif output_version == 2:
+            mask = os.urandom(4)
+            self._xsrf_token = b"|".join([
+                b"2",
+                binascii.b2a_hex(mask),
+                binascii.b2a_hex(_websocket_mask(mask, token)),
+                utf8(str(int(timestamp)))])
+        else:
+            raise ValueError("unknown xsrf cookie version %d",
+                             output_version)
+        if version is None:
+            expires_days = 30 if self.current_user else None
+            self.set_cookie("_xsrf", self._xsrf_token,
+                            expires_days=expires_days)
+    return self._xsrf_token
+在 template 中调用 module xsrf_form_html() 可以得到隐藏的 token 表单数据项
+
+def xsrf_form_html(self):
+    """An HTML ``<input/>`` element to be included with all POST forms.
+
+    It defines the ``_xsrf`` input value, which we check on all POST
+    requests to prevent cross-site request forgery. If you have set
+    the ``xsrf_cookies`` application setting, you must include this
+    HTML within all of your HTML forms.
+
+    In a template, this method should be called with ``{% module
+    xsrf_form_html() %}``
+
+    See `check_xsrf_cookie()` above for more information.
+    """
+    return '<input type="hidden" name="_xsrf" value="' + \
+        escape.xhtml_escape(self.xsrf_token) + '"/>'
+表单提交的时候，主要校验过程如下：
+
+def check_xsrf_cookie(self):
+    """Verifies that the ``_xsrf`` cookie matches the ``_xsrf`` argument.
+
+    To prevent cross-site request forgery, we set an ``_xsrf``
+    cookie and include the same value as a non-cookie
+    field with all ``POST`` requests. If the two do not match, we
+    reject the form submission as a potential forgery.
+
+    The ``_xsrf`` value may be set as either a form field named ``_xsrf``
+    or in a custom HTTP header named ``X-XSRFToken`` or ``X-CSRFToken``
+    (the latter is accepted for compatibility with Django).
+
+    See http://en.wikipedia.org/wiki/Cross-site_request_forgery
+
+    Prior to release 1.1.1, this check was ignored if the HTTP header
+    ``X-Requested-With: XMLHTTPRequest`` was present.  This exception
+    has been shown to be insecure and has been removed.  For more
+    information please see
+    http://www.djangoproject.com/weblog/2011/feb/08/security/
+    http://weblog.rubyonrails.org/2011/2/8/csrf-protection-bypass-in-ruby-on-rails
+
+    .. versionchanged:: 3.2.2
+       Added support for cookie version 2.  Both versions 1 and 2 are
+       supported.
+    """
+    token = (self.get_argument("_xsrf", None) or
+             self.request.headers.get("X-Xsrftoken") or
+             self.request.headers.get("X-Csrftoken"))
+    if not token:
+        raise HTTPError(403, "'_xsrf' argument missing from POST")
+    _, token, _ = self._decode_xsrf_token(token)
+    _, expected_token, _ = self._get_raw_xsrf_token()
+    if not _time_independent_equals(utf8(token), utf8(expected_token)):
+        raise HTTPError(403, "XSRF cookie does not match POST argument")
+其中 expected_token 是通过客户端的 cookies 得来：
+
+def _get_raw_xsrf_token(self):
+    """Read or generate the xsrf token in its raw form.
+
+    The raw_xsrf_token is a tuple containing:
+
+    * version: the version of the cookie from which this token was read,
+      or None if we generated a new token in this request.
+    * token: the raw token data; random (non-ascii) bytes.
+    * timestamp: the time this token was generated (will not be accurate
+      for version 1 cookies)
+    """
+    if not hasattr(self, '_raw_xsrf_token'):
+        cookie = self.get_cookie("_xsrf")
+        if cookie:
+            version, token, timestamp = self._decode_xsrf_token(cookie)
+        else:
+            version, token, timestamp = None, None, None
+        if token is None:
+            version = None
+            token = os.urandom(16)
+            timestamp = time.time()
+        self._raw_xsrf_token = (version, token, timestamp)
+    return self._raw_xsrf_token
+通过以上方法可以有效的防范 xsrf 跨站请求攻击，有同学好奇的问，假如在攻击页面中先请求被攻击页面，获取到一个表单 token 值,然后通过 js 将表单数据连带该 token 一起提交不就可以。这是行不通的，因为在攻击页面读取不到被攻击页面域的 cookies, 在 post 表单的时候没有正确的 cookies 或者压根就没有 cookies 上传到服务器（在 tornado 中是指 cookies 中的 _xsrf 字段），验证自然通不过。
+
+以上只是个人结合 Tornado 源码对 xsrf 的理解，刚刚开始了解 Web 安全，有不对的地方希望能够指正。

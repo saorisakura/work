@@ -1,0 +1,30 @@
+Tornado开发中的Database Driver是什么？
+我了解到知乎是用Tornado做得开发，数据库不确定是不是MySQL，如果是MySQL，Python目前现有的几个MySQL Driver比如mysql-connector-python和MySQL-python，我所知得都无法和Tornado IOLoop结合工作，请问在知乎的开发中是如何解决数据库查询这块的阻塞问题的？
+
+
+知乎在早期时，基本没利用到 Tornado 的异步，大都是靠多进程来解决阻塞问题的。
+
+实际上以知乎的访问量，如果请求都落到 MySQL 上，它早就扛不住了，根本轮不到 web 服务器撒娇。
+所以绝大部分的请求会落到缓存和任务队列上，也就基本不会被 MySQL 拖慢了。
+之后则是推行服务化，将对 MySQL 的访问封装到各个服务中。这些服务本身在执行时可以阻塞，但 Tornado 可以异步调用服务。
+不过我没参与，所以不知道现在的进展是怎样的。
+发布于 2015-07-05
+罗然
+罗然
+清风笑，竟惹基佬
+
+的确如此，本来tornado的定位有点像nodejs，只用来扛并发，不处理特别复杂的业务。比线程模型好的地方在于新的socket进来总是能及时的accept掉，不会挂起失去响应，即便我业务处理慢也没关系，连接来多少accept多少。并发就是这么整起来的。
+
+流行的mysql driver是没有异步非阻塞的，但是torndb是针对tornado的数据库封装的一个库，貌似已经独立出去了，没怎么关注，毕竟全异步代码写起来比较麻烦。特别对于重业务的场景逻辑尤其复杂的时候。
+嘛，自己写轮子恐怕很幸苦，我有看过mysqldb的connection底层socket是用c语言写的，貌似要纳入ioloop管理体系也很麻烦，所以如果要自己来搞，可用纯socket的方式，设置非阻塞，丢到ioloop里面，然后按照mysql白皮书去解析数据流（也可能有库可以利用解析）。能把这个轮子写出来的人估计也是牛逼的不行。
+还有另一种思路，对于阻塞io多线程是最好的并发模型，利用多线程去接管tornado的请求，让tornado这一层只负责解析http文本协议，不处理具体的业务。
+1.交给线程去处理（tornado+threadpool改造计划GitHub - nikoloss/iceworld: tonado的multi-thread 多线程封装）
+2.直接交出去给请求队列request queue，由队列把请求分发给各个服务，各个服务处理完毕之后再把response汇报给消息队列，tornado再去队列中拿response回写socket。这种方式适合分布式场景（GitHub - nikoloss/cellnest: 自治restful api service集群）
+
+pymysql的作者在github上开源了一个基于torbado异步的开源库，符合体主 与 tornado ioloop结合工作的要求……
+
+地址
+https://github.com/PyMySQL/Tornado-MySQL
+
+github上也有其他异步mysql 库可以使用
+不清楚知乎用的什么，可能是自己写得轮子吧
