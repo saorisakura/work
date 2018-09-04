@@ -1,0 +1,173 @@
+
+Tutorial
+Jason Moon edited this page on 15 Jun 2013 · 13 revisions
+Quick start
+To familiarize yourself with pyinotify, run a first example like this from its local directory:
+
+$ python pyinotify.py  # By default watch /tmp for all events
+$ python pyinotify.py my-dir-to-watch  # Watch the path my-dir-to-watch for all events
+Or if you already have installed pyinotify you could use this command:
+
+$ python -m pyinotify
+$ python -m pyinotify my-dir-to-watch
+Obviously my-dir-to-watch must be a path leading to a valid directory. If you go into that directory, and take some actions on its content (read a file...) you should observe new events.
+
+Type this command to visualize all the different options:
+
+$ python pyinotify.py -h
+Short Tutorial
+Let's start a more detailed example. Say, we want to monitor the temp directory /tmp and all its subdirectories for every new file creation or deletion. For sake of simplicity, we only print messages for every notification on standard output.
+
+Now there are several strategies for reading the events and taking appropriate actions, among them there are three popular patterns:
+
+Monitoring endlessly with loop()'s method of Notifier, in this case the current process will be dedicated to this task, maybe interleaving each non-deterministic event loop with an unrelated callback method execution if needed (e.g. see method on_loop() in daemon.py).
+Monitoring periodically by constructing your Notifier with a timeout value and explicitly calling processing methods whenever it's convenient. In this case it does not block your current thread but it could also lead to a small loss of reactivity or an increased use of resources if timeout value is set too small.
+Spawning a new thread for monitoring events independently, this method instantiates ThreadedNotifier.
+Asynchronously monitoring via the AsyncNotifier class.
+Which is the right strategy mainly depends on your needs and on your context, in the next sections we will briefly implement each ones of these strategies.
+
+Common Code
+import pyinotify
+
+# The watch manager stores the watches and provides operations on watches
+wm = pyinotify.WatchManager()
+
+mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE  # watched events
+
+class EventHandler(pyinotify.ProcessEvent):
+    def process_IN_CREATE(self, event):
+        print "Creating:", event.pathname
+
+    def process_IN_DELETE(self, event):
+        print "Removing:", event.pathname
+The EventHandler class inherits from a processing base class called ProcessEvent; it handles notifications and takes actions through specific processing methods. For an EVENT_TYPE, a process_EVENT_TYPE function will execute. See EventsCodes for more details.
+
+Next, we describe respectively the code instanciating Notifier's class and the one using ThreadedNotifier
+
+1. Using the Notifier class without timeout
+The corresponding tutorial file can be found here: tutorial_notifier.py.
+
+      handler = EventHandler()
+      notifier = pyinotify.Notifier(wm, handler)
+      # Internally, 'handler' is a callable object which on new events will be called like this: handler(new_event)
+The next statement adds a new watch on the first parameter and recursively on all its subdirectories (with rec=True), note that symlinks are not followed. By default, the monitoring is limited to the level of the given directory. It returns a dict where keys are paths and values are their corresponding watch descriptors (wd). An unique wd is attributed to every new watch. It is useful (and often necessary) to keep those wds for further updating or removing some of those watches.
+
+      wdd = wm.add_watch('/tmp', mask, rec=True)
+With this last statement your program starts processing the events. The call to this method is blocking until we type c-c (sigint)
+
+      notifier.loop()
+2. Using the Notifier class with a timeout
+Alternatively, if you wish to check for events periodically instead of blocking, construct your Notifier with a short timeout value:
+
+      notifier = Notifier(wm, p, timeout=10)
+And check for and process events with a function such as this:
+
+      def quick_check(notifier):
+            assert notifier._timeout is not None, 'Notifier must be constructed with a short timeout'
+            notifier.process_events()
+            while notifier.check_events():  #loop in case more events appear while we are processing
+                  notifier.read_events()
+                  notifier.process_events()
+This method is ideal for event-driven GUI applications (e.g. GTK). You can setup a timer event which calls quick_check() every few hundred milliseconds. This primary advantage of this is that inotify's events are processed in the same thread as other GUI events thus avoiding the complexity of multi-threaded applications. On the downside, it risks over-polling if the timeout value is too small; you'll have to find the right balance between reactivity and resources overhead.
+
+3. Using the ThreadedNotifier Class
+The corresponding tutorial file can be found here: tutorial_threadednotifier.py.
+
+      notifier = pyinotify.ThreadedNotifier(wm, EventHandler())
+      # Start the notifier from a new thread, without doing anything as no directory or file are currently monitored yet.
+      notifier.start()
+      # Start watching a path
+      wdd = wm.add_watch('/tmp', mask, rec=True)
+At any moment we can for example remove the watch on /tmp like that
+
+      if wdd['/tmp'] > 0:  # test if the wd is valid, ie. if /tmp is being watched, this test is not mandatory though
+         wm.rm_watch(wdd['/tmp'])
+Note that its subdirectories (if any) are still being watched. If we wanted to remove /tmp and all the watches on its subdirectories, we'd have to proceed like this
+
+      wm.rm_watch(wdd['/tmp'], rec=True)
+Or even better like this
+
+      wm.rm_watch(wdd.values())
+This is it, most of the code is written, next, we can add, update or remove watches on files or directories with the same principles. The only remaining important task is to stop the thread when we want stop monitoring
+
+      notifier.stop()
+4. Using the AsyncNotifier Class
+The corresponding tutorial file can be found here: tutorial_asyncnotifier.py.
+
+notifier = pyinotify.AsyncNotifier(wm, EventHandler())
+wdd = wm.add_watch('/tmp', mask, rec=True)
+
+import asyncore
+asyncore.loop()
+This class AsyncNotifier relies on Python standard module asyncore and is a possible alternative for polling events.
+
+Testing it
+You can download these two previous examples here tutorial_notifier.py and tutorial_threadednotifier.py
+
+For the first example you can execute it in a console:
+
+$ python tutorial_notifier.py
+Then, in another console execute the following commands:
+
+$ touch /tmp/foo && rm -f /tmp/foo
+The first console should display now:
+
+Creating: /tmp/foo
+Removing: /tmp/foo
+
+Handling Events
+Niko Ehrenfeuchter edited this page on 30 Jun 2015 · 6 revisions
+Subclassing ProcessEvent
+We can subclass ProcessEvent and provide our own event handler by defining appropriate methods. See the commented example below:
+
+import pyinotify
+
+class MyEventHandler(pyinotify.ProcessEvent):
+    def my_init(self, file_object=sys.stdout):
+        """
+        This is your constructor it is automatically called from
+        ProcessEvent.__init__(), And extra arguments passed to __init__() would
+        be delegated automatically to my_init().
+        """
+        self._file_object = file_object
+
+    def process_IN_DELETE(self, event):
+        """
+        This method processes a specific type of event: IN_DELETE. event
+        is an instance of Event.
+        """
+        self._file_object.write('deleting: %s\n' % event.pathname)
+
+    def process_IN_CLOSE(self, event):
+        """
+        This method is called on these events: IN_CLOSE_WRITE and
+        IN_CLOSE_NOWRITE.
+        """
+        self._file_object.write('closing: %s\n' % event.pathname)
+
+    def process_default(self, event):
+        """
+        Eventually, this method is called for all others types of events.
+        This method can be useful when an action fits all events.
+        """
+        self._file_object.write('default processing\n')
+
+# A way to instantiate this class could be:
+p = MyEventHandler(file('/tmp/output', 'w'))
+Explanations and details:
+
+IN_DELETE has a specific method. An individual processing method is provided by a method whose the name is written with a specific syntax: process_EVENT_NAME where EVENT_NAME is the name of the current event to process.
+Related events most of the time need the same treatment. In those cases shared methods can be defined avoiding duplicating chunks of codes. Like for instance for those two following related events:
+      mask = pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CLOSE_NOWRITE
+It is enough to implement a method named process_IN_CLOSE (according to pattern process_IN_FAMILYBASENAME) to handle both types of events. Beware though, not to also implement process_IN_CLOSE_WRITE or process_IN_CLOSE_NOWRITE, because if defined these methods would have an higher precedence (see below) over process_IN_CLOSE and the latter would not be called.
+
+ALL_EVENTS isn't an event by itself, it is the aggregation of all events codes, that means that you can't implement the method process_ALL_EVENTS.
+If we need to apply a single treatment whatever the kind of event received or if we need to have a fall back method for unexpected events, we just need to implement process_default which is the default method.
+Processing methods lookup's order (by increasing order of priority): specialized methods (eg: process_IN_CLOSE_WRITE) first, then family methods (eg: process_IN_CLOSE), finally default method process_default.
+One more thing: say you redefine the method process_default which contains the instruction os.ismount(my-mount-point), it would be for example a mistake having this method called for every event IN_OPEN occurring on /etc. Because, one particularity of os.ismount is to check in /etc/mtab if the partition is mounted, in this case it would lead to an endless situation: process_IN_OPEN called, /etc/mtab opened, process_IN_OPEN called, /etc/mtab opened... looping forever.
+Whenever possible you should process your notifications this way:
+
+notifier = pyinotify.Notifier(wm, MyEventHandler())
+But, some watches may need a different kind of processing, you can attach them a specialized instance which will be called only on their associated watch:
+
+wm.add_watch('/one/path', pyinotify.ALL_EVENTS, proc_fun=MyEventHandler())
