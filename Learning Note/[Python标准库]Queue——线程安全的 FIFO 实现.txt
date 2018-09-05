@@ -129,3 +129,35 @@ print '*** Main thread waiting'
 enclosure_queue.join()
 print '*** Done'
         具体的输出取决于所使用的 RSS 提要的内容。
+		
+
+
+python多线程不能利用多核，所以一般用多进程方式做替代，常常需要用Queue来做任务队列，这几天用的时候发现这么一个坑
+
+python标准库中的 Queue.Queue()对多线程是安全的，但是对多进程是非进程安全的
+
+比如在使用队列为Queue.Queue()的时候
+多线程
+th = threading.Thread(target=self._slave_processing_duty)
+运行状态
+前面是多进程启动的进程id, 后面是示例代码的request,是一个tuple，在传入queue的时候是唯一的
+pid      req
+15254 ('hot', 'word_name', 'hot', 0, 0, '14', 30, '2013-04-17')
+15262 ('hot', 'word_name', 'new', 0, 0, '14', 30, '2013-04-17')
+15254 ('hot', 'word_name', 'popular', 0, 0, '14', 30, '2013-04-17')
+
+多进程
+ th = multiprocessing.Process(target=self._slave_processing_duty)
+运行状态
+pid      req
+10970 ('hot', 'word_name', 'hot', 0, 0, '14', 30, '2013-04-17')
+10971 ('hot', 'word_name', 'hot', 0, 0, '14', 30, '2013-04-17')
+10970 ('hot', 'word_name', 'new', 0, 0, '14', 30, '2013-04-17')
+10971 ('hot', 'word_name', 'new', 0, 0, '14', 30, '2013-04-17')
+10970 ('hot', 'word_name', 'popular', 0, 0, '14', 30, '2013-04-17')
+10971 ('hot', 'word_name', 'popular', 0, 0, '14', 30, '2013-04-17')
+
+解决方案
+python 多进程实现了进程安全版本的Queue
+multiprocessing.Queue()
+如果使用多进程要用这个Queue
