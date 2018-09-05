@@ -1,0 +1,114 @@
+更改日志输出格式
+默认情况下，采用tornado的web框架运行起来之后，任何访问都会直接在控制台输出日志信息，格式如下:
+
+[I 160807 09:27:17 web:1971] 200 GET / (::1) 7.00ms
+[I 160807 09:27:23 web:1971] 200 GET /login (::1) 12.00ms
+这条日志的信息量其实不小，每个字段的含义分别是:
+
+I	INFO
+160807	日期
+09:27:23	具体时间
+web	模块名称
+1971	在第几行执行打印输出的这条日志信息
+200 GET / (::1) 7.00ms	输出的内容.
+ 
+
+这样的日志格式以及信息也许符合 Ben Darnell 大神个人(或老外)的统一标准, 但是并不符合我的要求.
+
+按照我理想中的日志格式，细化下来应该是这个样子的:
+
+[2016-08-07 09:38:01 执行文件名:执行函数名:执行行数 日志等级] 内容消息
+经过近3个小时的stackoverflow搜索（其实没有结果）、翻看官网介绍以及源码分析，最终我的实现方式是:
+
+1. 在启动文件(main.py)中创建一个日志格式类(继承tornado.log.LogFormatter).
+
+2. 重新定义输出格式(具体请参考下面提供的样例代码).
+
+3. 重置logger.handlers对象的LogFormatter对象.
+
+# 代码: tornado_loggerFormatter.py
+
+# -.- coding:utf-8 -.-
+# __author__ = 'zhengtong'
+import tornado.ioloop
+import tornado.web
+import tornado.options
+import tornado.httpserver
+import tornado.concurrent
+import tornado.log
+import logging
+import os
+
+class Application(tornado.web.Application):
+    def __init__(self):
+        handlers = [
+            ('/', DemoHandler),
+        ]
+
+        self.settings = dict(
+            template_path=os.path.join(os.path.dirname(__file__), "templates"),
+            static_path=os.path.join(os.path.dirname(__file__), "static"),
+            cookie_secret='MEZzzzzzl4NkRWFtb3zzzzg3Y1JMZm5IMnBDcZEXOVhCNXNzzzzRWXJ6ax2d0pzzzz=',
+            xsrf_cookies=True,
+            compress_response=True,
+            login_url='/',
+        )
+        super(Application, self).__init__(handlers, **self.settings)
+
+
+class DemoHandler(tornado.web.RequestHandler):
+
+    def get(self, *args, **kwargs):
+        self.write('hello world!')
+
+
+class LogFormatter(tornado.log.LogFormatter):
+
+    def __init__(self):
+        super(LogFormatter, self).__init__(
+            fmt='%(color)s[%(asctime)s %(filename)s:%(funcName)s:%(lineno)d %(levelname)s]%(end_color)s %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
+
+def main():
+    tornado.options.define("port", default=80, help="run on the given port", type=int)
+    tornado.options.parse_command_line()
+    [i.setFormatter(LogFormatter()) for i in logging.getLogger().handlers]
+    http_server = tornado.httpserver.HTTPServer(Application())
+    http_server.listen(tornado.options.options.port)
+    tornado.ioloop.IOLoop.current().start()
+
+
+if __name__ == "__main__":
+    main()
+#运行结果
+
+[2016-08-07 09:50:13 web.py:log_request:1971 INFO] 200 GET / (::1) 2.00ms
+ 
+
+ 
+
+日志保存到文件中
+...
+...
+
+def main():
+    ...
+    tornado.options.define("log_file_prefix", default="/tmp/tornado_main.log")
+    tornado.options.parse_command_line()
+    ...
+
+ 
+
+ 
+
+日志文件按时间日期分割
+...
+...
+
+def main():
+    ...
+    tornado.options.define("log_rotate_mode", default='time')   # 轮询模式: time or size
+    tornado.options.define("log_rotate_when", default='S')      # 单位: S / M / H / D / W0 - W6
+    tornado.options.define("log_rotate_interval", default=60)   # 间隔: 60秒
