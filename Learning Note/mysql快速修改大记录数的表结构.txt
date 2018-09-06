@@ -1,0 +1,108 @@
+mysql快速修改大记录数的表结构
+
+最近工作中遇到一个问题，就是一个业务系统使用记录数比较多的数据表因为新的业务需求，需要变更表结构，增加几个字段或者修改现有字段的数据长度。
+可以用mysql的alter table命令，但是Mysql的ALTER TABLE运行时会对原表进行临时复制，在副本上进行更改，然后删除原表，再对新表进行重命名。在执行ALTER TABLE时，其它用户可以阅读原表，但是对表的更新和修改的操作将被延迟，直到新表生成为止(参考http://dev.mysql.com/doc/refman/5.1/zh/sql-syntax.html#alter-table)。
+
+实际测试中对于数据量比较大的表，运用以上方式速度非常慢，而且运行过程中不方便查看进度，经过最近几次尝试和实际操作，采用下面的方式速度上能有大的改善，而且可以方便的查看进度，方法步骤如下：
+1、按照需要修改后的结构建立新数据表，例如原表是tab，新表则为tab_new
+2、设置mysql参数，为了导入导出数据更快
+set global innodb_flush_log_at_trx_commit=0;
+//innodb表需要做此设置 myISAM表无需
+//(参考http://www.cnblogs.com/whiteyun/archive/2011/12/01/2270132.html）
+set global KEY_BUFFER_SIZE=1099511627776;
+    SET SESSION BULK_INSERT_BUFFER_SIZE=1099511627776;
+    SET SESSION MYISAM_SORT_BUFFER_SIZE=1099511627776;
+3、锁定要操作的表的写操作
+lock tables tab write,tab_new write;
+4、导出旧表数据
+select * from tab INTO OUTFILE '/tmp/tab.txt'
+//如果新加字段，记得在select *后面加上新加字段的默认值
+5、数据写入新表
+Load data infile '/tmp/tab.txt' into table tab_new;
+//过程中可以用show table status from DBNAME where name='tab_new'\G查看进度，关注自增ID
+6、重命名旧表到临时表
+alter table tab rename tab_old;
+7、重命名新表到旧表
+alter table tab_new rename tab;
+8、解锁表
+unlock tables;
+9、恢复mysql关键系统参数
+set global innodb_flush_log_at_trx_commit=1;
+
+以上步骤除了第5步外，其他几步的速度都很快，第5步的完成速度取决于数据表的记录数量和记录的大小，实际测试300多万数据表(导出的数据文件大概500M)大概8分钟导完，当然如果你数据表的记录全是一些文本、图片之类的大字段，导入速度会慢很多。
+
+
+mysql命令更改表结构：添加、删除、修改字段、调整字段顺序
+
+
+常用的通过mysql命令来更改表结构的一些sql语句，包括添加、删除、修改字段、调整字段顺序。
+
+添加字段：
+
+alter table `user_movement_log` Add column GatewayId int not null default 0 AFTER `Regionid`; (在哪个字段后面添加)
+
+删除字段：
+
+alter table `user_movement_log` drop column Gatewayid;
+
+调整字段顺序：
+
+ALTER TABLE `user_movement_log` CHANGE `GatewayId` `GatewayId` int not null default 0 AFTER RegionID;
+
+//主键
+
+alter table tabelname add new_field_id int(5) unsigned default 0 not null auto_increment ,add primary key (new_field_id);
+
+//增加一个新列
+
+alter table t2 add d timestamp;
+alter table infos add ex tinyint not null default '0';
+
+//删除列
+
+alter table t2 drop column c;
+
+//重命名列
+
+alter table t1 change a b integer;
+
+//改变列的类型
+
+alter table t1 change b b bigint not null;
+alter table infos change list list tinyint not null default '0';
+
+//重命名表
+
+alter table t1 rename t2;
+
+加索引
+
+mysql> alter table tablename change depno depno int(5) not null;
+mysql> alter table tablename add index 索引名 (字段名1[，字段名2 …]);
+mysql> alter table tablename add index emp_name (name);
+
+加主关键字的索引
+
+mysql> alter table tablename add primary key(id);
+
+加唯一限制条件的索引
+
+mysql> alter table tablename add unique emp_name2(cardnumber);
+
+删除某个索引
+
+mysql>alter table tablename drop index emp_name;
+
+修改表：
+
+增加字段：
+
+mysql> ALTER TABLE table_name ADD field_name field_type;
+
+修改原字段名称及类型：
+
+mysql> ALTER TABLE table_name CHANGE old_field_name new_field_name field_type;
+
+删除字段：
+
+mysql> ALTER TABLE table_name DROP field_name;
