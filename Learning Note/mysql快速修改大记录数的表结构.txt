@@ -1,3 +1,16 @@
+mysql查看各个表中的记录数
+
+information_schema 数据库，在该库中有一个 TABLES 表，这个表主要字段分别是：
+
+TABLE_SCHEMA : 数据库名
+TABLE_NAME：表名
+ENGINE：所使用的存储引擎
+TABLES_ROWS：记录数
+DATA_LENGTH：数据大小
+INDEX_LENGTH：索引大小
+
+select table_schema,table_name,table_rows from tables order by table_rows desc;
+
 mysql快速修改大记录数的表结构
 
 最近工作中遇到一个问题，就是一个业务系统使用记录数比较多的数据表因为新的业务需求，需要变更表结构，增加几个字段或者修改现有字段的数据长度。
