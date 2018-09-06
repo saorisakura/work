@@ -1,0 +1,37 @@
+刚把博客从百度云搬到腾讯云，发现文章少了几篇。当时在导入dump数据的时候，就曾经发现mysql提示：
+
+ERROR 2006 (HY000): MySQL server has gone away
+No connection. Trying to reconnect...
+后来检查了没有导入成功的几篇文章，其大小都在1MB以上，会不会是单条记录太大了导致出现ERROR 2006 (HY000): MySQL server has gone away的呢？
+
+查看允许的最大值
+登陆MySQL后，使用如下命令查询：
+
+mysql> show global variables like 'max_allowed_packet';
+输出：
+
++--------------------+---------+
+| Variable_name      | Value   |
++--------------------+---------+
+| max_allowed_packet | 1048576 |
++--------------------+---------+
+1 row in set (0.01 sec)
+上限是刚好1MB，怪不得报错。
+
+提高packet上限
+即时生效方法
+使用如下命令：
+
+mysql> set global max_allowed_packet=1024*1024*16;
+可在不重启MySQL的情况下立即生效，但是重启后就会恢复原样。
+
+永久生效方法
+编辑/etc/my.cnf，将
+
+max_allowed_packet = 1M
+修改为
+
+max_allowed_packet = 16M
+即可。
+
+之后重新导入，就不会产生ERROR 2006 (HY000): MySQL server has gone away错误了。
