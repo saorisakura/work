@@ -1,0 +1,278 @@
+python 常用的模块 optparse与ConfigParser
+jinlinger关注0人评论1478人阅读2015-10-30 17:15:46
+一、optparse 模块
+
+  功能：optparse模块用于处理命令行参数
+
+        使用流程：
+
+    1、首先，必须 import OptionParser 类，创建一个 OptionParser 对象：
+
+from optparse import OptionParser
+
+def Opt ():
+   parser=OptionParser("Usage: %prog -o option -d domain -s subject")
+   2、使用 add_option 来定义命令行参数：
+
+   parser.add_option("-d",
+                      "--domain",
+                      dest="domain",
+                      default=False,
+                      action="store_true",
+                      help="special domain_name or domain_name/user",)
+   parser.add_option("-s",
+                      "--subject",
+                      dest="subject",
+                      default=False,
+                      action="store_true",
+                      help="special subject for record operational log",)
+   parser.add_option("-o",
+                      "--operation",
+                      dest="operation",
+                      default=False,
+                      action="store_true",
+                      help="special operation Del or Insert Key ",)
+   options,args = parser.parse_args()
+   return options,args
+   #以上是定义参数与选项，返回对象与参数
+    选项说明：
+
+     每个命令行参数就是由参数名字符串和参数属性组成的。如 -d 或者 --domain 分别是长短参数名 
+
+     dest: 是可选的。如果没有指定 dest 参数，将用命令行的参数名来对 options 对象的值进行存取
+
+     store:有两种形式:store_true和store_false，用于处理带命令行参数后面不带值的情况。如 -v,-q [-v 也可以认为查看版本-q表示退出时后面可以不带值] 
+
+     default:可以为参数指定默认值；如果-f表示文件,但没有指定值，那么在解析时会直接找到default定义的默认值。
+
+     action是parse_args()方法的参数之一，它指示optparse当解析到一个命令行参数时该如何处理。actions 有一组固定的值可供选择，默认是'store'，表示将命令行参数值保存在 options 对象里。
+
+     help:定义帮助信息，是对参数的描述
+
+
+
+   3、生产中使用的完整例子：
+
+    这个脚本的功能其实就是对redis添加删除操作
+
+#!/usr/bin/env python
+#coding:utf-8
+#Date: 2015-09-09
+#Author:king.gp 
+################描述#################
+#
+#查找是否设置此kye，有则跳过
+#如果没有设置此kye,并将操作写入/var/log/redis_add_pause_domain_list.log中
+#如果恢复指定的存在的key，也要写入到/var/log/redis_retrieve_pause_domain_list.log
+#
+####################################
+
+import redis
+import datetime
+import os
+import sys
+from optparse import OptionParser
+
+def Opt ():
+   parser=OptionParser("Usage: %prog -o option -d domain -s subject")
+   parser.add_option("-d",
+                      "--domain",
+                      dest="domain",
+                      default=False,
+                      action="store_true",
+                      help="special domain_name or domain_name/user",)
+   parser.add_option("-s",
+                      "--subject",
+                      dest="subject",
+                      default=False,
+                      action="store_true",
+                      help="special subject for record operational log",)
+   parser.add_option("-o",
+                      "--operation",
+                      dest="operation",
+                      default=False,
+                      action="store_true",
+                      help="special operation Del or Insert Key ",)
+   options,args = parser.parse_args()
+   return options,args,parser
+   #以上是定义参数与选项，返回对象与参数
+
+def Connect_Redis(options,hostname,parser,*argv):
+   r = redis.Redis(host='localhost',port=6379,db='0')
+   if options.domain:
+     key_string = hostname+'/Conf/MailBox/'+argv[1]+'/Status_Pause_All'
+     key_list=r.keys(key_string)
+     if (options.operation and  argv[0]=='search'):
+       if len(key_list) > 0 :
+         print key_list[0]+' Existing' 
+       else:
+         print key_string+' Not Existing'
+       sys.exit(0)   
+
+     if (options.operation and options.subject and argv[0]=='delete'): 
+        if  len(key_list)>0:
+           r.delete(key_string)
+         #print key_string
+           print key_string+' alrealy Del!'
+           with open('/var/log/redis_retrieve_pause_domain_list.log','a') as f:
+             now = datetime.datetime.now()  
+             date_string = now.strftime("%Y-%m-%d %H:%M:%S")
+             f.write(date_string+'\t'+argv[2]+'\t'+key_string+'\n') 
+           sys.exit(0)
+        else: 
+           print key_string+' Not Existing'
+           sys.exit(0)
+     elif (options.operation and options.subject and argv[0] =='insert'):
+          r.set(key_string,'1')
+          print key_string+' alrealy Set!'
+          with open('/var/log/redis_add_pause_domain_list.log','a') as f:
+            now = datetime.datetime.now()  
+            date_string = now.strftime("%Y-%m-%d %H:%M:%S")
+            f.write(date_string+'\t'+argv[2]+'\t'+key_string+'\n')
+          sys.exit(0)
+     else:
+        parser.error("domain or subject not empty")
+
+   else:
+      sys.exit(0)
+
+def Get_Host_Name():
+  host = os.popen('echo $HOSTNAME')
+  hostname = host.read().strip()
+  if len(hostname) > 4:
+    hostname = hostname.split('.')[0]
+  return hostname
+
+def main():
+    options,args,parser=Opt()
+    if args:
+      keys=tuple(args)
+      hostname=Get_Host_Name()
+      Connect_Redis(options,hostname,parser,*keys)
+    else :
+      parser.error("Usage: %prog -o option -d domain -s subject")
+    
+if __name__ == '__main__':
+    main()
+  4、查看帮助
+
+[root@mx1 yunwei]# python change_redis_pause_key.py  -h
+Usage: change_redis_pause_key.py -o option -d domain -s subject
+
+Options:
+  -h, --help       show this help message and exit
+  -d, --domain     special domain_name or domain_name/user
+  -s, --subject    special subject for record operational log
+  -o, --operation  special operation Del or Insert Key
+二、ConfigParser模块
+
+  1、功能：配置文件解析模块【我是这么理解的】
+
+  2、说明：配置文件要mysql的配置文件一样分区段；配置文件的格式：中括号“[ ]”内包含的为section。section 下面为类似于key-value 的配置内容。
+
+      3、函数说明：
+
+读取配置文件时的函数
+
+read(filename) 直接读取ini文件内容
+sections() 得到所有的section，并以列表的形式返回
+options(section) 得到该section的所有option
+items(section) 得到该section的所有键值对
+get(section,option) 得到section中option的值，返回为string类型
+getint(section,option) 得到section中option的值，返回为int类型，还有相应的getboolean()和getfloat() 函数。
+写入文件时的函数
+
+add_section(section) 添加一个新的section
+set( section, option, value) 对section中的option进行设置，需要调用write将内容写入配置文件。
+保存文件
+
+conf.write(open(network_path+network_card,'w'))
+  4、写个例子
+
+   说明：迁移机房生成原IP与新IP的绑定到对应的配置文件中
+
+bash-4.1$ cat network.py 
+#!/usr/bin/env python
+#conding:utf8
+
+#
+import sys
+import os
+import commands
+import ConfigParser
+
+class Netconf(ConfigParser.ConfigParser):
+    def __init__(self,default=None):
+       ConfigParser.ConfigParser.__init__(self,defaults=None)
+    def optionxform(self,optionstr):
+       return optionstr
+
+def Def_Network(source_ip,network_card):
+    str_card=network_card[:10]+'\\'+network_card[10:] #定义DEVICE:eth0:x
+    network_path='/home/sysadmin/proxy_config/'
+    network_template='ifcfg-ethx'
+    network_full_path=network_path+network_template
+    conf=Netconf()
+    conf.read(network_full_path) 
+    conf.set("network_card","IPADDR",source_ip)
+    conf.set("network_card","DEVICE",network_card[6:])
+    conf.write(open(network_path+network_card,'w'))
+    cmd ="sed -i 's@ @@g' "+network_path+str_card
+    (s,r)=commands.getstatusoutput(cmd)
+    if s ==0:
+      print "Success"
+      #['ipv6init', 'userctl', 'dns2', 'dns1', 'ipaddr', 'onboot', 'netmask', 'device', 'type', 'gateway']
+
+def main():
+  source_file='/home/sysadmin/proxy_config/unix_proxy.txt'
+  if os.path.exists(source_file):
+     with open(source_file) as fn:
+        data = fn.readlines()
+        #print type(data)
+        for ethx  in data:
+           ethx=ethx.split('\t')
+           C_IP=ethx[0].strip()
+           N_IP=ethx[1].strip() 
+           W_Card=ethx[2].strip()
+           Def_Network(C_IP,W_Card)    
+  else:    
+    print " %s file not found" %source_file
+
+
+if __name__=='__main__':
+    main()
+ 注：遇到的问题，可能在其它服务的配置文件里不算什么问题，但是，在网卡设置中这是一个大的问题
+
+参数的大小写；ConfigParser模块中将所有读取的Key都变成了小写，而网卡的配置文件必须是大写；请查看ConfigParser模块的文件【我的是centos6.3x86_64系统，环境python2.6.6,路径为
+
+/usr/lib64/python2.6/ConfigParser.py】
+
+   如果要解决这个问题有两种方式：
+
+     第一：要修改ConfigParser.py文件中的将return optinostr.lower()改成return optionstr即可。
+
+354     def optionxform(self, optionstr):
+355         return optionstr.lower()
+     第二：通过类继承，重写optionxfrom方法。
+
+     至于使用那种方法，请根据实际情况而定。
+
+生成的配置文件中,key = value等号两端有空格，配置文件不认，只好用sed命令替换了
+
+  5、原文件unix_proxy
+
+1.2.3.4	 192.168.2.4	ifcfg-eth0:0
+5.6.7.8	 192.168.2.8	ifcfg-eth0:1
+  6、模板文件ifcfg-ethx
+
+[network_card]
+DEVICE=eth0
+ONBOOT=yes
+TYPE=Ethernet
+IPADDR=1.2.3.4
+NETMASK=255.255.254.0
+DNS2=1.2.4.8
+GATEWAY=1.2.3.1
+IPV6INIT=no
+USERCTL=no
+运行脚本即可绑定网卡的配置文件 
