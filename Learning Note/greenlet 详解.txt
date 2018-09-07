@@ -1,0 +1,326 @@
+greenlet 详解
+
+greenlet初体验
+greenlet module与class
+Switch not call
+Greenlet生命周期
+Greenlet Traceing
+greenlet使用建议：
+总结：
+ 
+
+正文
+
+ 　　在前面的文章中提到python原生的generator是semicoroutine，而greenlet是 真 协程。本文内容主要来自对官网文档的翻译，在其中也加入了很多自己的理解和例子。主要包括以下内容：什么是greenlet，greenlet的切换与函数调用的区别,greenlet的生命周期，以及使用greenlet的注意事项。
+
+greenlet初体验
+回到顶部
+　　Greenlet是python的一个C扩展，来源于Stackless python，旨在提供可自行调度的‘微线程’， 即协程。generator实现的协程在yield value时只能将value返回给调用者(caller)。 而在greenlet中，target.switch（value）可以切换到指定的协程（target）， 然后yield value。greenlet用switch来表示协程的切换，从一个协程切换到另一个协程需要显式指定。
+
+　　greenlet的安装很简单：pip install greenlet 即可，安装好了之后我们来看一个官方的例子
+
+复制代码
+ 1 from greenlet import greenlet
+ 2 def test1():
+ 3     print 12
+ 4     gr2.switch()
+ 5     print 34
+ 6 
+ 7 def test2():
+ 8     print 56
+ 9     gr1.switch()
+10     print 78
+11 
+12 gr1 = greenlet(test1)
+13 gr2 = greenlet(test2)
+14 gr1.switch()
+复制代码
+　　输出为：
+　　　　12 56 34
+
+　　当创建一个greenlet时，首先初始化一个空的栈， switch到这个栈的时候，会运行在greenlet构造时传入的函数（首先在test1中打印 12）， 如果在这个函数（test1）中switch到其他协程（到了test2 打印34），那么该协程会被挂起，等到切换回来（在test2中切换回来 打印34）。当这个协程对应函数执行完毕，那么这个协程就变成dead状态。
+　　
+
+　　注意 上面没有打印test2的最后一行输出 78，因为在test2中切换到gr1之后挂起，但是没有地方再切换回来。这个可能造成泄漏，后面细说。
+
+greenlet module与class
+回到顶部
+　　我们首先看一下greenlet这个module里面的属性
+
+　　>>> dir(greenlet)
+　　['GREENLET_USE_GC', 'GREENLET_USE_TRACING', 'GreenletExit', '_C_API', '__doc__', '__file__', '__name__', '__package__', '__version__', 'error', 'getcurrent', 'gettrace', 'greenlet', 'settrace']
+　　>>>
+
+　　其中，比较重要的是getcurrent()， 类greenlet、异常类GreenletExit。
+
+　　getcurrent()返回当前的greenlet实例；
+
+　　GreenletExit：是一个特殊的异常，当触发了这个异常的时候，即使不处理，也不会抛到其parent（后面会提到协程中对返回值或者异常的处理）
+
+　　然后我们再来看看greenlet.greenlet这个类：
+
+　　>>> dir(greenlet.greenlet)
+
+　　['GreenletExit', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__getstate__', '__hash__', '__init__', '__new__', '__nonzero__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', 　　'__sizeof__', '__str__', '__subclasshook__', '_stack_saved', 'dead', 'error', 'getcurrent', 'gettrace', 'gr_frame', 'parent', 'run', 'settrace','switch', 'throw']
+　　>>> 
+
+　　比较重要的几个属性：
+
+　　run：当greenlet启动的时候会调用到这个callable，如果我们需要继承greenlet.greenlet时，需要重写该方法
+
+　　switch：前面已经介绍过了，在greenlet之间切换
+
+　　parent：可读写属性，后面介绍
+
+　　dead：如果greenlet执行结束，那么该属性为true
+
+　　throw：切换到指定greenlet后立即跑出异常
+
+　　
+
+　　文章后面提到的greenlet大多都是指greenlet.greenlet这个class，请注意区别 
+
+Switch not call
+回到顶部
+　　对于greenlet，最常用的写法是 x = gr.switch(y)。 这句话的意思是切换到gr，传入参数y。当从其他协程（不一定是这个gr）切换回来的时候，将值付给x。
+
+复制代码
+ 1 import greenlet
+ 2 def test1(x, y):
+ 3     z = gr2.switch(x+y)
+ 4     print('test1 ', z)
+ 5 
+ 6 def test2(u):
+ 7     print('test2 ', u)
+ 8     gr1.switch(10)
+ 9 
+10 gr1 = greenlet.greenlet(test1)
+11 gr2 = greenlet.greenlet(test2)
+12 print gr1.switch("hello", " world")　
+复制代码
+ 
+
+　　输出：
+　　　　('test2 ', 'hello world')
+　　　　('test1 ', 10)
+　　　　None
+
+　　上面的例子，第12行从main greenlet切换到了gr1，test1第3行切换到了gs2，然后gr1挂起，第8行从gr2切回gr1时，将值（10）返回值给了 z。 
+
+ 
+
+　　每一个Greenlet都有一个parent，一个新的greenlet在哪里创生，当前环境的greenlet就是这个新greenlet的parent。所有的greenlet构成一棵树，其跟节点就是还没有手动创建greenlet时候的”main” greenlet（事实上，在首次import greenlet的时候实例化）。当一个协程 正常结束，执行流程回到其对应的parent；或者在一个协程中抛出未被捕获的异常，该异常也是传递到其parent。学习python的时候，有一句话会被无数次重复”everything is oblect”, 在学习greenlet的调用中，同样有一句话应该深刻理解， “switch not call”。
+
+复制代码
+ 1 import greenlet
+ 2 def test1(x, y):
+ 3     print id(greenlet.getcurrent()), id(greenlet.getcurrent().parent) # 40240272 40239952
+ 4     z = gr2.switch(x+y)
+ 5     print 'back z', z
+ 6 
+ 7 def test2(u):
+ 8     print id(greenlet.getcurrent()), id(greenlet.getcurrent().parent) # 40240352 40239952
+ 9     return 'hehe'
+10 
+11 gr1 = greenlet.greenlet(test1)
+12 gr2 = greenlet.greenlet(test2)
+13 print id(greenlet.getcurrent()), id(gr1), id(gr2)     # 40239952, 40240272, 40240352
+14 print gr1.switch("hello", " world"), 'back to main'    # hehe back to main
+复制代码
+ 
+
+　　上述例子可以看到，尽量是从test1所在的协程gr1 切换到了gr2，但gr2的parent还是’main’ greenlet，因为默认的parent取决于greenlet的创生环境。另外 在test2中return之后整个返回值返回到了其parent，而不是switch到该协程的地方（即不是test1），这个跟我们平时的函数调用不一样，记住“switch not call”。对于异常 也是展开至parent
+
+复制代码
+mport greenlet
+def test1(x, y):
+    try:
+        z = gr2.switch(x+y)
+    except Exception:
+        print 'catch Exception in test1'
+
+def test2(u):
+    assert False
+
+gr1 = greenlet.greenlet(test1)
+gr2 = greenlet.greenlet(test2)
+try:
+    gr1.switch("hello", " world")
+except:
+    print 'catch Exception in main'
+复制代码
+输出为：
+
+　　 catch Exception in main
+
+ 
+
+Greenlet生命周期
+回到顶部
+　　文章开始的地方提到第一个例子中的gr2其实并没有正常结束，我们可以借用greenlet.dead这个属性来查看
+
+复制代码
+ 1 from greenlet import greenlet
+ 2 def test1():
+ 3     gr2.switch(1)
+ 4     print 'test1 finished'
+ 5 
+ 6 def test2(x):
+ 7     print 'test2 first', x
+ 8     z = gr1.switch()
+ 9     print 'test2 back', z
+10 
+11 gr1 = greenlet(test1)
+12 gr2 = greenlet(test2)
+13 gr1.switch()
+14 print 'gr1 is dead?: %s, gr2 is dead?: %s' % (gr1.dead, gr2.dead)
+15 gr2.switch()
+16 print 'gr1 is dead?: %s, gr2 is dead?: %s' % (gr1.dead, gr2.dead)
+17 print gr2.switch(10)
+复制代码
+　　输出：
+
+　　test2 first 1
+　　test1 finished
+　　gr1 is dead?: True, gr2 is dead?: False
+　　test2 back ()
+　　gr1 is dead?: True, gr2 is dead?: True
+　　10
+
+　　从这个例子可以看出
+
+只有当协程对应的函数执行完毕，协程才会die，所以第一次Check的时候gr2并没有die，因为第9行切换出去了就没切回来。在main中再switch到gr2的时候， 执行后面的逻辑，gr2 die
+如果试图再次switch到一个已经是dead状态的greenlet会怎么样呢，事实上会切换到其parent greenlet。
+ 
+
+Greenlet Traceing
+回到顶部
+Greenlet也提供了接口使得程序员可以监控greenlet的整个调度流程。主要是gettrace 和 settrace(callback)函数。下面看一个例子：
+
+复制代码
+def test_greenlet_tracing():
+    def callback(event, args):
+        print event, 'from', id(args[0]), 'to', id(args[1])
+
+    def dummy():
+        g2.switch()
+
+    def dummyexception():
+        raise Exception('excep in coroutine')
+
+    main = greenlet.getcurrent()
+    g1 = greenlet.greenlet(dummy)
+    g2 = greenlet.greenlet(dummyexception)
+    print 'main id %s, gr1 id %s, gr2 id %s' % (id(main), id(g1), id(g2))
+    oldtrace = greenlet.settrace(callback)
+    try:
+        g1.switch()
+    except:
+        print 'Exception'
+    finally:
+        greenlet.settrace(oldtrace)
+
+test_greenlet_tracing()
+复制代码
+输出：
+
+　　main id 40604416, gr1 id 40604736, gr2 id 40604816
+　　switch from 40604416 to 40604736
+　　switch from 40604736 to 40604816
+　　throw from 40604816 to 40604416
+　　Exception
+
+　　其中callback函数event是switch或者throw之一，表明是正常调度还是异常跑出；args是二元组，表示是从协程args[0]切换到了协程args[1]。上面的输出展示了切换流程：从main到gr1，然后到gr2，最后回到main。
+
+ 
+
+greenlet使用建议：
+回到顶部
+　　使用greenlet需要注意一下三点：
+
+　　第一：greenlet创生之后，一定要结束，不能switch出去就不回来了，否则容易造成内存泄露
+
+　　第二：python中每个线程都有自己的main greenlet及其对应的sub-greenlet ，不能线程之间的greenlet是不能相互切换的
+
+　　第三：不能存在循环引用，这个是官方文档明确说明
+
+　　”Greenlets do not participate in garbage collection; cycles involving data that is present in a greenlet’s frames will not be detected. “
+
+　　对于第一点，我们来看一个例子：　　
+
+复制代码
+ 1 from greenlet import greenlet, GreenletExit
+ 2 huge = []
+ 3 def show_leak():
+ 4     def test1():
+ 5         gr2.switch()
+ 6 
+ 7     def test2():
+ 8         huge.extend([x* x for x in range(100)])
+ 9         gr1.switch()
+10         print 'finish switch del huge'
+11         del huge[:]
+12     
+13     gr1 = greenlet(test1)
+14     gr2 = greenlet(test2)
+15     gr1.switch()
+16     gr1 = gr2 = None
+17     print 'length of huge is zero ? %s' % len(huge)
+18 
+19 if __name__ == '__main__':
+20     show_leak() 
+21　　　　# output： length of huge is zero ? 100
+复制代码
+　　在test2函数中 第11行，我们将huge清空，然后再第16行将gr1、gr2的引用计数降到了0。但运行结果告诉我们，第11行并没有执行，所以如果一个协程没有正常结束是很危险的，往往不符合程序员的预期。greenlet提供了解决这个问题的办法，官网文档提到：如果一个greenlet实例的引用计数变成0，那么会在上次挂起的地方抛出GreenletExit异常，这就使得我们可以通过try ... finally 处理资源泄露的情况。如下面的代码：
+
+　　
+
+复制代码
+ 1 from greenlet import greenlet, GreenletExit
+ 2 huge = []
+ 3 def show_leak():
+ 4     def test1():
+ 5         gr2.switch()
+ 6 
+ 7     def test2():
+ 8         huge.extend([x* x for x in range(100)])
+ 9         try:
+10             gr1.switch()
+11         finally:
+12             print 'finish switch del huge'
+13             del huge[:]
+14     
+15     gr1 = greenlet(test1)
+16     gr2 = greenlet(test2)
+17     gr1.switch()
+18     gr1 = gr2 = None
+19     print 'length of huge is zero ? %s' % len(huge)
+20 
+21 if __name__ == '__main__':
+22     show_leak()
+23     # output :
+24     # finish switch del huge
+25 　  # length of huge is zero ? 0
+复制代码
+ 
+
+　　上述代码的switch流程：main greenlet --> gr1 --> gr2 --> gr1 --> main greenlet, 很明显gr2没有正常结束（在第10行刮起了）。第18行之后gr1,gr2的引用计数都变成0，那么会在第10行抛出GreenletExit异常，因此finally语句有机会执行。同时，在文章开始介绍Greenlet module的时候也提到了，GreenletExit这个异常并不会抛出到parent，所以main greenlet也不会出异常。
+
+　　看上去貌似解决了问题，但这对程序员要求太高了，百密一疏。所以最好的办法还是保证协程的正常结束。
+
+总结：
+回到顶部
+　　之前的文章其实已经提到提到了coroutine协程的强大之处，对于异步非阻塞，而且还需要保留上下文的场景非常适用。greenlet跟强大，可以从一个协程切换到任意其他协程，这是generator做不到的，但这种能力其实也是双刃剑，前面的注意事项也提到了，必须保证greenlet的正常结束，在协程之间任意的切换很容易出问题。
+
+　　比如对于服务之间异步请求的例子，简化为服务A的一个函数foo需要异步访问服务B，可以这样封装greenlet：用decorator装饰函数foo，当调用这个foo的时候建立一个greenlet实例，并为这个greenley对应一个唯一的gid，在foo方法发出异步请求（写到gid）之后，switch到parent，这个时候这个新的协程处于挂起状态。当请求返回之后，通过gid找到之前被挂起的协程，恢复该协程即可。More simple More safety，保证旨在main和一级子协程之间切换。需要注意的是处理各种异常 以及请求超时的情况，避免内存泄露，gvent对greenlet的使用大致也是这样的。
+
+ 
+
+references：
+
+http://www.cnblogs.com/xybaby/p/6323358.html
+https://pypi.python.org/pypi/greenlet
+
+https://en.wikipedia.org/wiki/Stackless_Python
+http://greenlet.readthedocs.io/en/latest/
+http://stackoverflow.com/questions/715758/coroutine-vs-continuation-vs-generator
