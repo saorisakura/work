@@ -15,6 +15,9 @@ python去掉字符串中的空白字符
 
      re.sub(['\"','\'','\s'],'',string)  将string中的所有空白字符及单双引号删除
 
+# coding: utf-8
+import re
+
 with open("file", "a+", encoding="utf-8") as f:
     name = ""
     f.seek(0)
