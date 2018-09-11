@@ -1,0 +1,330 @@
+#coding:utf-8
+import urllib,urllib2,time,pymysql,simplejson
+from config.db import *
+from config.Redis import *
+from config.hosts import *
+from src.func import *
+from src.strMD5 import *
+from src.CRedis import *
+# postAPI="http://v.6.cn/api/liveAudit/postData.php"
+"""
+DB_HOST='172.16.1.252'
+DB_USER='ySexUser'
+DB_PASS='ySexPw0d'
+DB_PORT=13306
+DB_NAME='ySex'
+postURL = "http://v.6.cn/api/liveAudit/postData.php"
+"""
+
+
+class postAPI:
+	def __init__(self,url):	
+		self.url=url
+
+	#tupu stream
+	def getTuPuStreamResult(self):
+		startTime=time.time()
+		conn=pymysql.connect(host=DB_HOST,port=DB_PORT,user=DB_USER,passwd=DB_PASS,db=DB_NAME,charset='utf8');
+		cur=conn.cursor();
+		QSQL2="select vname,picName,porn_ratio,insert_Time from ySex.online_tupu where porn_label = 0 and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE) group by picName"
+		#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where result != 0"
+		cur.execute(QSQL2)
+		data=cur.fetchall()
+		if data:
+			for vedio in data:
+				#扫描是否已经在redis中,这里将tupu和tencent分开
+				cs=CRedis(RHOST,RPORT,10)
+				cs7=CRedis(RHOST,RPORT,10)
+				if cs.get(str(vedio[1])):
+						logging.debug('%s %s Tupu Porn该流已经发送过预警.' % (getNOW(),str(vedio[1])))
+						continue
+				#判断该流是否上报超过3次
+				uT=cs7.get(str(vedio[0]))
+				if str(uT) == "nil" or str(uT) == "None":
+					#记录该流上报次数
+					cs7.set(str(vedio[0]),1,43200)
+				else:
+					uT2=int(uT)+1
+					cs7.set(str(vedio[0]),uT2,86400)
+					if uT2 > 6:
+						logging.debug("%s %s Tupu Porn上传次数超过6次，不再提交" % (str(vedio[0]),str(vedio[1])))
+						continue
+				try:
+					
+					logging.debug('%s Tupu Porn该流图片准备发送预警.' % (str(vedio[1])))
+					tm=str(vedio[3])
+					#tm=time.mktime(time.strptime(str(vedio[3]),'%Y-%m-%d %H:%M:%S'))
+					str_sign=str('%s'+'tupu_porn'+'%s'+str(tm)+'csdflajf&&*krkaksf(@chkjshka') % (vedio[0],vedio[1])
+					sign=str2md5(str_sign)
+					dict_postData={"flvtitle":str(vedio[0]),"pic":str(vedio[1]),"source":"tupu_porn","rate":str(vedio[2]),"tm":tm,"sign":sign}
+					logging.debug(str(dict_postData))
+					self.postInfo(str(dict_postData))
+					logging.debug("Found TuPu Porn Vedio : %s , url: %s" % (vedio[0],vedio[1]))
+				except:
+					logging.debug("%s %s Tupu Porn 上传失败" % (str(vedio[0]),str(vedio[1])))	
+
+				#记录预警
+				cs.set(str(vedio[1]),1,43200)
+				#上报至CMDB系统
+				cs3=CRedis("42.62.28.158",26479,13)
+				cs3.set("tupu-porn_%s" % str(vedio[1]),tm,43200)
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Porn发现违规图片, 执行耗时: %s" % (usedTime))
+			return 1
+		else:
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Porn 未发现违规图片, 执行耗时: %s" % (usedTime))
+			return 0
+
+	#tupu stream
+	def getTuPuStreamSexResult(self):
+		startTime=time.time()
+		conn=pymysql.connect(host=DB_HOST,port=DB_PORT,user=DB_USER,passwd=DB_PASS,db=DB_NAME,charset='utf8');
+		cur=conn.cursor();
+		QSQL2="select vname,picName,porn_ratio,insert_Time from ySex.online_tupu where porn_label = 1 and porn_ratio > 0.7 and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE) group by picName"
+		#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where result != 0"
+		cur.execute(QSQL2)
+		data=cur.fetchall()
+		if data:
+			for vedio in data:
+				#扫描是否已经在redis中,这里将tupu和tencent分开
+				cs=CRedis(RHOST,RPORT,58)
+				cs7=CRedis(RHOST,RPORT,58)
+				if cs.get(str(vedio[1])):
+						logging.debug('%s Tupu Sex该流已经发送过预警.' % (str(vedio[1])))
+						continue
+				#判断该流是否上报超过3次
+				uT=cs7.get(str(vedio[0]))
+				if str(uT) == "nil" or str(uT) == "None":
+					#记录该流上报次数
+					cs7.set(str(vedio[0]),1,43200)
+				else:
+					uT2=int(uT)+1
+					cs7.set(str(vedio[0]),uT2,86400)
+					if uT2 > 6:
+						logging.debug("%s %s Tupu sex上传次数超过6次，不再提交" % (str(vedio[0]),str(vedio[1])))
+						continue
+				try:
+					logging.debug('%s Tupu Sex该流图片准备发送预警.' % (str(vedio[1])))
+					tm=str(vedio[3])
+					#tm=time.mktime(time.strptime(str(vedio[3]),'%Y-%m-%d %H:%M:%S'))
+					str_sign=str('%s'+'tupu_sex'+'%s'+str(tm)+'csdflajf&&*krkaksf(@chkjshka') % (vedio[0],vedio[1])
+					sign=str2md5(str_sign)
+					dict_postData={"flvtitle":str(vedio[0]),"pic":str(vedio[1]),"source":"tupu_sex","rate":str(vedio[2]),"tm":tm,"sign":sign}
+					logging.debug(str(dict_postData))
+					self.postInfo(str(dict_postData))
+					#
+					logging.debug("Found TuPu Sex Vedio : %s , url: %s" % (vedio[0],vedio[1]))
+				except:
+					logging.debug("%s %s Tupu Sex 上传失败" % (str(vedio[0]),str(vedio[1])))	
+				#记录预警
+				cs.set(str(vedio[1]),1,43200)
+				#上报至CMDB系统
+				cs3=CRedis("42.62.28.158",26479,13)
+				cs3.set("tupu-sex_%s" % str(vedio[1]),tm,43200)
+
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Sex发现违规图片, 执行耗时: %s" % (usedTime))
+			return 1
+		else:
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Sex 未发现违规图片, 执行耗时: %s" % (usedTime))
+			return 0
+	#tupu stream
+	def getTuPuStreamTerrResult(self):
+        	startTime=time.time()
+        	conn=pymysql.connect(host=DB_HOST,port=DB_PORT,user=DB_USER,passwd=DB_PASS,db=DB_NAME,charset='utf8');
+        	cur=conn.cursor();
+        	QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where terr_label in (3,4,5,6,7,8) and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE) group by picName"
+        	#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where terr_label != 0"
+        	cur.execute(QSQL2)
+        	data=cur.fetchall()
+        	if data:
+				for vedio in data:
+					#扫描是否已经在redis中
+					cs=CRedis(RHOST,RPORT,8)
+					cs7=CRedis(RHOST,RPORT,8)
+					if cs.get(str(vedio[1])):
+							logging.debug('%s %s Tupu Terr该流已经发送过预警.' % (getNOW(),str(vedio[1])))
+							continue
+					#判断该流是否上报超过3次
+					uT=cs7.get(str(vedio[0]))
+					if str(uT) == "nil" or str(uT) == "None":
+						#记录该流上报次数
+						cs7.set(str(vedio[0]),1,43200)
+					else:
+						uT2=int(uT)+1
+						cs7.set(str(vedio[0]),uT2,86400)
+						if uT2 > 3:
+							logging.debug("%s %s Tupu Terr上传次数超过3次，不再提交" % (str(vedio[0]),str(vedio[1])))
+							continue
+					try:	
+						tm=str(vedio[3])
+						#tm=time.mktime(time.strptime(str(vedio[3]),'%Y-%m-%d %H:%M:%S'))
+						str_sign=str('%s'+'tupu_terr'+'%s'+str(tm)+'csdflajf&&*krkaksf(@chkjshka') % (vedio[0],vedio[1])
+						sign=str2md5(str_sign)
+						dict_postData={"flvtitle":str(vedio[0]),"pic":str(vedio[1]),"source":"tupu_terr","rate":str(vedio[2]),"tm":tm,"sign":sign}
+						logging.debug(str(dict_postData))
+						self.postInfo(str(dict_postData))
+						logging.debug("Found TuPu Terr Vedio : %s , url: %s" % (vedio[0],vedio[1]))
+					except:
+						logging.debug("%s %s Tupu Terr上传失败" % (str(vedio[0]),str(vedio[1])))
+					#记录预警
+					cs.set(str(vedio[1]),1,43200)
+					#上报至CMDB系统
+					cs3=CRedis("42.62.28.158",26479,13)
+					cs3.set("tupu-terr_%s" % str(vedio[1]),tm,43200)
+				cur.close()
+				conn.close()
+				usedTime=time.time()-startTime
+				logging.debug("- INFO : TuPu Terr 发现违规图片, 执行耗时: %s" % (usedTime))
+				return 1
+        	else:
+				cur.close()
+				conn.close()
+				usedTime=time.time()-startTime
+				logging.debug("- INFO : TuPu Terr 未发现违规图片, 执行耗时: %s" % (usedTime))
+				return 0
+
+	#tupu stream
+	def getTuPuStreamTerr_SpecialAttire_Result(self):
+		startTime=time.time()
+		conn=pymysql.connect(host=DB_HOST,port=DB_PORT,user=DB_USER,passwd=DB_PASS,db=DB_NAME,charset='utf8');
+		cur=conn.cursor();
+		QSQL2="select vname,picName,terr_ratio,insert_Time from ySex.online_tupu where terr_label in (2) and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE) group by picName"
+		#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where terr_label != 0"
+		cur.execute(QSQL2)
+		data=cur.fetchall()
+		if data:
+			for vedio in data:
+				#扫描是否已经在redis中
+				cs=CRedis(RHOST,RPORT,11)
+				cs7=CRedis(RHOST,RPORT,11)
+				if cs.get(str(vedio[1])):
+						logging.debug('%s %s Tupu SA该流已经发送过预警.' % (getNOW(),str(vedio[1])))
+						continue
+				#判断该流是否上报超过3次
+				uT=cs7.get(str(vedio[0]))
+				if str(uT) == "nil" or str(uT) == "None":
+					#记录该流上报次数
+					cs7.set(str(vedio[0]),1,43200)
+				else:
+					uT2=int(uT)+1
+					cs7.set(str(vedio[0]),uT2,86400)
+					if uT2 > 3:
+						logging.debug("%s %s Tupu SA上传次数超过3次，不再提交" % (str(vedio[0]),str(vedio[1])))
+						continue
+					
+					
+				try:	
+					tm=str(vedio[3])
+					#tm=time.mktime(time.strptime(str(vedio[3]),'%Y-%m-%d %H:%M:%S'))
+					str_sign=str('%s'+'tupu_SpecialAttire'+'%s'+str(tm)+'csdflajf&&*krkaksf(@chkjshka') % (vedio[0],vedio[1])
+					sign=str2md5(str_sign)
+					dict_postData={"flvtitle":str(vedio[0]),"pic":str(vedio[1]),"source":"tupu_SpecialAttire","rate":str(vedio[2]),"tm":tm,"sign":sign}
+					logging.debug(str(dict_postData))
+					self.postInfo(str(dict_postData))
+					logging.debug("Found TuPu Terr SpecialAttire Vedio : %s , url: %s" % (vedio[0],vedio[1]))
+				except:
+					logging.debug("%s %s Tupu Terr SpecialAttire上传失败" % (str(vedio[0]),str(vedio[1])))
+				#记录预警
+				cs.set(str(vedio[1]),1,43200)
+				#上报至CMDB系统
+				cs3=CRedis("42.62.28.158",26479,13)
+				cs3.set("tupu-SpecialAttire_%s" % str(vedio[1]),tm,43200)
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Terr 发现违规图片, 执行耗时: %s" % (usedTime))
+			return 1
+		else:
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Terr 未发现违规图片, 执行耗时: %s" % (usedTime))
+			return 0
+
+	#tupu stream
+	def getTuPuStreamLiveResult(self):
+		startTime=time.time()
+		conn=pymysql.connect(host=DB_HOST,port=DB_PORT,user=DB_USER,passwd=DB_PASS,db=DB_NAME,charset='utf8');
+		cur=conn.cursor();
+		QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where live_label in (2,3,4,5) and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE) group by picName"
+		#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where live_label in (5,6,7) and insert_Time >=DATE_SUB(NOW(),INTERVAL 30 MINUTE)"
+		#QSQL2="select vname,picName,100/100,insert_Time from ySex.online_tupu where terr_label != 0"
+		cur.execute(QSQL2)
+		data=cur.fetchall()
+		if data:
+			for vedio in data:
+				#扫描是否已经在redis中
+				cs=CRedis(RHOST,RPORT,RDB3)
+				cs7=CRedis(RHOST,RPORT,9)
+				if cs.get(str(vedio[1])):
+						logging.debug('%s %s Tupu LIVE 该流已经发送过预警.' % (getNOW(),str(vedio[1])))
+						continue
+				#判断该流是否上报超过3次
+				uT=cs7.get(str(vedio[0]))
+				if str(uT) == "nil" or str(uT) == "None":
+					#记录该流上报次数
+					cs7.set(str(vedio[0]),1,43200)
+				else:
+					uT2=int(uT)+1
+					cs7.set(str(vedio[0]),uT2,86400)
+					if uT2 > 3:
+						logging.debug("%s %s Tupu LIVE上传次数超过3次，不再提交" % (str(vedio[0]),str(vedio[1])))
+						continue
+				#
+				tm=str(vedio[3])
+				#tm=time.mktime(time.strptime(str(vedio[3]),'%Y-%m-%d %H:%M:%S'))
+				str_sign=str('%s'+'tupu_live'+'%s'+str(tm)+'csdflajf&&*krkaksf(@chkjshka') % (vedio[0],vedio[1])
+				sign=str2md5(str_sign)
+				dict_postData={"flvtitle":str(vedio[0]),"pic":str(vedio[1]),"source":"tupu_live","rate":str(vedio[2]),"tm":tm,"sign":sign}
+				logging.debug(str(dict_postData))
+				self.postInfo(str(dict_postData))
+				#记录预警
+				cs.set(str(vedio[1]),1,43200)
+				#上报至CMDB系统
+				cs3=CRedis("42.62.28.158",26479,13)
+				cs3.set("tupu-live_%s" % str(vedio[1]),tm,43200)
+				#
+							logging.debug("------ NOTICE ------ Found TuPu Live Vedio : %s , url: %s" % (vedio[0],vedio[1]))
+							#插入色情表
+
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Live 发现违规图片, 执行耗时: %s" % (usedTime))
+			return 1
+		else:
+			cur.close()
+			conn.close()
+			usedTime=time.time()-startTime
+			logging.debug("- INFO : TuPu Live 未发现违规图片, 执行耗时: %s" % (usedTime))
+			return 0
+
+	def postInfo(self,data):
+		logging.debug(data)
+		cs=CRedis(RHOST,RPORT,RDB3)	
+		startTime=time.time()
+		# 上传图片到审核后台
+		data=simplejson.dumps(eval(data))
+		req = urllib2.Request(self.url,data)
+		res = urllib2.urlopen(req,timeout=20)
+		resInfo = res.read()
+		resInfo = simplejson.loads(resInfo)
+		
+		if resInfo['ret'] == "0":
+			logging.debug("D-INFO : post上传 %s 返回值为0 , 上传成功." % eval(data)['pic'])
+			cs.set(eval(data)['pic'],1,86400)
+		else:
+			logging.debug("D-INFO : post上传 %s 返回值为 %s , 上传失败." % (eval(data)['pic'],resInfo['ret']))
+		usedTime=time.time()-startTime
+		logging.debug("D-TIMER : post上传 %s , 本次耗时: %s" % (eval(data)['pic'],usedTime))
