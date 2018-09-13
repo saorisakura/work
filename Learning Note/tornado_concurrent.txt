@@ -1,0 +1,104 @@
+tornado.concurrent — Work with Future objects
+
+Utilities for working with Future objects.
+
+Futures are a pattern for concurrent programming introduced in Python 3.2 in the concurrent.futures package, and also adopted (in a slightly different form) in Python 3.4’s asyncio package. This package defines a Future class that is an alias for asyncio.Future when available, and a compatible implementation for older versions of Python. It also includes some utility functions for interacting with Future objects.
+
+While this package is an important part of Tornado’s internal implementation, applications rarely need to interact with it directly.
+
+    class tornado.concurrent.Future[source]
+
+        tornado.concurrent.Future is an alias for asyncio.Future on Python 3. On Python 2, it provides an equivalent implementation.
+
+        In Tornado, the main way in which applications interact with Future objects is by awaiting or yielding them in coroutines, instead of calling methods on the Future objects themselves. For more information on the available methods, see the asyncio.Future docs.
+
+        Changed in version 5.0: Tornado’s implementation of Future has been replaced by the version from asyncio when available.
+
+            Future objects can only be created while there is a current IOLoop
+            The timing of callbacks scheduled with Future.add_done_callback has changed.
+            Cancellation is now partially supported (only on Python 3)
+            The exc_info and set_exc_info methods are no longer available on Python 3.
+
+tornado.concurrent.run_on_executor(*args, **kwargs)[source]
+
+    Decorator to run a synchronous method asynchronously on an executor.
+
+    The decorated method may be called with a callback keyword argument and returns a future.
+
+    The executor to be used is determined by the executor attributes of self. To use a different attribute name, pass a keyword argument to the decorator:
+
+    @run_on_executor(executor='_thread_pool')
+    def foo(self):
+        pass
+
+    This decorator should not be confused with the similarly-named IOLoop.run_in_executor. In general, using run_in_executor when calling a blocking method is recommended instead of using this decorator when defining a method. If compatibility with older versions of Tornado is required, consider defining an executor and using executor.submit() at the call site.
+
+    Changed in version 4.2: Added keyword arguments to use alternative attributes.
+
+    Changed in version 5.0: Always uses the current IOLoop instead of self.io_loop.
+
+    Changed in version 5.1: Returns a Future compatible with await instead of a concurrent.futures.Future.
+
+    Deprecated since version 5.1: The callback argument is deprecated and will be removed in 6.0. The decorator itself is discouraged in new code but will not be removed in 6.0.
+
+tornado.concurrent.return_future(f)[source]
+
+    Decorator to make a function that returns via callback return a Future.
+
+    This decorator was provided to ease the transition from callback-oriented code to coroutines. It is not recommended for new code.
+
+    The wrapped function should take a callback keyword argument and invoke it with one argument when it has finished. To signal failure, the function can simply raise an exception (which will be captured by the StackContext and passed along to the Future).
+
+    From the caller’s perspective, the callback argument is optional. If one is given, it will be invoked when the function is complete with Future.result() as an argument. If the function fails, the callback will not be run and an exception will be raised into the surrounding StackContext.
+
+    If no callback is given, the caller should use the Future to wait for the function to complete (perhaps by yielding it in a coroutine, or passing it to IOLoop.add_future).
+
+    Usage:
+
+    @return_future
+    def future_func(arg1, arg2, callback):
+        # Do stuff (possibly asynchronous)
+        callback(result)
+
+    async def caller():
+        await future_func(arg1, arg2)
+
+    Note that @return_future and @gen.engine can be applied to the same function, provided @return_future appears first. However, consider using @gen.coroutine instead of this combination.
+
+    Changed in version 5.1: Now raises a DeprecationWarning if a callback argument is passed to the decorated function and deprecation warnings are enabled.
+
+    Deprecated since version 5.1: This decorator will be removed in Tornado 6.0. New code should use coroutines directly instead of wrapping callback-based code with this decorator. Interactions with non-Tornado callback-based code should be managed explicitly to avoid relying on the ExceptionStackContext built into this decorator.
+
+tornado.concurrent.chain_future(a, b)[source]
+
+    Chain two futures together so that when one completes, so does the other.
+
+    The result (success or failure) of a will be copied to b, unless b has already been completed or cancelled by the time a finishes.
+
+    Changed in version 5.0: Now accepts both Tornado/asyncio Future objects and concurrent.futures.Future.
+
+tornado.concurrent.future_set_result_unless_cancelled(future, value)[source]
+
+    Set the given value as the Future’s result, if not cancelled.
+
+    Avoids asyncio.InvalidStateError when calling set_result() on a cancelled asyncio.Future.
+
+    New in version 5.0.
+
+tornado.concurrent.future_set_exc_info(future, exc_info)[source]
+
+    Set the given exc_info as the Future’s exception.
+
+    Understands both asyncio.Future and Tornado’s extensions to enable better tracebacks on Python 2.
+
+    New in version 5.0.
+
+tornado.concurrent.future_add_done_callback(future, callback)[source]
+
+    Arrange to call callback when future is complete.
+
+    callback is invoked with one argument, the future.
+
+    If future is already done, callback is invoked immediately. This may differ from the behavior of Future.add_done_callback, which makes no such guarantee.
+
+    New in version 5.0.

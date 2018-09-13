@@ -1,0 +1,48 @@
+salt-master迁移（多主同理）
+
+old-master
+
+[root@esearch /srv/salt/base] 04:31:53 130
+# ll /etc/salt/
+total 272
+-rw-r-----  1 root root  2624 Jun 22 11:44 cloud
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 cloud.conf.d
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 cloud.deploy.d
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 cloud.maps.d
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 cloud.profiles.d
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 cloud.providers.d
+-rw-r-----  1 root root 45583 Jul 27 22:49 master
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 master.d
+-rw-r-----  1 root root 45627 Jul 20 02:29 master.rpmsave
+-rw-r-----  1 root root 34697 Jul 31 03:25 minion
+drwxr-xr-x  2 root root  4096 Jul 31 02:06 minion--d
+drwxr-xr-x. 2 root root  4096 Jun 22 18:31 minion.d
+-rw-r--r--. 1 root root    30 Jul 16 21:52 minion_id
+-rw-r-----  1 root root 34872 Jul 18 05:51 minion.rpmsave
+drwxr-xr-x. 6 root root  4096 Jul 31 02:39 pki
+-rw-r--r--  1 root root 21631 Jul 31 02:39 pki.tar.gz
+-rw-r-----  1 root root 26984 Jun 22 11:44 proxy
+drwxr-xr-x  2 root root  4096 Jun 22 18:31 proxy.d
+-rw-r-----  1 root root   344 Jun 19 13:17 roster
+
+将old-master如上的pki目录打包，然后去new-master上安装salt-master，替换掉/etc/salt/pki文件，然后再所有的minion上添加上new-master的id，添加方法有2种：
+第一：
+
+vim /etc/salt/minion
+master:
+ - salt-sl.hqygou.com
+ - 10.177.210.122
+# Set http proxy information for the minion when doing requests
+#proxy_host:
+#proxy_port:
+#proxy_username:
+#proxy_password:
+
+这样添加，新旧master都可以对minion进行操作
+
+第二：
+
+master: salt-sl.hqygou.com
+master: 10.177.210.122
+
+这种只能有其中一台master进行操作。
