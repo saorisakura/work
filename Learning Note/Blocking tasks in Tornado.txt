@@ -375,6 +375,23 @@ def unblock(f):
                 partial(callback, future)))
 
     return wrapper
+----------------------------------------------------------------------------------------------------
+future.add_done_callback()
+解释说明
+    def add_done_callback(self, fn):
+        """Attaches the given callback to the `Future`.
+
+        It will be invoked with the `Future` as its argument when the Future
+        has finished running and its result is available.  In Tornado
+        consider using `.IOLoop.add_future` instead of calling
+        `add_done_callback` directly.
+        """
+        if self._done:
+            from tornado.ioloop import IOLoop
+            IOLoop.current().add_callback(fn, self)
+        else:
+            self._callbacks.append(fn)
+----------------------------------------------------------------------------------------------------
 
 
 class JustNowHandler(tornado.web.RequestHandler):
