@@ -1,0 +1,241 @@
+Centos 6下配置KVM使用virtio-scsi
+
+操作环境
+
+Centos 6.5 x86_64
+
+qemu-img-0.12.1.2-2.415.el6.3ceph.x86_64
+
+qemu-kvm-0.12.1.2-2.415.el6.3ceph.x86_64
+
+libvirt-python-0.10.2-29.el6_5.12.x86_64
+
+libvirt-0.10.2-29.el6_5.12.x86_64
+
+libvirt-client-0.10.2-29.el6_5.12.x86_64
+
+操作说明
+
+
+        kvm对于块设备默认使用virtio-blk模板，后来提出virtio-scsi用来取代virtio-blk，可以提高性能以及可扩张性，在virtio-blk模块下，硬盘设备显示字符为/dev/vd*，在virtio-scsi木块下，硬盘设备显示为/dev/sd*，下面为操作步骤。
+
+        创建scsi-controller
+
+ 
+
+[plain] view plain copy
+<controller type='scsi' model='virtio-scsi'/>  
+ 
+
+        将scsi-controller设备添加在kvm guest中，此时kvm guset应为关闭状态
+
+ 
+
+[plain] view plain copy
+virsh attach-device --config demo-linux scsi-controller.xml  
+
+
+        创建硬盘设备
+
+ 
+
+[plain] view plain copy
+#fallocate -l 20480M /var/lib/libvirt/images/sda.img  
+
+      创建硬盘sda的xml文件sda.xml
+
+ 
+
+[plain] view plain copy
+<disk type='file' device='disk'>  
+        <device name='qemu' type='raw' cache='none'/>  
+        <source file='/var/lib/libvirt/images/sdc.img'/>  
+        <target dev='sdc'/>  
+</disk>  
+
+        添加硬盘设备到kvm guest中
+
+ 
+
+[plain] view plain copy
+#virsh attach-device --config demo-linux sda.xml  
+
+       启动kvm guest ，查看硬盘设备
+
+ 
+
+[plain] view plain copy
+[root@demo-ceph ~]# fdisk -l /dev/sda  
+  
+Disk /dev/sda: 21.5 GB, 21474836480 bytes  
+64 heads, 32 sectors/track, 20480 cylinders  
+Units = cylinders of 2048 * 512 = 1048576 bytes  
+Sector size (logical/physical): 512 bytes / 512 bytes  
+I/O size (minimum/optimal): 512 bytes / 512 bytes  
+Disk identifier: 0x00000000  
+
+     查看现有scsi设备
+
+ 
+
+[plain] view plain copy
+[root@demo-ceph ~]# lsscsi   
+[1:0:0:0]    cd/dvd  QEMU     QEMU DVD-ROM     0.12  -         
+[2:0:0:1]    disk    QEMU     QEMU HARDDISK    0.12  -         
+
+     查看pci设备，在最后面可以找到基于virtio-scsi的scsi controller。
+
+ 
+
+[plain] view plain copy
+[root@demo-ceph ~]# lspci  
+00:00.0 Host bridge: Intel Corporation 440FX - 82441FX PMC [Natoma] (rev 02)  
+00:01.0 ISA bridge: Intel Corporation 82371SB PIIX3 ISA [Natoma/Triton II]  
+00:01.1 IDE interface: Intel Corporation 82371SB PIIX3 IDE [Natoma/Triton II]  
+00:01.2 USB controller: Intel Corporation 82371SB PIIX3 USB [Natoma/Triton II] (rev 01)  
+00:01.3 Bridge: Intel Corporation 82371AB/EB/MB PIIX4 ACPI (rev 03)  
+00:02.0 VGA compatible controller: Cirrus Logic GD 5446  
+00:03.0 Ethernet controller: Realtek Semiconductor Co., Ltd. RTL-8139/8139C/8139C+ (rev 20)  
+00:04.0 SCSI storage controller: Red Hat, Inc Virtio block device  
+00:05.0 SCSI storage controller: Red Hat, Inc Virtio block device  
+00:06.0 RAM memory: Red Hat, Inc Virtio memory balloon  
+00:07.0 SCSI storage controller: Red Hat, Inc Virtio block device  
+00:08.0 SCSI storage controller: Red Hat, Inc Virtio SCSI
+
+Centos6下配置openstack icehouse使用virtio-scsi
+
+操作环境
+
+Openstack icehouse
+
+Centos 6.6x86_64
+
+操作说明
+
+修改image文件属性
+
+ 
+
+[plain] view plain copy
+#glance image-update --property hw_scsi_model=scsi  centos-ceph  
+#glance image-update --property hw_disk_bus=scsi  centos-ceph  
+
+查看image文件属性
+
+[plain] view plain copy
++--------------------------+--------------------------------------+  
+| Property                 | Value                                |  
++--------------------------+--------------------------------------+  
+| Property 'hw_disk_bus'   | scsi                                 |  
+| Property 'hw_scsi_model' | virtio-scsi                          |  
+| checksum                 | b66f1e0265c35fff4c6807b245853b06     |  
+| container_format         | bare                                 |  
+| created_at               | 2014-11-14T02:45:53                  |  
+| deleted                  | False                                |  
+| disk_format              | raw                                  |  
+| id                       | 4c89c10c-a825-4690-8b05-675401f2c583 |  
+| is_public                | True                                 |  
+| min_disk                 | 0                                    |  
+| min_ram                  | 0                                    |  
+| name                     | centos-ceph                          |  
+| owner                    | de4cfe75cea3457ba1bc1fa53a00e01b     |  
+| protected                | False                                |  
+| size                     | 21474836480                          |  
+| status                   | active                               |  
+| updated_at               | 2014-11-24T08:36:19                  |  
++--------------------------+--------------------------------------+  
+
+启动新的instance，查看xml文件
+
+硬盘设备，已经显示为sd设备，不在之前的vd设备：
+
+[plain] view plain copy
+<disk type="network" device="disk">  
+     <driver type="raw" cache="none"/>  
+     <source protocol="rbd" name="vms/e6e92b40-5605-40c4-8b36-518c1fc1028a_disk">  
+       <host name="10.10.200.163" port="6789"/>  
+     </source>  
+     <auth username="cinder">  
+       <secret type="ceph" uuid="d6a8bc2f-9374-4413-9e48-e23edc1a4285"/>  
+     </auth>  
+     <target bus="scsi" dev="sda"/>  
+   </disk>  
+
+scsi controller设备
+
+[plain] view plain copy
+<controller type="scsi" model="virtio-scsi"/>  
+
+进入instance，查看硬盘设备
+
+[plain] view plain copy
+[root@demo-ceph ~]# fdisk -l /dev/sda  
+  
+Disk /dev/sda: 21.5 GB, 21474836480 bytes  
+255 heads, 63 sectors/track, 2610 cylinders  
+Units = cylinders of 16065 * 512 = 8225280 bytes  
+Sector size (logical/physical): 512 bytes / 512 bytes  
+I/O size (minimum/optimal): 512 bytes / 512 bytes  
+Disk identifier: 0x00024449  
+  
+   Device Boot      Start         End      Blocks   Id  System  
+/dev/sda1   *           1        2611    20970496   83  Linux  
+
+查看scsi controller，包含基于virtio-scsi的scsi controller
+
+[plain] view plain copy
+[root@demo-ceph ~]# lspci   
+00:00.0 Host bridge: Intel Corporation 440FX - 82441FX PMC [Natoma] (rev 02)  
+00:01.0 ISA bridge: Intel Corporation 82371SB PIIX3 ISA [Natoma/Triton II]  
+00:01.1 IDE interface: Intel Corporation 82371SB PIIX3 IDE [Natoma/Triton II]  
+00:01.2 USB controller: Intel Corporation 82371SB PIIX3 USB [Natoma/Triton II] (rev 01)  
+00:01.3 Bridge: Intel Corporation 82371AB/EB/MB PIIX4 ACPI (rev 03)  
+00:02.0 VGA compatible controller: Cirrus Logic GD 5446  
+00:03.0 Ethernet controller: Red Hat, Inc Virtio network device  
+00:04.0 SCSI storage controller: Red Hat, Inc Virtio SCSI  
+00:05.0 RAM memory: Red Hat, Inc Virtio memory balloon  
+ 
+
+ 
+
+添加新硬盘至instance中，查看硬盘设备
+
+[plain] view plain copy
+[root@demo-ceph ~]# fdisk -l  
+  
+Disk /dev/sda: 21.5 GB, 21474836480 bytes  
+255 heads, 63 sectors/track, 2610 cylinders  
+Units = cylinders of 16065 * 512 = 8225280 bytes  
+Sector size (logical/physical): 512 bytes / 512 bytes  
+I/O size (minimum/optimal): 512 bytes / 512 bytes  
+Disk identifier: 0x00024449  
+  
+   Device Boot      Start         End      Blocks   Id  System  
+/dev/sda1   *           1        2611    20970496   83  Linux  
+  
+Disk /dev/sdb: 107.4 GB, 107374182400 bytes  
+255 heads, 63 sectors/track, 13054 cylinders  
+Units = cylinders of 16065 * 512 = 8225280 bytes  
+Sector size (logical/physical): 512 bytes / 512 bytes  
+I/O size (minimum/optimal): 512 bytes / 512 bytes  
+Disk identifier: 0x00000000  
+
+查看scsi设备
+
+[plain] view plain copy
+[root@demo-ceph ~]# lsscsi   
+[2:0:0:0]    disk    QEMU     QEMU HARDDISK    0.12  -         
+[2:0:0:1]    disk    QEMU     QEMU HARDDISK    0.12  -
+
+
+Centos6 配置KVM使用virtio-scsi（multi-queues）
+
+配置方法
+
+添加driver queues字段至xml文件中，driver queues等于vcpu队列数
+[plain] view plain copy
+</controller>  
+  <controller type='scsi' index='0' model='virtio-scsi'>  
+    <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>  
+  <dirver queues='8' />  
+  </controller>

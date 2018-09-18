@@ -1,0 +1,842 @@
+为什么guest虚拟机需要精确的时钟
+虚拟化涉及到guest虚拟机时钟精度的多项挑战：
+中断不能始终同时和即时发送给所有guest虚拟机。这就导致在虚拟机中的中断不是真实的中断。相反，虚拟机的中断是通过host主机注入到虚拟机中的。
+host主机可能在运行其他虚拟机，或者其他进程。精确的时钟通常依赖中断，就不能始终保证。
+guest虚拟机失去精确的时钟可能会导致网络应用和进程，会话校验，迁移，以及其他依赖时间戳的网络活动出现异常。
+KVM通过为guest虚拟机提供一个paravirtual时钟（kvm-clock）来避免上述问题。然而，在影响时钟精度的操作，例如guest虚拟机迁移，需要非常仔细测试时间。
+重要！！！
+为避免上述问题，在host主机和guest虚拟机上，都要运行网络时钟协议（NTP）服务。在RHEL 6和早期版本，NTP是通过ntpd服务来是实现的。在最新的RHEL 7系统，时钟同步服务由ntpd或者chronyd服务实现。
+注意：在虚拟机中，chrony有一些优势，详细可参考「Red Hat Enterprise Linux 7 System Administrator's Guide」章节Configuring NTP Using the chrony Suite和Configuring NTP Using ntpd。
+chronyd比ntpd具有优势的方便包括：
+只需要间歇性访问时钟源
+适合拥塞的网络而工作良好
+通常同步时钟更快更精确
+比ntpd可以更快调整主机时间
+chronyd可以在Linux主机中以一个较大范围来调整时钟频率，也就是允许在主机时钟中断或不稳定时工作。例如，适合在虚拟机中
+不过，ntpd在标准协议以及支持更多的时钟参考源上比chronyd具有优势。
+guest虚拟机时间同步的机制
+默认情况下，guest使用以下方式和hypervisor之间进行时间同步：
+guest系统启动时，会从模拟的实时时钟（emulated Real Time Clock, RTC）读取时间
+当NTP西诶初始化之后，它将自动同步guest时钟。之后，随着常规的guest操作，NTP在guest内部执行时钟校准
+当guest在暂停（pause）或者还原进程之后继续，通过管理软件（例如virt-manager）发出一个同步guest时钟到指定值的指令。这个同步工作值在QEMU guest agent安装在guest系统中并且支持这个功能的时候才会工作。这个guest时钟同步的值通常就是host主机的时钟值。
+稳定时间戳计数器（Constant Time Stamp Counter, TSC）
+现代Intel和AMD处理器提供了一个稳定时间戳计数器（Constant Time Stamp Counter, TSC）。这个稳定的TSC的计数频率不会随着CPU核心更改频率而改变，例如，节电策略导致的cpu主频降低不会影响TSC计数。一个CPU具有稳定的TSC频率对于使用TSC作为KVM guest的时钟源时非常重要的。
+要查看CPU是否具有稳定的时间戳计数器（constant TSC）需要检查cpuinfo中是否有constant_tsc标志：
+cat /proc/cpuinfo | grep constant_tsc
+如果上述命令没有任何输出，则表明cpu缺少稳定的TSC特性，需要采用其他时钟源。详见下文。
+windows虚拟机同时使用Real-Time Clock(RTC)和Time Stamp Counter(TSC)。对于Windows guest，Real-Time Clock可以用于取代TSC作为所有的时钟源来解决guest时间问题。详细设置和介绍见Red Hat Enterprise Linux 5 Virtualization Guide: Chapter 17. KVM guest timing management
+针对没有稳定时间戳计数器（constant tsc）的主机配置
+对于没有constant TSC主频的系统不能使用TSC作为虚拟机的时钟源，并且需要附加的配置。对于guest虚拟机，带有精确时间保持功能的电源管理功能接口必须被禁用，以在KVM中精确维持时间。
+重要：这部分介绍只针对AMD revision F CPU
+如果CPU缺少constant_tsc标志位，则需要关闭所有的电源管理功能。（电源管理会导致主频变化，如果CPU没有tsc会导致计时不准确）。
+如果主机上TSC不稳定，深度的C状态或者迁移到其他具有更快TSC的主机就有可能会导致cpufreq变化。为了避免内核进入深度C状态（也就是深度节电状态），需要在内核启动参数加上processor.max_cstate=1。
+举例：
+
+term Red Hat Enterprise Linux Server (2.6.18-159.el5)
+        root (hd0,0)
+    kernel /vmlinuz-2.6.18-159.el5 ro root=/dev/VolGroup00/LogVol00 rhgb quiet processor.max_cstate=1
+要持久化这个修改，则编辑/etc/default/grub文件中GRUB_CMDLINE_LINUX配置。例如希望更改成激活emergency模式：
+GRUB_CMDLINE_LINUX="emergency"
+要禁用cpufeq（注意：只对没有constant_tsc的主机需要这样设置），安装kernel-tools然后激活cpupower.service（systemctl enable cpupower.service）。如果想要在每次guest虚拟机启动时禁止这个服务，修改/etc/sysconfig/cpupower配置文件，修改CPUPOWER_START_OPTS和CPUPOWER_STOP_OPTS两个参数。有关限制值可以在/sys/devices/system/cpu/<cpuid>/cpufreq/scaling_available_governors文件可以查看。详细信息参考Red Hat Enterprise Linux 7 Power Management Guide
+Red Hat Enterprise Linux Guest所需的时间管理参数
+对于不同的Red Hat Enterprise Linux guest虚拟机，需要设置对应的内核参数以确保时间正确同步。这些参数可以设置在guest虚拟机的/etc/grub2.cfg配置的/kernel行。
+注意
+
+Red Hat Enterprise Linux 5.5及以后版本，Red Hat Enterprise Linux 6.0及以后版本，以及Red Hat Enterprise Linux 7默认使用kvm-clock作为guest系统的时钟源。运行kvm-clock避免了附加的内核参数，所以Red Hat推荐使用kvm-clock。
+详细的不同guest操作系统设置内核参数见Chapter 8. KVM Guest Timing Management。当前大多数新操作系统版本默认使用kvm-clock就可以了，避免繁琐的内核参数设置。
+更改系统的时钟源会影响系统性能，所以需要谨慎使用，实际解决方法建议排查影响系统稳定性的根本原因，避免修改虚拟机时钟源!
+Clocksource tsc unstable (delta = xxxxxxxx ns)
+近期在线维护KVM服务器，发现在虚拟机创建的过程中，会出现物理服务器上正在运行的虚拟机时间短暂偏移数秒到10秒左右，虽然虚拟机的ntp服务能够最终纠正，但是对运行的业务系统造成了困扰。
+排查发现虚拟机创建的时候，在物理服务器的messages日志中显示PassThrough模式的ixgbe网卡的VF驱动会做一次Reload the VF driver to make this change effective。此时，运行的虚拟机的messages日志显示虚拟时钟源不稳定：
+[2423264.824259] Clocksource tsc unstable (delta = 6824818792 ns).  Enable clocksource failover by adding clocksource_failover kernel parameter.
+检查kvm虚拟机时钟源
+# cat /sys/devices/system/clocksource/clocksource0/available_clocksource
+kvm-clock tsc acpi_pm
+
+#cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+kvm-clock
+参考 [Howto] Fixing unstable clocksource in virtualised CentOS
+在虚拟化之前的计算机时期是通过tick计数来测量时间的：操作系统初始化一个设备来发送终端 - 称为ticks - 作为一个持久的固定的频率。操作系统通过计算这个中断，例如每秒100次，来知晓经过了多少时间。
+然而，在运行的虚拟机中，就不能保证虚拟机能够获得足够资源来保证固定的tick（滴答）速率。假设一个物理服务器运行了大量的虚拟机，就有可能在某个瞬间某些虚拟机不能活的足够资源来产生tick（滴答）。如果物理服务器的负载非常高，则ticks的一个backlog(后台日志)就会建立，并且可能不断增长。这就导致vm虚拟机的时钟延后。如果backlog过大，则这个ticks（滴答）甚至可能被抛弃，这样虚拟机的时钟源就会不稳定并且vm虚拟机时间就会落后。
+当时钟源不稳定的时候，Linux就会尝试找出并报告这个现象，此时在日志中就会出现如下事件：
+Clocksource tsc unstable (delta = -102057770 ns).  Enable clocksource failover by adding clocksource_failover kernel parameter.
+要解决这个问题，我们需要首先找出哪些是可用的时钟源，以及当前使用的时钟源：
+$ cat /sys/devices/system/clocksource/clocksource0/available_clocksource
+kvm-clock tsc hpet acpi_pm
+$ cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+kvm-clock
+解决这个时钟源的问题通常是添加另外一个时钟源，也就是failover clock source，例如hpet或acpi_pm（这里可以看到报错显示是tsc unstable，所以接下来优选的顺序是hpet和acpi_pm）。详细的时钟源解释见"Understanding the Linux Kernel, 3rd Edition" by Daniel P. Bovet, Marco Cesati。
+具体解决步骤 - 在KVM虚拟机的启动内核参数中添加failover clock source如下
+kernel /vmlinuz-2.6.32-358.18.1.el6.x86_64 ro root=UUID=a4eea0d1-3150-4b3f-bc4b-204413280ac7 <其他内核参数> clocksource_failover=acpi_pm
+然后重启虚拟机。
+如果对虚拟机的时钟保持问题想进一步了解，可参考vmware的文档Timekeeping in VMware Virtual Machines
+警告！
+
+使用hpet和acpi_pm时钟源会导致虚拟机性能下降；使用tsc作为时钟源能够提高guest虚拟机性能，但是带来的缺点是guest虚拟机时钟会偏移，所以务必要在guest虚拟机中运行ntpd服务，确保虚拟机时间精准。
+guest虚拟机采用不同时钟源的性能测试
+可用guest时钟源及默认时钟源kvm-clock
+# cat /sys/devices/system/clocksource/clocksource0/available_clocksource
+kvm-clock tsc acpi_pm
+# cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+kvm-clock
+测试性能指令：sysbench cpu --threads=8 --time=300 --cpu-max-prime=100000 run
+设置时钟源为kvm-clock，性能测试输出如下：
+echo "kvm-clock" > /sys/devices/system/clocksource/clocksource0/current_clocksource
+top输出：
+top - 11:39:53 up 23:27,  3 users,  load average: 6.74, 2.48, 0.94
+Tasks: 192 total,   1 running, 191 sleeping,   0 stopped,   0 zombie
+Cpu0  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu1  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu2  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu3  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu4  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu5  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu6  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Cpu7  :100.0%us,  0.0%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.0%si,  0.0%st
+Mem:  32880448k total,   854516k used, 32025932k free,    67620k buffers
+Swap:        0k total,        0k used,        0k free,   475092k cached
+
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND                                                                                                                                                                                                                         
+25089 root      20   0 88160 2476 1416 S 799.7  0.0  14:38.32 sysbench
+sysbench输出
+CPU speed:
+    events per second:   278.78
+
+General statistics:
+    total time:                          300.0210s
+    total number of events:              83639
+
+Latency (ms):
+         min:                                 27.98
+         avg:                                 28.69
+         max:                                126.48
+         95th percentile:                     33.12
+         sum:                            2399991.83
+
+Threads fairness:
+    events (avg/stddev):           10454.8750/37.61
+    execution time (avg/stddev):   299.9990/0.01
+设置时钟源为tsc，性能测试输出如下：
+echo "tsc" > /sys/devices/system/clocksource/clocksource0/current_clocksource
+CPU speed:
+    events per second:   279.16
+
+General statistics:
+    total time:                          300.0256s
+    total number of events:              83756
+
+Latency (ms):
+         min:                                 27.98
+         avg:                                 28.65
+         max:                                 43.79
+         95th percentile:                     31.94
+         sum:                            2399975.15
+
+Threads fairness:
+    events (avg/stddev):           10469.5000/37.98
+    execution time (avg/stddev):   299.9969/0.01
+设置时钟源为acpi_pm，性能测试输出如下：
+echo "acpi_pmtsc" > /sys/devices/system/clocksource/clocksource0/current_clocksource
+CPU speed:
+    events per second:   272.72
+
+General statistics:
+    total time:                          300.0241s
+    total number of events:              81824
+
+Latency (ms):
+         min:                                 28.57
+         avg:                                 29.32
+         max:                                 43.81
+         95th percentile:                     31.94
+         sum:                            2398952.96
+
+Threads fairness:
+    events (avg/stddev):           10228.0000/29.83
+    execution time (avg/stddev):   299.8691/0.01
+上述性能测试可以看到，300秒内完成测试性能显示： tsc > kvm-clock > acpi_pm
+| guest时钟源 | kvm-clock | tsc | acpi_pm | | 300秒完成event | 83639 | 83756 | 81824 | | 性能 | 基准 | +0.14% | -2.17% |
+注意：这个测试只是一个举例，实际上性能对比需要case by case，针对某些特定不断访问时钟的应用，上述调整guest虚拟机时钟源会有比较大的差异，普通应用则可能差距不大或不明显。
+参考
+Red Hat Enterprise Linux 7 Virtualization Deployment and Administration Guide: Chapter 8. KVM Guest Timing Management
+Red Hat Enterprise Linux 5 Virtualization Guide: Chapter 17. KVM guest timing management
+Timekeeping Virtualization for X86-Based Architectures 内核文档中Red Hat撰写的针对KVM的timekeeping.txt，提供了详尽的底层资料
+[Howto] Fixing unstable clocksource in virtualised CentOS
+How to fix Clocksource tsc unstable
+
+
+
+
+
+
+
+kvm虚拟化环境中的时区设置
+Posted on May 9, 2016 by opengers in virtualization 
+
+本文主要介绍宿主机为centos6环境下，虚拟机的时间保持问题
+
+guest OS时间保持
+kvm技术是全虚拟化，guest OS并不需要做修改就可以直接运行，然而在计时方面却存在问题，guest OS计时的一种方式是通过时钟中断计数，进而换算得到，但host产生的时钟中断不能及时到达所有guest OS，因为guest OS中的中断并不是真正的硬件中断，它是由host注入的中断
+
+许多网络应用，web中的sessions验证等，都会调用系统时间，guest OS中若时间有误，则会引起程序出错，为此，kvm给guest vms提供了一个半虚拟化时钟(kvm-clock),在RHEL5.5及其以上版本中，都使用了kvm-clock作为默认时钟源，可以在guest 中使用下面命令查看是否使用了kvm-clock
+
+cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+kvm-clock
+在kvm-clock方式下，guest OS不能直接访问Host时钟，Host把系统时间写入一个guest可以读取的内存页，这样guest就可以读取此内存页设置自身硬件时间，但是Host并不是实时更新时间到此内存页，而是在发生一个vm event(vm关机，重启等)时才更新，因此此种方式也不能保持guest时间准确无误
+
+在继续之前，我们要先理解系统时间和硬件时间等概念
+
+UTC时间 与 本地时间
+UTC时间：又称世界标准时间、世界统一时间，UTC是以原子钟校准的，世界其它地区是以此为基准时间加上自己时区来设置其本地时间的
+
+本地时间：由于处在不同的时区，本地时间一般与UTC是不同的，换算方法就是
+
+    本地时间 = UTC + 时区 或 UTC = 本地时间 - 时区
+时区东为正，西为负，在中国，时区为东八区，也就是+8区，本地时间都使用北京时间，在linux上显示就是 CST, 所以CST=UTC+(+8小时) 或 UTC=CST-(+8小时)
+
+CST是China Standard Time，中国标准时，注意美国的中部标准时Central Standard Time也缩写为CST）
+
+系统时间 与 硬件时间
+硬件时间:主板上BIOS中的时间，由主板电池供电来维持运行，系统开机时要读取这个时间，并根据它来设定系统时间（注意：系统启动时根据硬件时间设定系统时间的过程可能存在时区换算，根据/etc/localtime）
+
+系统时间: 就是我们执行date 命令看到的时间，linux系统下所有的时间调用（除了直接访问硬件时间的命令）都是使用的这个时间。
+
+/etc/localtime这个文件用来设置系统的时区，将/usr/share/zoneinfo/中相应时区文件拷贝到/etc下并重命名为localtime即可修改时区设置(也可以使用tzselect命令修改)，而且这种修改对date命令是即时生效的。不论是 date 还是hwclock都会用到这个文件，系统会根据这个文件的时区设置来进行UTC和本地时间之间的换算。
+
+libvirt中设置虚拟机硬件时钟
+kvm虚拟机一般使用libvirt进行管理，在虚拟机配置的xml文件中，有关于虚拟机硬件时钟设置项
+
+    <clock offset='localtime'>
+    </clock>
+clock的offset属性有"utc","localtime","timezone","variable"四个可选项
+
+如果guest OS是Linux系统，应该选用utc，guest OS在启动时便会向host同步一次utc时间，然后根据/etc/localtime中设置的时区，来计算系统时间
+
+如果guest OS是windows系统，则应该选用localtime，guest OS在启动时向host同步一次系统时间
+
+集群环境
+在虚拟机集群环境中，不能够只依赖kvm管理进程提供的计时功能，文章开头也提及这种计时并不很精确，而libvirt中配置的clock offset选项，是用于配置虚拟机硬件时钟，虚拟机中的系统时间还要再加上相应的时区换算得到，根据以上分析，集群环境多台虚拟机时间配置需要以下几步
+
+  1. libvirt中设置正确的"clock offset"  
+  2. 虚拟机中设置正确的时区（/etc/localtime）   
+  3. 搭建内部ntp服务器，每个五分钟进行一次时间同步   
+
+
+
+
+
+
+
+
+
+	Timekeeping Virtualization for X86-Based Architectures
+
+	Zachary Amsden <zamsden@redhat.com>
+	Copyright (c) 2010, Red Hat.  All rights reserved.
+
+1) Overview
+2) Timing Devices
+3) TSC Hardware
+4) Virtualization Problems
+
+=========================================================================
+
+1) Overview
+
+One of the most complicated parts of the X86 platform, and specifically,
+the virtualization of this platform is the plethora of timing devices available
+and the complexity of emulating those devices.  In addition, virtualization of
+time introduces a new set of challenges because it introduces a multiplexed
+division of time beyond the control of the guest CPU.
+
+First, we will describe the various timekeeping hardware available, then
+present some of the problems which arise and solutions available, giving
+specific recommendations for certain classes of KVM guests.
+
+The purpose of this document is to collect data and information relevant to
+timekeeping which may be difficult to find elsewhere, specifically,
+information relevant to KVM and hardware-based virtualization.
+
+=========================================================================
+
+2) Timing Devices
+
+First we discuss the basic hardware devices available.  TSC and the related
+KVM clock are special enough to warrant a full exposition and are described in
+the following section.
+
+2.1) i8254 - PIT
+
+One of the first timer devices available is the programmable interrupt timer,
+or PIT.  The PIT has a fixed frequency 1.193182 MHz base clock and three
+channels which can be programmed to deliver periodic or one-shot interrupts.
+These three channels can be configured in different modes and have individual
+counters.  Channel 1 and 2 were not available for general use in the original
+IBM PC, and historically were connected to control RAM refresh and the PC
+speaker.  Now the PIT is typically integrated as part of an emulated chipset
+and a separate physical PIT is not used.
+
+The PIT uses I/O ports 0x40 - 0x43.  Access to the 16-bit counters is done
+using single or multiple byte access to the I/O ports.  There are 6 modes
+available, but not all modes are available to all timers, as only timer 2
+has a connected gate input, required for modes 1 and 5.  The gate line is
+controlled by port 61h, bit 0, as illustrated in the following diagram.
+
+ --------------             ----------------
+|              |           |                |
+|  1.1932 MHz  |---------->| CLOCK      OUT | ---------> IRQ 0
+|    Clock     |   |       |                |
+ --------------    |    +->| GATE  TIMER 0  |
+                   |        ----------------
+                   |
+                   |        ----------------
+                   |       |                |
+                   |------>| CLOCK      OUT | ---------> 66.3 KHZ DRAM
+                   |       |                |            (aka /dev/null)
+                   |    +->| GATE  TIMER 1  |
+                   |        ----------------
+                   |
+                   |        ----------------
+                   |       |                |
+                   |------>| CLOCK      OUT | ---------> Port 61h, bit 5
+                           |                |      |
+Port 61h, bit 0 ---------->| GATE  TIMER 2  |       \_.----   ____
+                            ----------------         _|    )--|LPF|---Speaker
+                                                    / *----   \___/
+Port 61h, bit 1 -----------------------------------/
+
+The timer modes are now described.
+
+Mode 0: Single Timeout.   This is a one-shot software timeout that counts down
+ when the gate is high (always true for timers 0 and 1).  When the count
+ reaches zero, the output goes high.
+
+Mode 1: Triggered One-shot.  The output is initially set high.  When the gate
+ line is set high, a countdown is initiated (which does not stop if the gate is
+ lowered), during which the output is set low.  When the count reaches zero,
+ the output goes high.
+
+Mode 2: Rate Generator.  The output is initially set high.  When the countdown
+ reaches 1, the output goes low for one count and then returns high.  The value
+ is reloaded and the countdown automatically resumes.  If the gate line goes
+ low, the count is halted.  If the output is low when the gate is lowered, the
+ output automatically goes high (this only affects timer 2).
+
+Mode 3: Square Wave.   This generates a high / low square wave.  The count
+ determines the length of the pulse, which alternates between high and low
+ when zero is reached.  The count only proceeds when gate is high and is
+ automatically reloaded on reaching zero.  The count is decremented twice at
+ each clock to generate a full high / low cycle at the full periodic rate.
+ If the count is even, the clock remains high for N/2 counts and low for N/2
+ counts; if the clock is odd, the clock is high for (N+1)/2 counts and low
+ for (N-1)/2 counts.  Only even values are latched by the counter, so odd
+ values are not observed when reading.  This is the intended mode for timer 2,
+ which generates sine-like tones by low-pass filtering the square wave output.
+
+Mode 4: Software Strobe.  After programming this mode and loading the counter,
+ the output remains high until the counter reaches zero.  Then the output
+ goes low for 1 clock cycle and returns high.  The counter is not reloaded.
+ Counting only occurs when gate is high.
+
+Mode 5: Hardware Strobe.  After programming and loading the counter, the
+ output remains high.  When the gate is raised, a countdown is initiated
+ (which does not stop if the gate is lowered).  When the counter reaches zero,
+ the output goes low for 1 clock cycle and then returns high.  The counter is
+ not reloaded.
+
+In addition to normal binary counting, the PIT supports BCD counting.  The
+command port, 0x43 is used to set the counter and mode for each of the three
+timers.
+
+PIT commands, issued to port 0x43, using the following bit encoding:
+
+Bit 7-4: Command (See table below)
+Bit 3-1: Mode (000 = Mode 0, 101 = Mode 5, 11X = undefined)
+Bit 0  : Binary (0) / BCD (1)
+
+Command table:
+
+0000 - Latch Timer 0 count for port 0x40
+	sample and hold the count to be read in port 0x40;
+	additional commands ignored until counter is read;
+	mode bits ignored.
+
+0001 - Set Timer 0 LSB mode for port 0x40
+	set timer to read LSB only and force MSB to zero;
+	mode bits set timer mode
+
+0010 - Set Timer 0 MSB mode for port 0x40
+	set timer to read MSB only and force LSB to zero;
+	mode bits set timer mode
+
+0011 - Set Timer 0 16-bit mode for port 0x40
+	set timer to read / write LSB first, then MSB;
+	mode bits set timer mode
+
+0100 - Latch Timer 1 count for port 0x41 - as described above
+0101 - Set Timer 1 LSB mode for port 0x41 - as described above
+0110 - Set Timer 1 MSB mode for port 0x41 - as described above
+0111 - Set Timer 1 16-bit mode for port 0x41 - as described above
+
+1000 - Latch Timer 2 count for port 0x42 - as described above
+1001 - Set Timer 2 LSB mode for port 0x42 - as described above
+1010 - Set Timer 2 MSB mode for port 0x42 - as described above
+1011 - Set Timer 2 16-bit mode for port 0x42 as described above
+
+1101 - General counter latch
+	Latch combination of counters into corresponding ports
+	Bit 3 = Counter 2
+	Bit 2 = Counter 1
+	Bit 1 = Counter 0
+	Bit 0 = Unused
+
+1110 - Latch timer status
+	Latch combination of counter mode into corresponding ports
+	Bit 3 = Counter 2
+	Bit 2 = Counter 1
+	Bit 1 = Counter 0
+
+	The output of ports 0x40-0x42 following this command will be:
+
+	Bit 7 = Output pin
+	Bit 6 = Count loaded (0 if timer has expired)
+	Bit 5-4 = Read / Write mode
+	    01 = MSB only
+	    10 = LSB only
+	    11 = LSB / MSB (16-bit)
+	Bit 3-1 = Mode
+	Bit 0 = Binary (0) / BCD mode (1)
+
+2.2) RTC
+
+The second device which was available in the original PC was the MC146818 real
+time clock.  The original device is now obsolete, and usually emulated by the
+system chipset, sometimes by an HPET and some frankenstein IRQ routing.
+
+The RTC is accessed through CMOS variables, which uses an index register to
+control which bytes are read.  Since there is only one index register, read
+of the CMOS and read of the RTC require lock protection (in addition, it is
+dangerous to allow userspace utilities such as hwclock to have direct RTC
+access, as they could corrupt kernel reads and writes of CMOS memory).
+
+The RTC generates an interrupt which is usually routed to IRQ 8.  The interrupt
+can function as a periodic timer, an additional once a day alarm, and can issue
+interrupts after an update of the CMOS registers by the MC146818 is complete.
+The type of interrupt is signalled in the RTC status registers.
+
+The RTC will update the current time fields by battery power even while the
+system is off.  The current time fields should not be read while an update is
+in progress, as indicated in the status register.
+
+The clock uses a 32.768kHz crystal, so bits 6-4 of register A should be
+programmed to a 32kHz divider if the RTC is to count seconds.
+
+This is the RAM map originally used for the RTC/CMOS:
+
+Location    Size    Description
+------------------------------------------
+00h         byte    Current second (BCD)
+01h         byte    Seconds alarm (BCD)
+02h         byte    Current minute (BCD)
+03h         byte    Minutes alarm (BCD)
+04h         byte    Current hour (BCD)
+05h         byte    Hours alarm (BCD)
+06h         byte    Current day of week (BCD)
+07h         byte    Current day of month (BCD)
+08h         byte    Current month (BCD)
+09h         byte    Current year (BCD)
+0Ah         byte    Register A
+                       bit 7   = Update in progress
+                       bit 6-4 = Divider for clock
+                                  000 = 4.194 MHz
+                                  001 = 1.049 MHz
+                                  010 = 32 kHz
+                                  10X = test modes
+                                  110 = reset / disable
+                                  111 = reset / disable
+                       bit 3-0 = Rate selection for periodic interrupt
+                                  000 = periodic timer disabled
+                                  001 = 3.90625 uS
+                                  010 = 7.8125 uS
+                                  011 = .122070 mS
+                                  100 = .244141 mS
+                                     ...
+                                 1101 = 125 mS
+                                 1110 = 250 mS
+                                 1111 = 500 mS
+0Bh         byte    Register B
+                       bit 7   = Run (0) / Halt (1)
+                       bit 6   = Periodic interrupt enable
+                       bit 5   = Alarm interrupt enable
+                       bit 4   = Update-ended interrupt enable
+                       bit 3   = Square wave interrupt enable
+                       bit 2   = BCD calendar (0) / Binary (1)
+                       bit 1   = 12-hour mode (0) / 24-hour mode (1)
+                       bit 0   = 0 (DST off) / 1 (DST enabled)
+OCh         byte    Register C (read only)
+                       bit 7   = interrupt request flag (IRQF)
+                       bit 6   = periodic interrupt flag (PF)
+                       bit 5   = alarm interrupt flag (AF)
+                       bit 4   = update interrupt flag (UF)
+                       bit 3-0 = reserved
+ODh         byte    Register D (read only)
+                       bit 7   = RTC has power
+                       bit 6-0 = reserved
+32h         byte    Current century BCD (*)
+  (*) location vendor specific and now determined from ACPI global tables
+
+2.3) APIC
+
+On Pentium and later processors, an on-board timer is available to each CPU
+as part of the Advanced Programmable Interrupt Controller.  The APIC is
+accessed through memory-mapped registers and provides interrupt service to each
+CPU, used for IPIs and local timer interrupts.
+
+Although in theory the APIC is a safe and stable source for local interrupts,
+in practice, many bugs and glitches have occurred due to the special nature of
+the APIC CPU-local memory-mapped hardware.  Beware that CPU errata may affect
+the use of the APIC and that workarounds may be required.  In addition, some of
+these workarounds pose unique constraints for virtualization - requiring either
+extra overhead incurred from extra reads of memory-mapped I/O or additional
+functionality that may be more computationally expensive to implement.
+
+Since the APIC is documented quite well in the Intel and AMD manuals, we will
+avoid repetition of the detail here.  It should be pointed out that the APIC
+timer is programmed through the LVT (local vector timer) register, is capable
+of one-shot or periodic operation, and is based on the bus clock divided down
+by the programmable divider register.
+
+2.4) HPET
+
+HPET is quite complex, and was originally intended to replace the PIT / RTC
+support of the X86 PC.  It remains to be seen whether that will be the case, as
+the de facto standard of PC hardware is to emulate these older devices.  Some
+systems designated as legacy free may support only the HPET as a hardware timer
+device.
+
+The HPET spec is rather loose and vague, requiring at least 3 hardware timers,
+but allowing implementation freedom to support many more.  It also imposes no
+fixed rate on the timer frequency, but does impose some extremal values on
+frequency, error and slew.
+
+In general, the HPET is recommended as a high precision (compared to PIT /RTC)
+time source which is independent of local variation (as there is only one HPET
+in any given system).  The HPET is also memory-mapped, and its presence is
+indicated through ACPI tables by the BIOS.
+
+Detailed specification of the HPET is beyond the current scope of this
+document, as it is also very well documented elsewhere.
+
+2.5) Offboard Timers
+
+Several cards, both proprietary (watchdog boards) and commonplace (e1000) have
+timing chips built into the cards which may have registers which are accessible
+to kernel or user drivers.  To the author's knowledge, using these to generate
+a clocksource for a Linux or other kernel has not yet been attempted and is in
+general frowned upon as not playing by the agreed rules of the game.  Such a
+timer device would require additional support to be virtualized properly and is
+not considered important at this time as no known operating system does this.
+
+=========================================================================
+
+3) TSC Hardware
+
+The TSC or time stamp counter is relatively simple in theory; it counts
+instruction cycles issued by the processor, which can be used as a measure of
+time.  In practice, due to a number of problems, it is the most complicated
+timekeeping device to use.
+
+The TSC is represented internally as a 64-bit MSR which can be read with the
+RDMSR, RDTSC, or RDTSCP (when available) instructions.  In the past, hardware
+limitations made it possible to write the TSC, but generally on old hardware it
+was only possible to write the low 32-bits of the 64-bit counter, and the upper
+32-bits of the counter were cleared.  Now, however, on Intel processors family
+0Fh, for models 3, 4 and 6, and family 06h, models e and f, this restriction
+has been lifted and all 64-bits are writable.  On AMD systems, the ability to
+write the TSC MSR is not an architectural guarantee.
+
+The TSC is accessible from CPL-0 and conditionally, for CPL > 0 software by
+means of the CR4.TSD bit, which when enabled, disables CPL > 0 TSC access.
+
+Some vendors have implemented an additional instruction, RDTSCP, which returns
+atomically not just the TSC, but an indicator which corresponds to the
+processor number.  This can be used to index into an array of TSC variables to
+determine offset information in SMP systems where TSCs are not synchronized.
+The presence of this instruction must be determined by consulting CPUID feature
+bits.
+
+Both VMX and SVM provide extension fields in the virtualization hardware which
+allows the guest visible TSC to be offset by a constant.  Newer implementations
+promise to allow the TSC to additionally be scaled, but this hardware is not
+yet widely available.
+
+3.1) TSC synchronization
+
+The TSC is a CPU-local clock in most implementations.  This means, on SMP
+platforms, the TSCs of different CPUs may start at different times depending
+on when the CPUs are powered on.  Generally, CPUs on the same die will share
+the same clock, however, this is not always the case.
+
+The BIOS may attempt to resynchronize the TSCs during the poweron process and
+the operating system or other system software may attempt to do this as well.
+Several hardware limitations make the problem worse - if it is not possible to
+write the full 64-bits of the TSC, it may be impossible to match the TSC in
+newly arriving CPUs to that of the rest of the system, resulting in
+unsynchronized TSCs.  This may be done by BIOS or system software, but in
+practice, getting a perfectly synchronized TSC will not be possible unless all
+values are read from the same clock, which generally only is possible on single
+socket systems or those with special hardware support.
+
+3.2) TSC and CPU hotplug
+
+As touched on already, CPUs which arrive later than the boot time of the system
+may not have a TSC value that is synchronized with the rest of the system.
+Either system software, BIOS, or SMM code may actually try to establish the TSC
+to a value matching the rest of the system, but a perfect match is usually not
+a guarantee.  This can have the effect of bringing a system from a state where
+TSC is synchronized back to a state where TSC synchronization flaws, however
+small, may be exposed to the OS and any virtualization environment.
+
+3.3) TSC and multi-socket / NUMA
+
+Multi-socket systems, especially large multi-socket systems are likely to have
+individual clocksources rather than a single, universally distributed clock.
+Since these clocks are driven by different crystals, they will not have
+perfectly matched frequency, and temperature and electrical variations will
+cause the CPU clocks, and thus the TSCs to drift over time.  Depending on the
+exact clock and bus design, the drift may or may not be fixed in absolute
+error, and may accumulate over time.
+
+In addition, very large systems may deliberately slew the clocks of individual
+cores.  This technique, known as spread-spectrum clocking, reduces EMI at the
+clock frequency and harmonics of it, which may be required to pass FCC
+standards for telecommunications and computer equipment.
+
+It is recommended not to trust the TSCs to remain synchronized on NUMA or
+multiple socket systems for these reasons.
+
+3.4) TSC and C-states
+
+C-states, or idling states of the processor, especially C1E and deeper sleep
+states may be problematic for TSC as well.  The TSC may stop advancing in such
+a state, resulting in a TSC which is behind that of other CPUs when execution
+is resumed.  Such CPUs must be detected and flagged by the operating system
+based on CPU and chipset identifications.
+
+The TSC in such a case may be corrected by catching it up to a known external
+clocksource.
+
+3.5) TSC frequency change / P-states
+
+To make things slightly more interesting, some CPUs may change frequency.  They
+may or may not run the TSC at the same rate, and because the frequency change
+may be staggered or slewed, at some points in time, the TSC rate may not be
+known other than falling within a range of values.  In this case, the TSC will
+not be a stable time source, and must be calibrated against a known, stable,
+external clock to be a usable source of time.
+
+Whether the TSC runs at a constant rate or scales with the P-state is model
+dependent and must be determined by inspecting CPUID, chipset or vendor
+specific MSR fields.
+
+In addition, some vendors have known bugs where the P-state is actually
+compensated for properly during normal operation, but when the processor is
+inactive, the P-state may be raised temporarily to service cache misses from
+other processors.  In such cases, the TSC on halted CPUs could advance faster
+than that of non-halted processors.  AMD Turion processors are known to have
+this problem.
+
+3.6) TSC and STPCLK / T-states
+
+External signals given to the processor may also have the effect of stopping
+the TSC.  This is typically done for thermal emergency power control to prevent
+an overheating condition, and typically, there is no way to detect that this
+condition has happened.
+
+3.7) TSC virtualization - VMX
+
+VMX provides conditional trapping of RDTSC, RDMSR, WRMSR and RDTSCP
+instructions, which is enough for full virtualization of TSC in any manner.  In
+addition, VMX allows passing through the host TSC plus an additional TSC_OFFSET
+field specified in the VMCS.  Special instructions must be used to read and
+write the VMCS field.
+
+3.8) TSC virtualization - SVM
+
+SVM provides conditional trapping of RDTSC, RDMSR, WRMSR and RDTSCP
+instructions, which is enough for full virtualization of TSC in any manner.  In
+addition, SVM allows passing through the host TSC plus an additional offset
+field specified in the SVM control block.
+
+3.9) TSC feature bits in Linux
+
+In summary, there is no way to guarantee the TSC remains in perfect
+synchronization unless it is explicitly guaranteed by the architecture.  Even
+if so, the TSCs in multi-sockets or NUMA systems may still run independently
+despite being locally consistent.
+
+The following feature bits are used by Linux to signal various TSC attributes,
+but they can only be taken to be meaningful for UP or single node systems.
+
+X86_FEATURE_TSC 		: The TSC is available in hardware
+X86_FEATURE_RDTSCP		: The RDTSCP instruction is available
+X86_FEATURE_CONSTANT_TSC 	: The TSC rate is unchanged with P-states
+X86_FEATURE_NONSTOP_TSC		: The TSC does not stop in C-states
+X86_FEATURE_TSC_RELIABLE	: TSC sync checks are skipped (VMware)
+
+4) Virtualization Problems
+
+Timekeeping is especially problematic for virtualization because a number of
+challenges arise.  The most obvious problem is that time is now shared between
+the host and, potentially, a number of virtual machines.  Thus the virtual
+operating system does not run with 100% usage of the CPU, despite the fact that
+it may very well make that assumption.  It may expect it to remain true to very
+exacting bounds when interrupt sources are disabled, but in reality only its
+virtual interrupt sources are disabled, and the machine may still be preempted
+at any time.  This causes problems as the passage of real time, the injection
+of machine interrupts and the associated clock sources are no longer completely
+synchronized with real time.
+
+This same problem can occur on native hardware to a degree, as SMM mode may
+steal cycles from the naturally on X86 systems when SMM mode is used by the
+BIOS, but not in such an extreme fashion.  However, the fact that SMM mode may
+cause similar problems to virtualization makes it a good justification for
+solving many of these problems on bare metal.
+
+4.1) Interrupt clocking
+
+One of the most immediate problems that occurs with legacy operating systems
+is that the system timekeeping routines are often designed to keep track of
+time by counting periodic interrupts.  These interrupts may come from the PIT
+or the RTC, but the problem is the same: the host virtualization engine may not
+be able to deliver the proper number of interrupts per second, and so guest
+time may fall behind.  This is especially problematic if a high interrupt rate
+is selected, such as 1000 HZ, which is unfortunately the default for many Linux
+guests.
+
+There are three approaches to solving this problem; first, it may be possible
+to simply ignore it.  Guests which have a separate time source for tracking
+'wall clock' or 'real time' may not need any adjustment of their interrupts to
+maintain proper time.  If this is not sufficient, it may be necessary to inject
+additional interrupts into the guest in order to increase the effective
+interrupt rate.  This approach leads to complications in extreme conditions,
+where host load or guest lag is too much to compensate for, and thus another
+solution to the problem has risen: the guest may need to become aware of lost
+ticks and compensate for them internally.  Although promising in theory, the
+implementation of this policy in Linux has been extremely error prone, and a
+number of buggy variants of lost tick compensation are distributed across
+commonly used Linux systems.
+
+Windows uses periodic RTC clocking as a means of keeping time internally, and
+thus requires interrupt slewing to keep proper time.  It does use a low enough
+rate (ed: is it 18.2 Hz?) however that it has not yet been a problem in
+practice.
+
+4.2) TSC sampling and serialization
+
+As the highest precision time source available, the cycle counter of the CPU
+has aroused much interest from developers.  As explained above, this timer has
+many problems unique to its nature as a local, potentially unstable and
+potentially unsynchronized source.  One issue which is not unique to the TSC,
+but is highlighted because of its very precise nature is sampling delay.  By
+definition, the counter, once read is already old.  However, it is also
+possible for the counter to be read ahead of the actual use of the result.
+This is a consequence of the superscalar execution of the instruction stream,
+which may execute instructions out of order.  Such execution is called
+non-serialized.  Forcing serialized execution is necessary for precise
+measurement with the TSC, and requires a serializing instruction, such as CPUID
+or an MSR read.
+
+Since CPUID may actually be virtualized by a trap and emulate mechanism, this
+serialization can pose a performance issue for hardware virtualization.  An
+accurate time stamp counter reading may therefore not always be available, and
+it may be necessary for an implementation to guard against "backwards" reads of
+the TSC as seen from other CPUs, even in an otherwise perfectly synchronized
+system.
+
+4.3) Timespec aliasing
+
+Additionally, this lack of serialization from the TSC poses another challenge
+when using results of the TSC when measured against another time source.  As
+the TSC is much higher precision, many possible values of the TSC may be read
+while another clock is still expressing the same value.
+
+That is, you may read (T,T+10) while external clock C maintains the same value.
+Due to non-serialized reads, you may actually end up with a range which
+fluctuates - from (T-1.. T+10).  Thus, any time calculated from a TSC, but
+calibrated against an external value may have a range of valid values.
+Re-calibrating this computation may actually cause time, as computed after the
+calibration, to go backwards, compared with time computed before the
+calibration.
+
+This problem is particularly pronounced with an internal time source in Linux,
+the kernel time, which is expressed in the theoretically high resolution
+timespec - but which advances in much larger granularity intervals, sometimes
+at the rate of jiffies, and possibly in catchup modes, at a much larger step.
+
+This aliasing requires care in the computation and recalibration of kvmclock
+and any other values derived from TSC computation (such as TSC virtualization
+itself).
+
+4.4) Migration
+
+Migration of a virtual machine raises problems for timekeeping in two ways.
+First, the migration itself may take time, during which interrupts cannot be
+delivered, and after which, the guest time may need to be caught up.  NTP may
+be able to help to some degree here, as the clock correction required is
+typically small enough to fall in the NTP-correctable window.
+
+An additional concern is that timers based off the TSC (or HPET, if the raw bus
+clock is exposed) may now be running at different rates, requiring compensation
+in some way in the hypervisor by virtualizing these timers.  In addition,
+migrating to a faster machine may preclude the use of a passthrough TSC, as a
+faster clock cannot be made visible to a guest without the potential of time
+advancing faster than usual.  A slower clock is less of a problem, as it can
+always be caught up to the original rate.  KVM clock avoids these problems by
+simply storing multipliers and offsets against the TSC for the guest to convert
+back into nanosecond resolution values.
+
+4.5) Scheduling
+
+Since scheduling may be based on precise timing and firing of interrupts, the
+scheduling algorithms of an operating system may be adversely affected by
+virtualization.  In theory, the effect is random and should be universally
+distributed, but in contrived as well as real scenarios (guest device access,
+causes of virtualization exits, possible context switch), this may not always
+be the case.  The effect of this has not been well studied.
+
+In an attempt to work around this, several implementations have provided a
+paravirtualized scheduler clock, which reveals the true amount of CPU time for
+which a virtual machine has been running.
+
+4.6) Watchdogs
+
+Watchdog timers, such as the lock detector in Linux may fire accidentally when
+running under hardware virtualization due to timer interrupts being delayed or
+misinterpretation of the passage of real time.  Usually, these warnings are
+spurious and can be ignored, but in some circumstances it may be necessary to
+disable such detection.
+
+4.7) Delays and precision timing
+
+Precise timing and delays may not be possible in a virtualized system.  This
+can happen if the system is controlling physical hardware, or issues delays to
+compensate for slower I/O to and from devices.  The first issue is not solvable
+in general for a virtualized system; hardware control software can't be
+adequately virtualized without a full real-time operating system, which would
+require an RT aware virtualization platform.
+
+The second issue may cause performance problems, but this is unlikely to be a
+significant issue.  In many cases these delays may be eliminated through
+configuration or paravirtualization.
+
+4.8) Covert channels and leaks
+
+In addition to the above problems, time information will inevitably leak to the
+guest about the host in anything but a perfect implementation of virtualized
+time.  This may allow the guest to infer the presence of a hypervisor (as in a
+red-pill type detection), and it may allow information to leak between guests
+by using CPU utilization itself as a signalling channel.  Preventing such
+problems would require completely isolated virtual time which may not track
+real time any longer.  This may be useful in certain security or QA contexts,
+but in general isn't recommended for real-world deployment scenarios.

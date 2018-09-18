@@ -1,0 +1,134 @@
+Guest Fencing
+Pacemaker can use fence_virtd to fence nodes that are virtual machines. In such a setup:
+
+The physical host does not need to run Pacemaker, and runs fence_virtd to accept fencing requests.
+The virtual hosts do run Pacemaker, and initiate fencing requests.
+
+Contents
+1 Assumptions
+2 Choose a multicast address and a TCP port
+3 Configure the physical host
+4 Configure the virtual machine
+5 Configure Pacemaker
+6 Alternative configuration for guests running on multiple hosts
+7 See also
+Assumptions
+This walk-through makes certain assumptions for simplicity:
+
+All virtual machines run on the same physical host. (This is appropriate for a test environment, but in a production environment, the physical host would become a single point of failure.)
+The physical host and virtual machines run RHEL 7 (for example commands, but the concepts apply to any distribution and should be easily adaptable).
+The virtual machines do not have addresses on the local LAN, but instead use a virtual bridge virbr0 to communicate with each other and the physical host, which they use as their gateway.
+fence_virtd will use multicast IP for communication, so Pacemaker will use the fence_xvm fencing device. (fence_virtd also supports fence_virt for communication via serial or VMChannel, which are not covered here.)
+
+Choose a multicast address and a TCP port
+fence_virtd will use a multicast IP address to communicate among the host and VMs. It will also contact clients directly on a TCP port when sending replies to requests.
+
+By default, the multicast address is 225.0.0.12, and the TCP port is 1229.
+
+You can choose other values if you prefer. In particular, choosing a multicast address has some common pitfalls, and a better choice might be in the site-local (239.255.x.y) or organization-local (239.192-251.x.y) ranges.
+
+Configure the physical host
+Install the software:
+  yum install fence-virt fence-virtd fence-virtd-multicast fence-virtd-libvirt
+If a local firewall is enabled, allow traffic involving the chosen multicast IP. For simplicity, here we allow all traffic on the virtual bridge (which is appropriate only if you trust all VMs to the same degree as the host):
+  firewall-cmd --permanent --zone=trusted --change-interface=virbr0
+Run the configuration tool:
+ fence_virtd -c
+Accept all the defaults except for the items listed below, and the multicast IP and TCP port if you selected non-default ones:
+
+ Setting a preferred interface causes fence_virtd to listen only
+ on that interface.  Normally, it listens on all interfaces.
+ In environments where the virtual machines are using the host
+ machine as a gateway, this *must* be set (typically to virbr0).
+ Set to 'none' for no interface.
+ 
+ Interface [none]: virbr0
+You can accept the default (none) if the guests have IPs on the local LAN. Here, we assume they do not.
+
+ Key File [none]: /etc/cluster/fence_xvm.key
+This ensures only machines with the same key can initiate fencing requests.
+
+At the end, it will ask
+
+ Replace /etc/fence_virt.conf with the above [y/N]? y
+Say yes.
+
+You should end up with a configuration like this in /etc/fence_virt.conf:
+ backends {
+         libvirt {
+                 uri = "qemu:///system";
+         }
+ }
+ 
+ listeners {
+         multicast {
+                 key_file = "/etc/cluster/fence_xvm.key";
+                 interface = "virbr0";
+                 port = "1229";
+                 address = "225.0.0.12";
+                 family = "ipv4";
+         }
+ }
+ 
+ fence_virtd {
+         backend = "libvirt";
+         listener = "multicast";
+         module_path = "/usr/lib64/fence-virt";
+ }
+Create a random shared key:
+  mkdir -p /etc/cluster
+  touch /etc/cluster/fence_xvm.key
+  chmod 0600 /etc/cluster/fence_xvm.key
+  dd if=/dev/urandom bs=512 count=1 of=/etc/cluster/fence_xvm.key
+Start the daemon:
+ fence_virtd
+Note that there are currently no startup scripts (init script, systemd service, etc.) for the daemon. You may want to write your own if you want fence_virtd to start at boot.
+
+Test the host's multicast connectivity (if you chose a non-default multicast address, specify it via the -a $MULTICAST_IP argument):
+ fence_xvm -o list
+You should see output like:
+
+ [root@myhost ~]# fence_xvm -o list
+ pcmk-1               17bd6b6a-928f-2820-64ac-7c8d536df65f on
+ pcmk-2               f0062842-0196-7ec1-7623-e5bbe3a6632c on
+ pcmk-3               33e954b8-39ae-fb4b-e6e8-ecc443516b92 on
+ pcmk-4               98cda6de-74c4-97bf-0cfb-3954ff76a5c3 on
+ Remote: Operation was successful
+Configure the virtual machine
+Install the software:
+  yum install fence-virt fence-virtd
+If a local firewall is enabled, open the chosen TCP port (in this example, the default of 1229) to the host (in this example 192.168.122.1):
+  firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.122.1" port port="1229" protocol="tcp" accept'
+  firewall-cmd --reload
+Create a place for the shared key:
+  mkdir -p /etc/cluster
+Copy the shared key from the host to /etc/cluster/fence_xvm.key.
+Test the guest's multicast connectivity (if you chose a non-default multicast address, specify it via the -a $MULTICAST_IP argument):
+ fence_xvm -o list
+You should see the same output as you saw on the host, e.g.:
+
+ [root@pcmk-1 ~]# fence_xvm -o list
+ pcmk-1               17bd6b6a-928f-2820-64ac-7c8d536df65f on
+ pcmk-2               f0062842-0196-7ec1-7623-e5bbe3a6632c on
+ pcmk-3               33e954b8-39ae-fb4b-e6e8-ecc443516b92 on
+ pcmk-4               98cda6de-74c4-97bf-0cfb-3954ff76a5c3 on
+ Remote: Operation was successful
+Configure Pacemaker
+On any Pacemaker node, create the fencing resource:
+  pcs stonith create Fencing fence_xvm ip_family="ipv4" 
+  pcs property set stonith-enabled=true
+If you chose a non-default multicast address and/or TCP port, add multicast_address="$MULTICAST_IP" and/or ipport=$TCP_PORT to the create line. See pcs stonith describe fence_xvm for more options.
+
+Test the configuration by fencing a node:
+ pcs cluster standby $NODE_NAME
+ stonith_admin --reboot $NODE_NAME
+
+Alternative configuration for guests running on multiple hosts
+Not yet supported. Rough commands:
+
+ yum install -y libvirt-qpid qpidd
+ chkconfig --level 2345 qpidd on
+ chkconfig --level 2345 libvirt-qpid on
+ service qpidd start
+ service libvirt-qpid start
+ sed -i.sed s/libvirt/libvirt-qpid/g /etc/fence_virt.conf

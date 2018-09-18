@@ -1,0 +1,133 @@
+KVM : Live Migration2014/08/12
+ 	
+This is the example to use Live Migration feature for Virtual Machines.
+This requires 2 KVM host server and a storage server like follows.
+Configure DNS or hosts to resolve names or IP addresses normally, first.
+                      +----------------------+
+                      |   [  NFS Servver  ]  |
+                      |     nfs.srv.world    |
+                      |                      |
+                      +-----------+----------+
+                                  |10.0.0.30
+                                  |
++----------------------+          |          +----------------------+
+|  [   KVM Host #1  ]  |10.0.0.21 | 10.0.0.22|  [  KVM Host #2   ]  |
+|                      +----------+----------+                      |
+|    kvm01.srv.world   |                     |    kvm02.srv.world   |
++----------------------+                     +----------------------+
+
+[1]	
+Configure Storage server which has virtual machine images. For Storage server, it's OK to use NFS, iSCSI, GlusterFS and so on. 
+This example uses NFS Storage server.
+[2]	
+Configure 2 KVM host server and mount a directory provided from Storage server on the same mount point on both KVM server.
+This example mounts on [/var/kvm/images].
+[3]	On KVM Hosts, if SELinux is enabled and also uses NFS shared directory, change rules like follows.
+[root@kvm01 ~]# setsebool -P virt_use_nfs on
+[4]	On KVM Hosts, if Firewalld is running, allow ports.
+[root@kvm01 ~]# firewall-cmd --add-service={libvirt,libvirt-tls} --permanent 
+[root@kvm01 ~]# firewall-cmd --add-port=49152-49215/tcp --permanent 
+[root@kvm01 ~]# firewall-cmd --reload 
+[5]	Create and Start a Virtual Machine on a KVM Host and run Live Migration.
+# edit setting of a VM
+root@kvm01:~# virsh edit centos7
+ <disk type='file' device='disk'>
+      # add: change cache mode to [none]
+      <driver name='qemu' type='qcow2' cache='none'/>
+      <source file='/var/kvm/images/centos7.img'/>
+
+root@kvm01:~# virsh start centos7 
+root@kvm01:~# virsh list 
+ Id    Name                           State
+----------------------------------------------------
+ 1     centos7                        running
+
+[root@kvm01 ~]# virsh migrate --live centos7 qemu+ssh://10.0.0.22/system 
+root@10.0.0.22's password:     # root password
+[root@kvm01 ~]# virsh list 
+ Id    Name             State
+--------------------------------------
+# just migrated
+### on another KVM Host ###
+[root@kvm02 ~]# virsh list 
+ Id    Name              State
+---------------------------------------
+ 1     centos7           running
+
+# back to the KVM Host again like follows
+[root@kvm02 ~]# virsh migrate --live centos7 qemu+ssh://10.0.0.21/system 
+root@10.0.0.21's password:
+[root@kvm02 ~]# virsh list 
+ Id    Name             State
+--------------------------------------
+
+
+
+KVM : Storage Migration2018/05/19
+ 	
+This is the example to use Storage Migration function for Virtual Machines.
+The different point of Storage Migration from Live Migration is that Storage Migration does not need a Storage server which has Virtual Machine images, when executing Storage Migration, Virtual Machine image on a KVM host is migrated on another KVM host like follows.
+                          Storage Migration
+                        <------------------->
+                        
++----------------------+                     +----------------------+
+|  [   KVM Host #1  ]  |10.0.0.21   10.0.0.22|  [  KVM Host #2   ]  |
+|                      +---------------------+                      |
+|   kvm01.srv.world    |                     |    kvm02.srv.world   |
++----------------------+                     +----------------------+
+
+[1]	
+Configure 2 KVM Host Server and Create a Virtual Machine on a KVM Host.
+2 KVM Host Servers need to be resolv hostname or IP address each other via DNS or local hosts file.
+[2]	Update QEMU on KVM Host.
+[root@kvm01 ~]# /usr/libexec/qemu-kvm -version 
+QEMU emulator version 1.5.3 (qemu-kvm-1.5.3-156.el7), Copyright (c) 2003-2008 Fabrice Bellard
+[root@kvm01 ~]# yum -y install centos-release-qemu-ev
+# disable on default
+[root@kvm01 ~]# sed -i -e "s/enabled=1/enabled=0/g" /etc/yum.repos.d/CentOS-QEMU-EV.repo
+# for this installing, [qemu-kvm] package is replaced to [qemu-kvm-ev] package
+[root@kvm01 ~]# yum --enablerepo=centos-qemu-ev -y install qemu-kvm-ev
+[root@kvm01 ~]# systemctl restart libvirtd 
+[root@kvm01 ~]# /usr/libexec/qemu-kvm -version 
+QEMU emulator version 2.10.0(qemu-kvm-ev-2.10.0-21.el7_5.2.1)
+Copyright (c) 2003-2017 Fabrice Bellard and the QEMU Project developers
+[3]	On KVM Hosts, if Firewalld is running, allow ports.
+[root@kvm01 ~]# firewall-cmd --add-service={libvirt,libvirt-tls} --permanent 
+[root@kvm01 ~]# firewall-cmd --add-port=49152-49215/tcp --permanent 
+[root@kvm01 ~]# firewall-cmd --reload 
+[4]	Show the file size of a Virtual Machine image like follows on a KVM host and move to another KVM host, create a empty disk like follows.
+# show the size of Virtual machine
+root@kvm01:~# ll /var/kvm/images 
+total 1344456
+-rw-------. 1 root root 32217432064 May 19 23:44 centos7.img
+
+### on another KVM host ###
+# create a disk which is the same size of a Virtual Machine
+root@kvm02:~# qemu-img create -f qcow2 /var/kvm/images/centos7.img 32217432064 
+root@kvm02:~# ll /var/kvm/images 
+total 196
+-rw-r--r--. 1 root root 197120 May 20 00:19 centos7.img
+[5]	It's OK all, Run Storage Migration like follows.
+root@kvm01:~# virsh list 
+ Id    Name                           State
+----------------------------------------------------
+ 1     centos7                        running
+
+root@kvm01:~# virsh migrate --live --copy-storage-all centos7 qemu+ssh://10.0.0.22/system 
+root@10.0.0.22's password:
+root@kvm01:~# virsh list 
+ Id    Name             State
+--------------------------------------
+# just migrated
+### on another KVM host ###
+root@kvm02:~# virsh list 
+ Id    Name                           State
+----------------------------------------------------
+ 1     centos7                        running
+
+# back to another host, it's OK to execute normal Live Migration
+root@kvm02:~# virsh migrate --live centos7 qemu+ssh://10.0.0.21/system 
+root@10.0.0.21's password:
+root@kvm02:~# virsh list 
+ Id    Name             State
+--------------------------------------

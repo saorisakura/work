@@ -1,0 +1,69 @@
+virsh支持attach-disk和attach-device两个相关子命令，貌似attach-disk是添加磁盘的专用工具，但我研究了 半天，没研究明白。而attach-device更通用一些，使用xml文件作为输入，灵活而强大。作为输入的xml文件格式与libvirt中VM的配 置文件格式一样，下面是一个实例：
+
+1，创建磁盘：
+
+qemu-img create -f qcow2 /data/vm/huge.img 500G
+
+2，编写一个xml文件（disk.xml）：
+
+    <disk type='file' device='disk'>
+
+      <driver name='qemu' type='qcow2' cache='none'/>
+
+      <source file='/data/vm/huge.img'/>
+
+      <target dev='vdb' bus='virtio'/>
+
+    </disk>
+
+
+
+3，添加磁盘：
+
+virsh attach-device --persistent vm-name disk.xml
+
+
+
+然后登陆到vm系统中，就可以使用fdisk命令看到新的磁盘了。
+
+删除这个磁盘也很简单，只需要将attach-device修改为detach-device即可：
+
+virsh detach-device --persistent vm-name disk.xml
+
+
+
+28
+down vote
+I'd like to start with a note that you should avoid using virsh attach-disk with its limited amount of options. Instead, I'd suggest to specify the exact disk format you prefer in a separate, temporary XML file or by using the virt-manager GUI application (for the latter, skip the first step).
+
+Create a temporary file with a disk definition like this one below.
+
+adjust the properties to fit your situation
+
+<disk type='file' device='disk'>
+  <driver name='qemu' type='qcow2'/>
+  <source file='/path/to/disk-image.img'/>
+  <target dev='vdb' bus='virtio'/>
+</disk>
+Tip: Peek into your current XML domain configuration and copy a <disk> section from there.
+
+virsh dumpxml <domainname>
+Now, before adding the disk to a current domain, make sure the required hotplug kernel modules are loaded in the guest.
+
+Some Linux distributions like recent CentOS/RHEL/Fedora have this built-in in the kernel. In this case, check for CONFIG_HOTPLUG_PCI_ACPI. If it's y, then you're all set and you can skip this step.
+
+modprobe acpiphp
+modprobe pci_hotplug
+Consider adding these two modules to /etc/modules if you want them to be loaded on boot by default.
+
+Add the disk it to the running VM using
+
+virsh attach-device <domain name> /path/to/disk.xml
+Optionally, add the --persistent option to let Libvirt update the domain XML definition 'persistent'.
+
+Finally, check inside the guest if the disk was indeed hotplug-inserted. The kernel should be triggered, as can be checked with dmesg:
+
+[  321.946440] virtio-pci 0000:00:06.0: using default PCI settings
+[...]
+[  321.952782]  vdb: vdb1 vdb2
+In the above example I've added a disk as vdb with two partitions in the partition table.

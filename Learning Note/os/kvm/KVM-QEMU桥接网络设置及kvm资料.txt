@@ -1,0 +1,510 @@
+KVM/QEMU桥接网络设置及kvm资料
+KVM/QEMU桥接网络设置
+
+配置kvm的网络有2种方法。其一，默认方式为用户模式网络(Usermode Networking)，数据包由NAT方式通过主机的接口进行传送。其二，使用桥接方式(Bridged Networking)，外部的机器可以直接联通到虚拟机，就像联通到你的主机一样。
+第一，用户模式
+虚拟机可以使用网络服务，但局域网中其他机器包括宿主机无法连接它。比如，它可以浏览网页，但外部机器不能访问架设在它里面的web服务器。
+默认的，虚拟机得到的ip空间为10.0.2.0/24，主机ip为10.0.2.2供虚拟机访问。可以ssh到主机(10.0.2.2)，用scp来拷贝文件。
+第二，桥接模式
+这种模式允许虚拟机就像一台独立的主机一样拥有网络。这种模式需要网卡支持，一般的有线网卡都支持，绝大部分的无线网卡都不支持
+A) 在主机上创建一个网络桥
+1）安装bridge-utils
+sudo apt-get install bridge-utils
+2）改变网络设置，先停止网络
+sudo invoke-rc.d networking stop
+如果是用远程连接进行设置，设置完后，重启网络sudo invoke-rc.d networking restart，如果中途有一步错误，将不能连接
+3）修改/etc/network/interfaces，直接用下面的替换。
+a) 静态ip模式
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+auto br0
+iface br0 inet static
+address 192.168.0.10
+network 192.168.0.0
+netmask 255.255.255.0
+broadcast 192.168.0.255
+gateway 192.168.0.1
+bridge_ports eth0
+bridge_stp off
+bridge_fd 0
+bridge_maxwait 0
+b) DHCP模式
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+auto br0
+iface br0 inet dhcp
+bridge_ports eth0
+bridge_stp off
+bridge_fd 0
+bridge_maxwait 0
+4）重启网络
+sudo /etc/init.d/networking restart
+
+B) 随机生成一个KVM的MAC地址
+MACADDR="52:54://1:/2:/3:/4/')"; echo MACADDR 可以指定一个mac地址，但要注意，第一个字节必须为偶数，如00，52等，不能为奇数(01)，否则会有不可预料的问题。因为奇数保留为多播使用。如，KVM可以接收ARP包并回复，但这些回复会使其他机器迷惑。这是以太网的规则，而非KVM的问题。 如直接将网卡地址设置为MACADDR="32:32:32:32:32:32" C) 将以前安装的虚拟机网络改为桥接方式或者安装新的虚拟机使用桥接网络 一个脚本文件 #start kvm.winxp USERID=`whoami` MACADDR="32:32:32:32:32:32" model=e1000e iface=`sudo tunctl -b -uUSERID`
+kvm -net nic,vlan=0,macaddr=iface iface
+#end kvm.winxp
+使用iso文件安装winxp，运行如下命令：
+sudo ./kvm.bridge -m 512 -hda winxp.img -cdrom /home/software/zh-hans_windows_xp_professional_with_service_pack_3_x86_cd_vl_x14-74070.iso -boot d
+运行安装完的虚拟机，运行如下命令：
+sudo ./kvm.bridge -m 512 -hda winxp.img -boot c
+
+===================================================================================
+
+linux中Kvm桥接网络成功的关键
+
+KVM在LINUX中的重要作用，速度等，我不再评价，我只能说，快！
+但是，如果你要在一个服务器中使用多个虚拟机，并且想让这些虚拟机提供服务，那么，桥接网络是必不可少的，可是，网上流传的三四个版本中，关于桥接网络的，你试一下，会发现，很难成功,这是何道理？看起来他们似乎都配置成功了，也有可能是软件版本的问题，总之，你亲自尝试的时候，会发现，这其实很难实现。
+当然，如果无法实现的话，也就没有此文了！
+先说一下我的软件配置：
+Linux 2.6.28-11-server #42-Ubuntu SMP X86＿64位Ubuntu服务器版9.04
+KVM内核是自带的。
+真实网络接口名称：eth0
+KVM的安装方法我就不写了，网上有一大堆，注意，KVM有两个部分，一个部分是内核部分，这在9.04中是自带的，您要安装的KVM是管理部分（我也不知道这样理解是否正确，总之，你要安装KVM及QEMU）
+不安装QEMU也可以用，因为KVM带一个修改版本的QEMU
+成功的关键是配置网络及路由（这个在网上流传的版本中没有提到）
+请生成一个文件(qemu-ifup),将这个文件加上可执行属性,文件内容如下：
+#!/bin/sh
+set -x
+switch=br0
+if [ -n "1
+/usr/bin/sudo /sbin/ip link set switch $1
+exit 0
+else
+echo "Error: no interface specified"
+exit 1
+fi
+将这个文件保存在你的HOME目录下，或者其它的目录也行。
+修改你的/etc/network/interfaces文件如下：
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+# The loopback network interface
+auto lo
+iface lo inet loopback
+auto br0
+iface br0 inet static
+bridge_ports eth0 //注意这个eth0,这是你的计算机的实际网卡，请根据你的网络修改，也可能跟我的这个一样。
+address 192.168.1.242 //根据你的需要设置从这里到下面的参数，这个网络跟你的实现网络在一个子网内，不然无法桥接
+netmask 255.255.255.0
+network 192.168.1.0
+broadcast 192.168.1.255
+gateway 192.168.1.1
+dns-nameserver 192.168.1.1 219.141.136.10
+dns-search Office
+此时，重新启动计算机即可。
+你可能注意到， 这个文件里可能有关于eth0的配置，请删除它即可，也就是说，不能对eth0进行任何配置，这个接口在重新启动后，应该是没有配置IP的，否则不能工作。
+重新启动完成后，请比照一下你的接口配置是否跟我的一样：
+＃ifconfig
+br0 Link encap:以太网 硬件地址 00:21:5e:4e:33:e2 
+inet 地址:192.168.1.242 广播:192.168.1.255 掩码:255.255.255.0
+inet6 地址: fe80::221:5eff:fe4e:33e2/64 Scope:Link
+UP BROADCAST RUNNING MULTICAST MTU:1500 跃点数:1
+接收数据包:48324758 错误:0 丢弃:0 过载:0 帧数:0
+发送数据包:25261650 错误:0 丢弃:0 过载:0 载波:0
+碰撞:0 发送队列长度:0 
+接收字节:63199826111 (63.1 GB) 发送字节:5380518900 (5.3 GB)
+eth0 Link encap:以太网 硬件地址 00:21:5e:4e:33:e2 
+inet6 地址: fe80::221:5eff:fe4e:33e2/64 Scope:Link
+UP BROADCAST RUNNING MULTICAST MTU:1500 跃点数:1
+接收数据包:48903854 错误:0 丢弃:0 过载:0 帧数:0
+发送数据包:28125512 错误:0 丢弃:0 过载:0 载波:0
+碰撞:0 发送队列长度:1000 
+接收字节:64152739997 (64.1 GB) 发送字节:6185466883 (6.1 GB)
+中断:16 
+请注意，只有br0有地址，而eth0是没有地址的，再比照一下你的路由表：
+#route
+内核 IP 路由表
+目标 网关 子网掩码 标志 跃点 引用 使用 接口
+localnet * 255.255.255.0 U 0 0 0 br0
+default bogon 0.0.0.0 UG 100 0 0 br0
+请注意，如果你的路由表与我的不一样，例如出现四行，即又加上了
+localnet * ................... eth0
+default bogon ..................eth0
+那么，你八成是不能成功桥接的，出现这样的问题应该是由于你的ETH0网络被配置了IP，处理的办法就是想办法去掉eth0的IP，可以使用这个方法：
+#ifconfig eth0 0.0.0.0
+比较一下，你的桥接网络接口：
+#brctl show
+bridge name bridge id STP enabled interfaces
+br0 8000.00215e4e33e2 no eth0
+tap0
+tap1
+tap2
+应该有这行存在（了可能还会出现其它的行，例如pan0),后面的tapX是不同的虚拟机的接口，这里可以看出，我桥接了三个虚拟接口到一个直接的接口。
+如果你的IP地址配置与路由表跟我的一样，那么，应该是可以桥接成功的。
+接下来就是启动你的虚拟机，启动前需要创建虚拟机的磁盘（即下面的u_ubuntu.img,可以参照网上的方法，这里就不重复了)，启动虚拟机的方法：
+＃sudo kvm -hda u_ubuntu.img -boot c -net nic,model=virtio,macaddr=DE:AD:AF:22:33:22 -net tap,script=qemu-ifup -m 1024 -smp 2 -clock rtc -localtime 
+当然，有很的参数可用，我就不介绍了（其实我也不是很懂，嘿嘿），关键的问题就是macaddr和script两项，如果你有多个虚拟机，那么一样要配置不同的macaddr,script一定要指向你刚才保存的那个文件，可以使用绝对路径指明。
+启动后，你应该可以正常安装操作系统了，安装完成后，如果虚拟机操作系统网络配置成DHCP，那么应该可以获取一个192.168.1.0网络内的地址，如果你不能获取地址，那么说明配置不成功。
+在虚拟机工作的情况下，在宿主计算机上运行ifconfig，应该可以看到一个自动增加的接口tapX（其中X从0开始）。
+小结一下：
+1）eth0（宿主计算机连接到网络的真实网络接口）不能有IP地址！
+2)路由表一定要正确，可以去找一找关于路由方面的介绍，了解一下这个路由信息的意思
+
+=============================================================================================
+
+近几天在搞kvm。kvm真的是很不错，运行操作系统速度非常快，至少比我以前用的vbox要快。但是 kvm的网络配置让我头疼了一阵，上网找了很多资料，无奈那些资料要不省略了一些内容（都把我当高手看了），要不就是写了一堆东西，不说原理，看了半天都搞不懂为什么要那么做，反正都不适合我这种“从0开始”的人。故今天花了几个小时做实验，终于弄出了一个解决方法，现在从头到尾讲出来跟大家分享一下。
+对于那些跟我一样想要找到一个只要照着它的提示打命令就多半能成功的方法的人，此帖应该有用。高手请无视此帖～
+首先说一下实现原理。我是想先在host上造一块假网卡，然后guest的系统跟这假网卡连接构成一个局域网。guest想连外网的话，就把host当路由器。至于域名服务器，在guest系统里直接指定。
+本人实验的host是ubuntu 8.04 server，guest是freebsd 7.0 release。（都是64位）
+接下来我会假设你已经装了kvm，而且能用它启动虚拟机。
+（以下一到四参照了vbox的网络设定，都在host下操作）
+一，首先把必要的工具装了：
+
+ 
+
+代码:
+sudo apt-get install uml-utilities
+ 
+
+
+
+二，再造假网卡tap0（名字随便取）并作一些基本配置
+
+
+ 
+
+代码:
+sudo tunctl -t tap0 -u xxx
+ 
+
+
+此处xxx换成你自己的用户名
+
+
+ 
+
+代码:
+sudo chmod 0666 /dev/net/tun
+ 
+
+
+这样大家都有权力去读写那个假网卡。即使在上面那行代码中你指定了自己的用户名，你还是没有办法读写tap0（很奇怪），所以这条命令是有用的。
+
+
+三，配置网卡的网络参数。
+
+
+ 
+
+代码:
+sudo ifconfig tap0 192.168.0.10 netmask 255.255.255.0 up
+ 
+
+
+
+随便设，但是你要确保你待会设置的guest的网卡ip跟tap0的属于同一个网段。
+
+四，接下来是系统的配置（连外网所必须）
+
+
+ 
+
+代码:
+sudo echo 1 > /proc/sys/net/ipv4/ip_forward
+ 
+
+
+这样开启了linux的ip转发功能，host可以当路由器用了。如果你想让guest连上外网的话这条一定要。
+
+
+ 
+
+代码:
+sudo iptables -t nat -A POSTROUTING -j MASQUERADE
+ 
+
+
+这条命令也是连外网所必须的。
+
+五，启动kvm虚拟机
+
+
+ 
+
+代码:
+kvm -M pc -m 512 -hda /root/hda.img -net nic -net tap,ifname=tap0,script=no -boot c
+ 
+
+
+
+-net nic -net tap,ifname=tap0,script=no是跟网络相关的，上面的命令的其他部分自己跟据实际情况修改。ifname=你造的假网卡的名字，我的是tap0。
+
+六，guest系统的配置。（接下来的事请我不详细讲了，在guest下操作，根据不同的guest系统自己找资料，不要鄙视我～～～）
+
+guest启动后应该会认出一张网卡，realtek的。我的freebsd认出来是re0。把那网卡的ip设定成192.168.0.x，（这个ip跟host下tap0的ip不能相同！但要确保它们同在一个子网。我的是192.168.0.11），并把netmask设成 255.255.255.0。到现在，guest和host应该是同在一个子网了。你可以试一下在guest里ping 192.168.0.10，在host里ping 192.168.0.11，如无意外，应该能ping通。到现在已实现host guest之间的互访。
+
+七，让guest连上外网。（前提是host已经连上外网）
+
+只需要把guest的默认网关设置成192.168.0.10（你的假网卡的ip）就可以了，非常的简单。
+域名服务器手动设置，不会很麻烦。
+
+至此kvm网络设置的问题解决了，freebsd在线装东西中～
+
+希望此帖能对大家有点帮助。
+
+ 
+
+==========================================================================================
+
+研究了很久的KVM，感觉是我用过的最快的虚拟机。对比常用的虚拟机，Vmware的功能全面，设置简单，但其速度不是很好；VirtualBox的效率虽然比Vmware高一些，但是存在不少缺点，感觉在运行时比较抢CPU，现在virtualbox已经支持smp,和虚拟化技术，但整体效率还是没有KVM高（但是图形效率作的不错）；KVM（Kernel-based Virtual Machine），基于内核的虚拟机，是我用过的最快的虚拟机，需要CPU支持虚拟化技术，并且在BIOS里打开虚拟化选项，效率可达到物理机的80％以上，对SMP的支持很好。所以现在强烈吐血卖命推荐KVM。（注：在原文最下面添加了版虚拟化驱动（virtio)的使用方式）
+（使用磁盘方式以更新，请大家注意！！！）
+没有废话，以下是在UBUNTU 10.04.1 64BIT下的方法
+获得KVM：
+KVM的网站：http://sourceforge.net/projects/kvm/files/
+下载最新的qemu-kvm-0.13.0.tar.gz 
+解压：
+
+代码:
+tar -xzvf qemu-kvm-0.13.0.tar.gz
+
+需要用到的包：
+在 UBUNTU 10.04中 ,可以使用
+
+代码:
+sudo apt-get build-dep qemu-kvm
+来解决依赖关系。
+三步曲：
+
+代码:
+cd qemu-kvm-0.13.0
+/configure --prefix=/usr/local/kvm
+make
+sudo make install
+
+安装好以后加载KVM模块
+
+代码:
+sudo modprobe kvm
+sudo modprobe kvm-intel  //如果你的是INTEL处理器就用这个
+sudo modprobe kvm-amd  //如果你的是AMD处理器就用这个
+
+这样就装好了。
+
+下面介绍配置KVM桥接网络的方法： \\特别注意，大部分不能桥接无线网卡。。。只能桥接PCI网卡。。。。
+安装桥接工具：
+
+代码:
+sudo apt-get install bridge-utils
+
+安装创建TAP界面的工具：
+
+代码:
+sudo apt-get install uml-utilities
+
+编辑网络界面配置文件（
+
+代码:
+sudo vi /etc/network/interfaces
+),根据你的情况加入以下内容：
+
+代码:
+auto eth0
+iface eth0 inet manual
+
+auto tap0
+iface tap0 inet manual
+up ifconfig IFACE down
+tunctl_user lm      \\lm是我的用户名，在这里换为你的用户名
+
+auto br0
+iface br0 inet static       \\当然这里也可以使用DHCP分配
+bridge_ports eth0 tap0
+address 192.168.1.3
+netmask 255.255.255.0
+gateway 192.168.1.1
+
+
+激活tap0和br0: //有些时候会不奏效，但重启后就行了
+
+代码:
+sudo /sbin/ifup tap0
+sudo /sbin/ifup br0
+
+好了以后ifconfig看一下，多了一个tap0和br0, br0上的IP地址就是你本机的IP地址。
+
+KVM的使用方法：
+KVM的使用方法具体可以参考 
+
+代码:
+/usr/local/kvm/bin/qemu-system-x86_64 --help
+
+下面具体举几个例子：
+创建虚拟磁盘(用qemu-img命令）：
+
+代码:
+mkdir kvm
+cd kvm
+/usr/local/kvm/bin/qemu-img create -f qcow2 winxp.img 10G
+
+创建虚拟机：
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512 -drive file=/home/lm/kvm/winxp.img,cache=writeback -localtime -net nic,vlan=0,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot d -cdrom /home/lm/iso/winxp.iso -smp 2 -soundhw es1370
+
+
+这里对各个参数说明一下：
+
+代码:
+-m 512
+
+分配512MB的内存给GUEST OS
+
+代码:
+-drive file=/home/lm/kvm/winxp.img,cache=writeback
+
+使用虚拟磁盘的文件和路径，并启用writeback缓存。
+
+代码:
+-localtime
+
+使用本地时间（一定要加这个参数，不然虚拟机时间会有问题）
+
+代码:
+-net nic,vlan=0,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tapo,script=no
+
+使用网络，并连接到一个存在的网络设备tap0,注意mac地址一定要自己编一个，特别是如果你虚拟了多个系统并且要同时运行的话，不然就MAC冲突了，在
+
+代码:
+-boot d
+
+从光盘启动 （从硬盘启动则为 -boot c )
+
+代码:
+-cdrom /home/lm/iso/winxp.iso
+
+使用的光盘镜像，如果要使用物理光驱的话就是 -cdrom /dev/cdrom
+
+代码:
+-smp 2 
+
+smp处理器个数为2个，如果你是4核处理器，后面的数字就为4（如果不开启此选项，则只能以单核模式运行）
+
+开始启动装系统了吧？是不是非常的快？如果你机器可以的话大概在15分钟左右就把XP装好了。
+启动装好的虚拟机（很简单，上面的命令改两个参数就行）：
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512 -drive file=/home/lm/kvm/winxp.img,cache=writeback -localtime -net nic,vlan=0,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot c -smp 2 -soundhw es1370
+
+
+然后在客户端里设置好IP地址就可以使用了，但是KVM的显卡能力不行，可以通过rdesktop远程连接解决
+
+代码:
+rdesktop 192.168.1.4:3389 -u administrator -p ****** -g 1280x750 -D -r sound:local    \\分辨率可以自行设定，是不是比VirtualBox的无缝连接模式要爽？？
+
+
+
+补充：
+如果同时运行多个GUEST OS ，则网络设置要改一下，在/etc/network/interfaces 里加几个tap界面就行了，每个GUEST OS单独使用一个TAP，比如说现在要同时运行3个GUEST OS ，则配置文件如下：
+
+代码:
+auto tap0
+iface tap0 inet manual
+up ifconfig IFACE down
+tunctl_user lm      \\lm是我的用户名，在这里换为你的用户名
+
+auto tap1
+iface tap1 inet manual
+up ifconfig IFACE down
+tunctl_user lm      \\lm是我的用户名，在这里换为你的用户名
+
+auto tap2
+iface tap2 inet manual
+up ifconfig IFACE down
+tunctl_user lm      \\lm是我的用户名，在这里换为你的用户名
+
+auto br0
+iface br0 inet static       \\当然这里也可以使用DHCP分配
+bridge_ports eth0 tap0 tap1 tap2
+address 192.168.1.3
+netmask 255.255.255.0
+gateway 192.168.1.1
+
+启动GUEST OS
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512-drive file=/home/lm/kvm/winxp.img,cache=writeback -localtime -net nic,vlan=0,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot c -smp 2 -soundhw es1370
+
+
+把ifname=tap0换为你要tap1或者tap2就行了,MAC也要改噢。。
+
+要注意，系统重启后要重新加载kvm内核模块：
+
+代码:
+sudo modprobe kvm
+sudo modprobe kvm-amd   //如果使用AMD处理器
+sudo modprobe kvm-intel   //如果是用INTEL处理器
+
+当然，你也可以修改系统相关设置在启动时自动加载该模块。
+同理，可以用此方法安装LINUX。装完了可以对比一下，是不是比VB和VM要爽得多呢？
+
+其他比如像USB连接问题可以参考论坛里的帖子
+
+我已经在我的系统里同时运行了4个CentOS 4.8 1个winxp sp3 1个win2003 sp2 5个FreeBSD 8.0
+速度太快了，难以置信。
+系统配置为：Athlon X2 5000+ 8G RAM 跑的Ubuntu 10.04.1 64bit
+
+其实KVM的安装和使用都很方便简单的，大家要理解KVM各个参数的含义。最关键的就是KVM的网络桥接的设置，在这里大家要多看软件自身的文档，会有很大的帮助。
+以上是KVM的最基础的实现方法，望大家多看文档，以便掌握更多更灵活的功能。
+
+BTW：
+[b]现在已经找到了原来磁盘性能糟糕的原因，按照以往的方法是用 -hda disk.img 的方法来使用虚拟磁盘，现在版本更新以后时候 -drive file=/home/lm/kvm/winxp.img,cache=writeback 来使用虚拟磁盘，请广大使用KVM的用户注意这里的变化。
+
+注：Ubuntu 10.04 LTS 下的安装源里的KVM的方法(qemu-kvm 0.12.3)：
+直接
+
+代码:
+sudo apt-get install qemu-kvm
+
+网络配置如上，是一样的。
+
+大家注意一个问题，如果你虚拟的是WIN2003，那么切勿在－net参数中使用model=e1000,否则HOST和GUEST之间不能PING通
+
+添加：半虚拟化驱动使用方式如下
+WIN系统需要下载的驱动程序：
+http://www.linux-kvm.com
+在左手边有一个Windows Guest Drivers,下载cdrom image和floppy image
+使用版虚拟化驱动（virtio)可以得到更好的磁盘性能和网络性能，使用版虚拟化驱动的时候，KVM的启动参数如下(安装WIN时）：
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512 -drive file=/home/lm/kvm/winxp.img,if=virtio,boot=on,cache=writeback -localtime -net nic,vlan=0,model=virtio,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot d -cdrom /home/lm/iso/winxp.iso -fda=/disk/virtio-win-1.1.11-0.vfd -smp 2
+
+说明一下新的参数：
+
+代码:
+在file=/home/lm/kvm/winxp.img,if=virtio,boot=on,cache=writeback中
+
+添加了if=virtio,通过virio来使用磁盘
+
+代码:
+在 -net nic,vlan=0,model=virtio,macaddr=52-54-00-12-34-01中
+
+添加了model=virtio,通过virtio来使用网络
+
+代码:
+-fda=/disk/virtio-win-1.1.11-0.vfd
+
+驱动程序的软盘镜像，-fda为添加一个软盘驱动器
+
+在安装WINDOWS的时候需要注意：在虚拟机启动从光盘引导启动WINDOWS安装的时候（最开始的时候）会提示你，按F6选择第三方驱动程序，按F6以后过几秒钟，它会出现选择第三方驱动的画面，按下S，会让你选择你要加载的第三方驱动。（网络太慢，图传不上来，大家可参考：http://www.linux-kvm.org/page/WindowsGuestDrivers/viostor/installation）
+在WINDOWS安装完成以后，还要安装virtio网络驱动程序，修改KVM启动参数：
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512 -drive file=/home/lm/kvm/winxp.img,if=virtio,boot=on,cache=writeback -localtime -net nic,vlan=0,model=virtio,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot c -cdrom /home/lm/iso/virtio-win-1.1.11-0.iso -smp 2
+
+启动虚拟机，启动好WIN系统以后，在WIN中安装网卡驱动程序（在设备管理器中安装），驱动程序就在虚拟机的光驱中。有时在安装过程中会出现问题，那么去掉cache=writeback重新安装试试。
+现在主流的LINUX系统的内核都集成了virtio驱动，所以在使用半虚拟化驱动安装LINUX的时候可以直接安装，无需加载virtio驱动来安装。
+
+注：
+如果你使用的是raw文件系统或LVM分区，则应该将cache=writeback改为cache=none
+建议大家使用LVM分区方式，这样虚拟机的磁盘性能可以接近物理机的磁盘性能。关于LVM的创建大家可以去查找相关文章，在这里给大家一个KVM使用LVM分区的示例：
+
+代码:
+sudo /usr/local/kvm/bin/qemu-system-x86_64 -m 512 -drive file=/dev/vg0/lv1,if=virtio,boot=on,cache=none -localtime -net nic,vlan=0,model=virtio,macaddr=52-54-00-12-34-01 -net tap,vlan=0,ifname=tap0,script=no -boot c -smp 2

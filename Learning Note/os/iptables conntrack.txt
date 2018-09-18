@@ -1,0 +1,136 @@
+现象：突然发现访问网站很慢，服务器的cpu、内存和磁盘使用率都正常
+　　分析过程及解决方案：查询/var/log/message日志发现有这样的记录“ip_conntrack table full dropping packet”。kernel 用 ip_conntrack 模块来记录 iptables 网络包的状态，并保存到 table 里（这个 table 在内存里），如果网络状况繁忙，比如高连接，高并发连接等会导致逐步占用这个 table 可用空间，一般这个 table 很大不容易占满并且可以自己清理，table 的记录会一直呆在 table 里占用空间直到源 IP 发一个 RST 包，但是如果出现被攻击、错误的网络配置、有问题的路由/路由器、有问题的网卡等情况的时候，就会导致源 IP 发的这个 RST 包收不到，这样就积累在 table 里，越积累越多直到占满，满了以后 iptables 就会丢包，出现外部无法连接服务器的情况。
+ 
+　　解决方案：Iptables启动的是会在日志里提示当前的buckets和conntrack_max的值以及每条跟踪连接需要消耗多少内存：
+　　也就是说304MB内存将支持1048576条跟踪连接记录，所以需要按照服务器的内存大小来配置合适的值。
+永久修改ip_conntrack_max和hashsize
+1) 增大 ip_conntrack_max（设置为 2^20，默认值是 2^16=65536）
+# vi /etc/sysctl.conf
+net.ipv4.ip_conntrack_max = 1048576
+2) 增大 hashsize （在i386架构上，HASHSIZE = CONNTRACK_MAX / 8）
+# vi /etc/modprobe.conf
+options ip_conntrack hashsize=131072
+然后重启 iptables 服务，在 messages中可以看到参数已生效：
+# service iptables restart
+
+
+一、RST介绍
+
+      RST标示复位、用来异常的关闭连接。
+
+           1. 发送RST包关闭连接时，不必等缓冲区的包都发出去，直接就丢弃缓冲区中的包，发送RST。
+
+            2. 而接收端收到RST包后，也不必发送ACK包来确认。
+
+
+
+二、什么时候发送RST包
+
+      1.  建立连接的SYN到达某端口，但是该端口上没有正在 监听的服务。
+
+      2. TCP收到了一个根本不存在的连接上的分节。
+
+      3. 请求超时。 使用setsockopt的SO_RCVTIMEO选项设置recv的超时时间。接收数据超时时，会发送RST包。
+
+
+
+三、尝试手动发送RST包
+
+      1. 使用shutdown、close关闭套接字，发送的是FIN，不是RST。
+
+      2. 套接字关闭前，使用sleep。对运行的程序Ctrl+C，会发送FIN，不是RST。
+
+      3. 套接字关闭前，执行return、exit(0)、exit(1)，会发送FIN、不是RST。 
+
+      以上几种方法，都不能发送RST包。 发送RST包，需要自己伪造数据包进行发送。
+	  
+	  
+	  
+	  
+ ip_conntrack模块：
+
+
+
+
+
+1，基本概念：
+－允许的最大跟踪连接条目：CONNTRACK_MAX
+－存储跟踪连接条目列表的哈西表的大小：HASHSIZE
+－每个哈西表的条目（叫一个bucket），包含了一个链接起来的跟踪连接条目
+－哈希表大小HASHSIZE，表现为 条目bucket的多少，在iptables启动时在日志中会显示。
+
+buckets(默认每个bucket包含8个contrack条目)-|
+buckets                                    |
+buckets                                    |
+buckets                                    |
+buckets                                    |----hashsize(buckets的个数)
+buckets                                    |
+buckets                                    |
+buckets                                    |
+buckets------------------------------------|
+
+
+
+kernel 用 ip_conntrack 模块来记录 iptables 网络包的状态，并把每条记录保存到 table 里（这个 table 在内存里，可以通过/proc/net/ip_conntrack 查看当前已经记录的总数），如果网络状况繁忙，比如高连接，高并发连接等会导致逐步占用这个 table 可用空间，一般这个 table 很大不容易占满并且可以自己清理，table 的记录会一直呆在 table 里占用空间直到源 IP 发一个 RST 包，但是如果出现被攻击、错误的网络配置、有问题的路由/路由器、有问题的网卡等情况的时候，就会导致源 IP 发的这个 RST 包收不到，这样就积累在 table 里，越积累越多直到占满，满了以后 iptables 就会丢包，出现外部无法连接服务器的情况。内核会报如下错误信息：kernel: ip_conntrack: table full, dropping packet.
+
+在/proc/net/ip_conntrack中，每一个跟踪连接表会占用304字节的内核存储空间，时间一长就会把默认的空间填满，那么默认空间时多少？我以redhat为例在内存为64MB的机器上时4096,内存为128MB是 8192,内存为256MB是16376，可以通过查看/proc/sys/net/ipv4/ip_conntrack_max文件得知系统最大值。
+
+案例如下：
+
+[root@yd_82_231 netfilter]# cat /var/log/messages|grep conn   
+Nov 28 13:18:20 yd_82_231 kernel: ip_conntrack version 2.4 (8192 buckets, 65536 max) - 304 bytes per conntrack
+Nov 29 14:48:25 yd_82_231 kernel: ip_conntrack version 2.4 (8192 buckets, 65536 max) - 304 bytes per conntrack
+Nov 29 14:50:13 yd_82_231 kernel: ip_conntrack version 2.4 (8192 buckets, 65536 max) - 304 bytes per conntrack
+
+需要注意的事项：
+
+-conntrack最大数量.叫做conntrack_max
+
+-存储这些conntrack的hash表的大小,叫做hashsize
+
+当conntrack入口数大于conntrack_max时,在hash表中每一个conntrack list中的存储的入口将不可控.(conntrack_mark/hashsize 为每个list所能存储的入口的数量)
+
+hash表存在于固定的的不可swap的内存中. conntrack_mark决定占用多少这些不可swap的内存.
+
+缺省的hashsize
+
+——————————–
+
+conntrack_max=hashsize*8
+
+i386中 hashsize=conntrack_max/8=ramsize(in bytes)/131072=ramsize(in MegaBytes)*8.
+
+所以32位pc,512M内存可以存512*1024^2/128/1024=512*8=4096(连接池list)
+
+但是正确的算法是:
+
+hashsize=conntrack_max/8=ramsize(in bytes)/131072/(x/32)
+
+2，当使用iptables时,启用如下两种功能会启用ip_conntrack模块：
+
+ 1，使用nat功能 
+
+ 2 ， 使用 -m stat选项
+
+3，当在/etc/sysconfig/iptables-config或者其他配置文件加载如下模块：IPTABLES_MODULES="ip_conntrack_netbios_ns"
+
+ 
+
+3，和ip_conntrack相关的内核参数及相关作用(如下这些文件，当ip_conntrack模块启用时才有)
+
+/proc/net/ip_conntrack  这个内存中的文件保存了所有的conntrack记录
+
+/proc/sys/net/ipv4/ip_conntrack_max 或者/proc/sys/net/ipv4/netfilter/ip_conntrack_max     2.6内核中，这两个文件改变任何一个都生效。系统支持的conntrack的最大记录数
+
+/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_established   系统默认全部清空conntrack记录的时间
+
+/proc/sys/net/ipv4/netfilter/ip_conntrack_buckets  系统默认的buckets数
+
+
+
+4，这个模块导致的问题
+
+如果是高吞吐的服务，最好不要使用这个模块，因为启用这个模块之后/proc/net/ip_conntrack文件的记录数很快会超限，然后系统就会出现丢包，/var/log/messages中也会出现table full，dropping packets的报错。一般缓解办法为：
+
+适当调大/proc/sys/net/ipv4/ip_conntrack_max 的值及减少/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_established的值。
+

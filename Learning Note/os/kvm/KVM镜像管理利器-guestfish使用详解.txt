@@ -1,0 +1,626 @@
+KVM镜像管理利器-guestfish使用详解
+
+本文介绍以下内容：
+
+
+
+1. 虚拟机镜像挂载及w2k8虚拟机启动自检慢问题解决办法
+
+2. KVM虚拟化与guestfish套件
+
+3. guestfish安装与注意事项
+
+4. 使用guestfish查看虚拟机信息
+
+5. 使用guestfish查看虚拟机分区及文件系统
+
+6. 去掉磁盘空洞--KVM虚拟镜像的稀疏问题
+
+7. 用guestfish操作虚拟机内部文件
+
+8. guestfish修改镜像格式和大小
+
+9. guestfish挂载、修改、运行救援方式
+
+
+
+1. 虚拟机镜像挂载及w2k8虚拟机启动自检慢问题解决办法
+guestfish套件是镜像管理的利器，在没有guestfish这个套件之前，对虚拟机镜像的处理，要么虚拟机运行起来修改，要么使用下面介绍的办法，总之很不方便。
+
+下面介绍的的挂载办法，只适应于块设备镜像的挂载。
+
+在guestfish出来之前，对镜像的处理，只能是先转化成raw格式，raw在转化成裸格式，然后挂载，非常痛苦。
+
+再一次感谢guestfish套件的作者。
+
+w2k8虚拟机启动启动慢问题解决办法
+
+在kvm虚拟机上，经常碰到这样的问题，就是windows 2008 server的虚拟机，有时候重启的时候，磁盘检查需要几个小时，即使新装的系统也是这样，下面我们介绍通过裸设备挂载的方式擦除windows 2008 server磁盘检查标志的方法，绕过这个问题。
+
+操作方法：
+
+第一步 在宿主机上安装最新的ntfs-3g
+
+wget http://tuxera.com/opensource/ntfs-3g_ntfsprogs-2012.1.15.tgz
+tar -zxvf ntfs-3g_ntfsprogs-2012.1.15.tgz
+cd ntfs-3g_ntfsprogs-2012.1.15
+./configure --bindir=/usr/bin
+make
+make install
+
+
+第二步 扩展镜像，将镜像挂载，并检查
+
+先使用losetup –f 得到可用的loop设备
+
+losetup -f
+/dev/loop0
+
+
+挂载镜像
+
+losetup /dev/loop0 /dev/vmVG/ptyyb-webzb-57_vda
+
+
+使用kartx 将镜像分区映射，如果2008镜像是一个分区，默认会挂载到/dev/mapper/loop0p1
+
+因为2008默认安装的时候会有一个boot分区，那么c盘就在/dev/mapper/loop0p2上，根据自己实际情况挂载
+
+kpartx -av /dev/loop0
+
+
+检查镜像，尝试 –b –d很重要，只有最新版的ntfs-3g支持
+
+ntfsfix -b -d /dev/mapper/loop0p1
+
+
+分离镜像映射
+
+kpartx -dv /dev/loop0
+
+
+分离镜像挂载
+
+losetup -d /dev/loop0
+
+
+2. KVM虚拟化与guestfish套件
+我们来看看guestfish套件是什么
+
+guestfish是一套虚拟机镜像管理的利器，提供一系列对镜像管理的工具，也提供对外的API。
+
+guestfish主要包含以下工具：
+
+guestfish interactive shell  挂载镜像，并提供一个交互的shell。
+
+guestmount mount guest filesystem in hos 将镜像挂载到指定的目录。
+
+guestumount unmount guest filesystem 卸载镜像目录。
+
+virt-alignment-scan 镜像块对齐扫描。
+
+virt-builder — quick image builder 快速镜像创建。
+
+virt-cat(1) — display a file 显示镜像中文件内容。
+
+virt-copy-in(1) — copy files and directories into a VM 拷贝文件到镜像内部。
+
+virt-copy-out(1) — copy files and directories out of a VM 拷贝镜像文件出来。
+
+virt-customize(1) — customize virtual machines 定制虚拟机镜像
+
+virt-df(1) — free space 查看虚拟机镜像空间使用情况。
+
+virt-diff(1) — differences 不启动虚拟机的情况下，比较虚拟机内部两份文件差别。
+
+virt-edit(1) — edit a file 编辑虚拟机内部文件。
+
+virt-filesystems(1) — display information about filesystems, devices, LVM 显示镜像文件系统信息。
+
+virt-format(1) — erase and make blank disks 格式化镜像内部磁盘。
+
+virt-inspector(1) — inspect VM images 镜像信息测试。
+
+virt-list-filesystems(1) — list filesystems 列出镜像文件系统。
+
+virt-list-partitions(1) — list partitions 列出镜像分区信息。
+
+virt-log(1) — display log files 显示镜像日志。
+
+virt-ls(1) — list files 列出镜像文件。
+
+virt-make-fs(1) — make a filesystem 镜像中创建文件系统。
+
+virt-p2v(1) — convert physical machine to run on KVM 物理机转虚拟机。
+
+virt-p2v-make-disk(1) — make P2V ISO 创建物理机转虚拟机ISO光盘。
+
+virt-p2v-make-kickstart(1) — make P2V kickstart 创建物理机转虚拟机kickstart文件。
+
+virt-rescue(1) — rescue shell 进去虚拟机救援模式。
+
+virt-resize(1) — resize virtual machines 虚拟机分区大小修改。
+
+virt-sparsify(1) — make virtual machines sparse (thin-provisioned) 镜像稀疏空洞消除。
+
+virt-sysprep(1) — unconfigure a virtual machine before cloning 镜像初始化。
+
+virt-tar(1) — archive and upload files 文件打包并传入传出镜像。
+
+virt-tar-in(1) — archive and upload files 文件打包并传入镜像。
+
+virt-tar-out(1) — archive and download files 文件打包并传出镜像。
+
+virt-v2v(1) — convert guest to run on KVM 其他格式虚拟机镜像转KVM镜像。
+
+virt-win-reg(1) — export and merge Windows Registry keys windows注册表导入镜像。
+
+libguestfs-test-tool(1) — test libguestfs 测试libguestfs
+
+libguestfs-make-fixed-appliance(1) — make libguestfs fixed appliance
+
+hivex(3) — extract Windows Registry hive 解压windows注册表文件。
+
+hivexregedit(1) — merge and export Registry changes from regedit-format files 合并、并导出注册表文件内容。
+
+hivexsh(1) — Windows Registry hive shell window注册表修改交互的shell。
+
+hivexml(1) — convert Windows Registry hive to XML 将window注册表转化为xml
+
+hivexget(1) — extract data from Windows Registry hive 得到注册表键值。
+
+guestfsd(8) — guestfs daemon guestfs服务。
+
+3. guestfish安装与注意事项
+guestfish套件安装
+
+guestfish套件安装非常简单，一条命令就可以。
+
+yum install libguestfs-tools
+
+
+注意：
+
+默认安装是不安装windows系统支持的，如果需要修改windows系统镜像，需要再运行如下命令。
+
+yum install libguestfs-winsupport
+
+
+4. 使用guestfish查看虚拟机信息
+虚拟机镜像信息查看，主要通过virt-inspector和virt-inspector2命令
+
+virt-inspector - Display OS version, kernel, drivers, mount points, applications, etc. in a virtual machine
+
+virt-inspector 显示os版本、内核、驱动、挂载点、应用等等。
+
+virt-inspector2 - Display operating system version and other information about a virtual machine
+
+virt-inspector2 显示os版本和其他信息。
+
+virt-inspector示例
+
+virt-inspector centos5332.qcow2
+linux centos i386 5.3 (CentOS release 5.3 (Final)) on /dev/vmvg/root:
+  Mountpoints:
+    /dev/vmvg/root /
+    /dev/sda1 /boot
+    /dev/vmvg/swap swap
+  Filesystems:
+    /dev/sda1:
+      label: /boot
+      UUID: 152ec813-72cc-4ea1-ad76-71c470feff2f
+      type: ext3
+      content: linux-grub
+    /dev/vmvg/root:
+      label:
+      UUID: 9462b99e-04d9-4648-9d5d-2ce50d8ed8f2
+      type: ext3
+      content: linux-root
+    /dev/vmvg/swap:
+      type: swap
+  Modprobe aliases:
+    binfmt-204 binfmt_aout
+    binfmt-263 binfmt_aout
+    binfmt-264 binfmt_aout
+    binfmt-267 binfmt_aout
+    binfmt-387 binfmt_aout
+
+
+也可以通过--query输出一些固定内容，方便脚本判断。
+
+virt-inspector --query centos5332.qcow2
+windows=no
+linux=yes
+rhel=no
+fedora=no
+debian=no
+fullvirt=yes
+xen_domU_kernel=no
+xen_pv_drivers=yes
+virtio_drivers=yes
+kernel_arch=i386
+userspace_arch=i386
+
+
+输出也可以是xml格式 加--xml参数就可以
+
+virt-inspector windows虚拟机示例
+
+windows i386 5.2 (Microsoft Windows Server 2003) on /dev/sda1:
+  Mountpoints:
+    /dev/sda1 /
+  Filesystems:
+    /dev/sda1:
+      type: ntfs
+      content: windows-root
+  Applications:
+
+
+virt-inspector2 输出为xml格式，系统相关信息比virt-inspector详细
+
+virt-inspector2 示例
+
+virt-inspector2 centos5332.qcow2
+<?xml version="1.0"?>
+<operatingsystems>
+  <operatingsystem>
+    <root>/dev/vmvg/root</root>
+    <name>linux</name>
+    <arch>i386</arch>
+    <distro>centos</distro>
+    <product_name>CentOS release 5.3 (Final)</product_name>
+    <major_version>5</major_version>
+    <minor_version>3</minor_version>
+    <package_format>rpm</package_format>
+    <package_management>yum</package_management>
+    <hostname>localhost.localdomain</hostname>
+    <format>installed</format>
+    <mountpoints>
+      <mountpoint dev="/dev/vmvg/root">/</mountpoint>
+      <mountpoint dev="/dev/sda1">/boot</mountpoint>
+    </mountpoints>
+    <filesystems>
+
+
+virt-inspector2 windows虚拟机示例
+
+<arch>i386</arch>
+    <distro>windows</distro>
+    <product_name>Microsoft Windows Server 2003</product_name>
+    <major_version>5</major_version>
+    <minor_version>2</minor_version>
+    <windows_systemroot>/WINDOWS</windows_systemroot>
+    <windows_current_control_set>ControlSet001</windows_current_control_set>
+    <hostname>ks-55e1e4a74d40</hostname>
+    <format>installed</format>
+    <mountpoints>
+      <mountpoint dev="/dev/sda1">/</mountpoint>
+    </mountpoints>
+    <filesystems>
+      <filesystem dev="/dev/sda1">
+        <type>ntfs</type>
+        <uuid>4A5061F55061E7E1</uuid>
+      </filesystem>
+    </filesystems>
+    <drive_mappings>
+      <drive_mapping name="C">/dev/sda1</drive_mapping>
+    </drive_mappings>
+    <applications>
+      <application>
+        <name>Google Chrome</name>
+
+
+5. 使用guestfish查看虚拟机分区及文件系统
+虚拟机分区及文件系统查看主要使用三个命令
+
+virt-list-partitions - List partitions in a virtual machine or disk image
+
+列出虚拟机镜像文件分区信息
+
+virt-filesystems - List filesystems, partitions, block devices, LVM in a virtual machine or disk image
+
+列出虚拟机镜像文件文件系统，分区，块设备，lvm信息
+
+virt-alignment-scan
+
+virt-alignment-scan - Check alignment of virtual machine partitions
+
+查看虚拟机镜像分区是否块对齐
+
+示例
+
+linux 镜像查看
+
+virt-list-partitions centos6232.qcow2
+/dev/sda1
+/dev/sda2
+virt-list-filesystems centos6232.qcow2
+/dev/sda1
+/dev/vmvg/root
+
+
+windows 镜像查看
+
+virt-list-filesystems win2k3.qcow2   
+/dev/sda1    
+ virt-list-partitions win2k3.qcow2    
+/dev/sda1
+
+
+检查镜像是否块对齐
+
+virt-alignment-scan -a win2k3.qcow2
+/dev/sda1 32256 512 bad (alignment < 4K)
+virt-alignment-scan -a centos6232.qcow2
+/dev/sda1 1048576 1024K ok
+/dev/sda2 210763776 1024K ok
+
+
+6. 去掉磁盘空洞--KVM虚拟镜像的稀疏问题
+RAW格式和QCOW2
+
+KVM虚拟化文件系统镜像，一般使用RAW或者QCOW2的方式：
+
+RAW 一次性将要使用的镜像空间分配完。
+
+QCOW2 精简模式，磁盘用多少，才占多少空间。
+
+ext4的稀疏特性
+
+我们使用不通的方式的创建方式几个镜像文件对比下，
+
+qemu-img create -f raw test.raw 5G
+qemu-img create -f qcow2 test.qcow2 5G
+dd if=/dev/zero of=/root/test.dd bs=1G count=5
+
+
+通过ls du查看，我们会发现一个非常有意思的事情
+
+ls -l
+-rw-r--r-- 1 root root 5.0G Oct 13 22:46 test.dd
+-rw-r--r-- 1 root root 193K Oct 13 22:58 test.qcow2
+-rw-r--r-- 1 root root 5.0G Oct 13 22:58 test.raw
+
+
+会发现raw是5G
+
+du test*
+5242880 test.dd
+196 test.qcow2
+0 test.raw
+
+
+会发现raw是0G
+
+为什么会这样呢，这是因为ext4文件系统是一个支持稀疏特性的文件系统，当文件内容全部是空的时候，ext4并不分配实际的空间。
+
+那如果想要使用RAW方式，并希望一次占用完所有的空间，可以使用dd命令的方式。
+
+qcow2 的稀疏问题
+
+qcow2方式也有稀疏的问题，在磁盘级别上看，镜像会有大量连续的相同空洞，比如刚创建的镜像的swap分区，通过virt-sparsify 我们可以消除这些空洞，从而缩小磁盘大小，便于我们传输磁盘镜像。
+
+使用virt-sparsify 前，我们需要先创建一个新的同样大小的镜像
+
+qemu-img create -f qcow2 test2.qcow2 5G
+
+
+然后使用virt-sparsify，去除镜像空洞，语法为
+
+virt-sparsify  -x   /root/test.qcow2 --convert qcow2 /root/test2.qcow2
+
+
+7. 用guestfish操作虚拟机内部文件
+虚拟机内部文件管理主要使用以下命令：
+
+virt-df - Display free space on virtual filesystems
+
+镜像磁盘空间使用查看
+
+virt-ls - List files in a virtual machine
+
+列出指定目录内文件
+
+virt-cat - Display files in a virtual machine
+
+显示指定文件内容
+
+virt-edit - Edit a file in a virtual machine
+
+编辑指定文件
+
+virt-copy-in - Copy files and directories into a virtual machine disk image.
+
+将文件拷贝到虚拟机内部
+
+virt-copy-out - Copy files and directories out of a virtual machine disk image.q
+
+将虚拟机内部文件拷贝出来
+
+virt-tar-in - Unpack a tarball into a virtual machine disk image
+
+tar压缩文件拷贝进虚拟机并解压
+
+virt-tar-out - Pack a virtual machine disk image directory into a tarball.
+
+镜像内指定目录文件拷贝并压缩
+
+virt-tar - Extract or upload files to a virtual machine
+
+解压或者上传文件到虚拟机
+
+示例
+
+查看镜像磁盘空间
+
+virt-df -a centos6364.qcow2
+Filesystem 1K-blocks Used Available Use%
+centos6364.qcow2:/dev/sda1 198337 32098 155999 17%
+centos6364.qcow2:/dev/vmvg/root 16308136 1210172 14269548 8%
+
+
+查看镜像/root目录内容
+
+virt-ls -a centos6364.qcow2 /root
+.bash_history
+.bash_logout
+.bash_profile
+.bashrc
+.cshrc
+.tcshrc
+anaconda-ks.cfg
+install.log
+install.log.syslog
+
+
+显示指定文件内容
+
+virt-cat -a centos6364.qcow2 /root/anaconda-ks.cfg
+# Kickstart file automatically generated by anaconda.
+...
+
+
+编辑指导文件
+
+virt-edit -a centos6364.qcow2 /root/anaconda-ks.cfg
+
+
+文件拷贝进镜像及拷贝出镜像
+
+touch test.txt
+virt-copy-in test.txt -a centos6364.qcow2 /root/
+virt-copy-out -a centos6364.qcow2 /root/test.txt /home
+
+
+压缩文件拷贝进虚拟机并解压
+
+virt-tar-in -a disk.img data.tar /destination
+
+
+压缩文件拷贝进虚拟机并解压
+
+virt-tar-out -a disk.img /dir files.tar
+
+
+将虚拟机的home目录拷贝出来并打包
+
+virt-tar -x domname /home home.tar
+
+上传本地的压缩文件到虚拟机并解压
+
+virt-tar -u domname uploadstuff.tar /tmp
+
+
+8. guestfish修改镜像格式和大小
+修改镜像格式和大小主要使用以下命令
+
+virt-convert - convert virtual machines between formats
+
+转化虚拟机镜像格式
+
+virt-resize - Resize a virtual machine disk
+
+修改虚拟机镜像磁盘
+
+示例
+
+raw转qcow2格式
+
+需要先用qemu-img命令创建一个一样大小的空qcow2格式镜像文件，然后使用virt-convert命令
+
+virt-convert  -i raw -o qcow2 old.img new.qcow2
+
+原始镜像可以是 vmware镜像vmx，kvm进行，ovf的镜像。
+
+将指定的分区扩大5G
+
+创建一个新的镜像，比原来大5G，然后扩展
+
+virt-resize --expand /dev/sda2 olddisk newdisk
+
+
+将boot增加200M，剩下的空间扩充给/dev/sda2
+
+virt-resize --resize /dev/sda1=+200M --expand /dev/sda2 \
+olddisk newdisk
+
+
+lv扩展
+
+virt-resize --expand /dev/sda2 --LV-expand /dev/vg_guest/lv_root \
+olddisk newdisk
+
+
+扩展分区，并将raw格式转化成qcow2格式
+
+qemu-img create -f qcow2 newdisk.qcow2 15G
+virt-resize --expand /dev/sda2 olddisk newdisk.qcow2
+
+
+注意：
+
+1 如果是扩展分区，目标磁盘文件必须大于原生磁盘；
+
+2 磁盘缩小比较复杂，一般要求缩小到的空间远大于文件系统的大小。
+
+9. guestfish挂载、修改、运行救援方式
+guestmount - Mount a guest filesystem on the host using FUSE and libguestfs
+
+挂载镜像到某个目录
+
+guestfish - the libguestfs Filesystem Interactive SHell
+
+挂载镜像并得到一个交互的shell
+
+virt-rescue - Run a rescue shell on a virtual machine
+
+运行一个镜像的救援模式
+
+示例
+
+只读方式将镜像挂载到/mnt目录
+
+guestmount -a windows.img -m /dev/sda1 --ro /mnt
+
+
+将linux虚拟机的根目录挂载到宿主机的/mnt目录
+
+guestmount -a linux.qcow2 -m /dev/sda2  /mnt
+
+
+guestfish编辑镜像grub文件
+
+
+guestfish --rw --add disk.img \
+          --mount /dev/vg_guest/lv_root \
+          --mount /dev/sda1:/boot \
+          edit /boot/grub/grub.conf
+
+
+进入镜像的救援模式
+
+$ virt-rescue --suggest -d Fedora15
+        Inspecting the virtual machine or disk image ...
+        This disk contains one or more operating systems. You can use these
+        mount commands in virt-rescue (at the ><rescue> prompt) to mount the
+        filesystems.
+        # /dev/vg_f15x32/lv_root is the root of a linux operating system
+        # type: linux, distro: fedora, version: 15.0
+        # Fedora release 15 (Lovelock)
+        mount /dev/vg_f15x32/lv_root /sysroot/
+        mount /dev/vda1 /sysroot/boot
+        mount --bind /dev /sysroot/dev
+        mount --bind /dev/pts /sysroot/dev/pts
+        mount --bind /proc /sysroot/proc
+        mount --bind /sys /sysroot/sys
+       Another way is to list the logical volumes (with lvs(8)) and partitions (with parted(8)) and mount them by hand:
+        ><rescue> lvs
+        LV VG Attr LSize Origin Snap% Move Log Copy% Convert
+        lv_root vg_f15x32 -wi-a- 8.83G
+        lv_swap vg_f15x32 -wi-a- 992.00M
+        ><rescue> mount /dev/vg_f15x32/lv_root /sysroot
+        ><rescue> mount /dev/vda1 /sysroot/boot
+        ><rescue> ls /sysroot
+       Another command to list available filesystems is virt-filesystems(1).
+       To run commands in a Linux guest (for example, grub), you should chroot into the /sysroot directory first:
+        ><rescue> chroot /sysroot

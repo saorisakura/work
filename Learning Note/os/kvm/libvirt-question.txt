@@ -1,0 +1,271 @@
+nova创建虚拟机遇到错误
+
+    16-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec]     return processutils.execute(*cmd, **kwargs)
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec]   File "/usr/lib/python2.7/site-packages/oslo_concurrency/processutils.py", line 266, in execute
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec]     cmd=sanitized_cmd)
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] ProcessExecutionError: Unexpected error while running command.
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] Command: mkfs -t ntfs -F -L ephemeral0 /var/lib/nova/instances/_base/ephemeral_3_0706d66
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] Exit code: 1
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] Stdout: u''
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] Stderr: 'mkfs.ntfs: \xe6\xb2\xa1\xe6\x9c\x89\xe9\x82\xa3\xe4\xb8\xaa\xe6\x96\x87\xe4\xbb\xb6\xe6\x88\x96\xe7\x9b\xae\xe5\xbd\x95\n'
+2016-11-03 10:53:39.854 2656 TRACE nova.compute.manager [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec]
+2016-11-03 10:53:39.856 2656 INFO nova.compute.manager [req-8753563e-2e77-4393-b915-07b00441dfa9 89df706334e742aba6127aba7cdb95c8 225bfd101cc643048accb43d73e47fb0 - - -] [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] Terminating instance
+2016-11-03 10:53:39.858 2656 INFO nova.virt.libvirt.driver [-] [instance: c55287fc-d561-4c59-9378-8a1d7b8662ec] During wait destr
+oy, instance disappeared.
+2016-11-03 10:53:39.858 2
+错误主要是这条命令失败mkfs -t ntfs -F -L ephemeral0 /var/lib/nova/instances/_base/ephemeral_3_0706d66
+
+查证发现有这个盘，但是失败，mkfs.ntfs命令无法使用
+
+安装ntfsprogs-2016.2.22-1.el7.x86_64 包得到解决 
+从EPEL库中有这个包
+
+Failed to connect to the hypervisor
+There are lots of errors that can occur while connecting to the server (when running virsh for example)
+
+No connection driver available
+Symptom
+When running a command, the following error (or similar) appears:
+
+$ virsh -c <uri> list
+error: no connection driver available for No connection for URI <uri>
+error: failed to connect to the hypervisor
+Cause
+This can happen when libvirt is compiled from sources. The error means there is no driver to use with the specified URI (e.g. "Xen" for "xen://server/")
+
+Investigation
+Check the last part of configure ('./configure' or './autogen') output, you should see something like this:
+
+configure: Drivers
+configure: 
+configure: <driver>: yes
+For example talking about Xen:
+
+configure: Drivers
+configure: 
+configure:     Xen: yes
+If however you see "<driver>: no" (e.g. "Xen:no"), that means configure failed to find all the tools/libraries necessary to implement this support or there was "--without-<driver>" parameter specified on the command line.
+
+Solution
+Do not specify "--without-<driver>" on the command line of the configuration script and make sure there are all development libraries installed as well, then configure the sources again.
+
+Cannot read CA certificate
+Symptom
+When running a command, the following error (or similar) appears:
+
+$ virsh -c <uri> list
+error: Cannot read CA certificate '/etc/pki/CA/cacert.pem': No such file or directory
+error: failed to connect to the hypervisor
+Investigation
+This error can be caused by various things, for some of them, the error message is little misleading:
+
+specified URI is wrong (missing one '/' -- e.g. 'qemu://system')
+connection is not configured
+Solution
+specified URI is wrong
+
+In the case of specifying 'qemu://system' or 'qemu://session' as a connection URI, virsh is trying to connect to hostname 'system' or 'session' respectively because when hostname is specified, the transport for qemu defaults to 'tls' and thus the need for a certificates. Use three slashes in this case.
+
+connection is not configured
+
+You specified correct URI (e.g. 'qemu[+tls]://server/system') but the certificates were not set up properly on your machine. There is a great In depth guide to configuring TLS. The solution is most probably there.
+
+Permission denied
+Symptom
+When running a command, the following error (or similar) appears:
+
+$ virsh -c qemu:///system list
+error: Failed to connect socket to '/var/run/libvirt/libvirt-sock': Permission denied
+error: failed to connect to the hypervisor
+Investigation
+You are trying to connect using unix socket. The connection to "qemu" without any hostname specified is by default using unix sockets. If there is no error running this command as root it's probably just misconfigured.
+
+Solution
+If you want to be able to connect as non-root user using unix sockets, configure following options in '/etc/libvirt/libvirtd.conf' accordingly:
+
+unix_sock_group = <group>
+unix_sock_ro_perms = <perms>
+unix_sock_rw_perms = <perms>
+Other errors
+These other errors are even simpler to solve than those mentioned before, so here is a list of error/solutions:
+
+unable to connect to server at 'server:port': Connection refused
+
+The daemon is not running on the server or it's configured not to listen (configuration option 'listen_tcp' or 'listen_tls').
+
+End of file while reading data: nc: using stream socket: Input/output error
+
+If you specified 'ssh' transport, the daemon is probably not running on the server.
+
+End of file while reading data: : Input/output error
+
+If you are using ssh transport, for example, by executing
+
+virsh --connect qemu+ssh://username@remove.host.com/system list
+
+Probably the user you are using to access the server does not belong to the proper group, such as 'libvirtd' for Ubuntu servers. Try adding the user to the proper group on server and connect again. For example, below is to be run on Ubuntu servers.
+
+sudo usermod -G libvirtd -a username
+
+Refer to SSHSetup for setup about other distributions.
+
+
+libvirt 问题解决记录集
+2013 年 7 月 17 日
+目录 [hide]
+1 出现Permission denied
+2 libvirt遇到死锁
+3 迁移需要FQDN
+4 启动nfs出现问题
+5 挂载nfs出现问题
+6 virsh关闭虚拟机
+7 virsh无法使用ssh协议访问远程机器
+本篇记录在使用libvirt的时候遇到的一些情况,即解决方法.
+
+出现Permission denied
+
+[root@localhost vm]# virsh start centos
+error: Failed to start domain centos
+error: internal error process exited while connecting to monitor: qemu-system-x86_64: -drive file=/home/d/shixun/vm/vdisk.img,if=none,id=drive-ide0-0-0,format=qcow2: could not open disk image /home/d/shixun/vm/vdisk.img: Permission denied
+解决:/etc/libvirt/qemu.conf
+
+# Some examples of valid values are:
+#
+# user = "qemu" # A user named "qemu"
+# user = "+0" # Super user (uid=0)
+# user = "100" # A user named "100" or a user with uid=100
+#
+user = "root"
+
+# The group for QEMU processes run by the system instance. It can be
+# specified in a similar way to user.
+group = "root"
+
+# Whether libvirt should dynamically change file ownership
+# to match the configured user/group above. Defaults to 1.
+# Set to 0 to disable file ownership changes.
+dynamic_ownership = 0
+我的这个没能解决问题
+
+/etc/init.d/libvirtd restart 不管用
+
+libvirt遇到死锁
+
+在使用virsh对虚拟机进行动态迁移时,虚拟机没有开启.于是就去开启虚拟机,但是却发现无法运行.
+
+Error starting domain: Timed out during operation: cannot acquire state change lock
+
+libvirtError: Timed out during operation: cannot acquire state change lock
+我进行了以下的步骤
+
+virsh undefine centos
+
+####Login as a root user and kill the libvirtd.
+
+killall -9 libvirtd
+
+rm /var/run/libvirtd.pid   ##### Remove the libvirtd pid file.
+
+/etc/init.d/libvirtd  restart   #### Restart libvirtd.
+在尝试上面的操作后,不起作用.
+
+修改一下的domain的xml文件中的name标签,给虚拟机改个名字,期间我还删除了domain的xml文件里的qemu:commandline里面信息,重新define后就可以运行了.
+
+迁移需要FQDN
+
+在进行迁移的时候使用命令 virsh migrate –live ubuntu qemu+ssh://dest_ip/system
+
+error: internal hostname on destination resolved to localhost, but migration requires an FQDN
+解决:ssh进入到dest host机器,运行hostname domain 就好了.其中domian是一个域名.将接下来就可以进行迁移了.
+
+启动nfs出现问题
+
+启动NFS服务,出现问题
+
+Failed to issue method call: Unit nfsserver.service failed to load: No such file or directory. See system logs and 'systemctl status nfsserver.service' for details.
+解决:按照教程来就好了
+
+# vim /etc/exports
+/var/lib/libvirt/images *.example.com(rw,no_root_squash,sync)
+
+# service nfs start
+
+# mount -t nfs storage_host:/var/lib/libvirt/images /var/lib/libvirt/images
+挂载nfs出现问题
+
+当去mount远程的nfs服务器,出现问题了.
+
+mount.nfs: access denied by server while mounting 211.87.***.53:/mnt/nfs
+
+解决:原来发现,在/etc/exports中,没有将/mnt/nfs添加进去,只能将里面有的文件夹才能mount到本机来.
+
+可以先umoutn /mnt/nfs ,然后在mount看看能否成功
+
+virsh关闭虚拟机
+
+virsh shutdown 关闭虚拟机没起作用
+
+解决:需要在虚拟机里安装一些东西
+
+yum install acpid
+chkconfig acpid on
+service acpid start
+virsh无法使用ssh协议访问远程机器
+
+当我去远程查询信息的时候,virsh -c qemu+ssh://211.87.***.88/system list 的时候出现了下面的问题.
+
+error: failed to connect to the hypervisor
+error: no valid connection
+error: End of file while reading data: : Input/output error
+查看日志 cat /var/log/secure | grep sshd 发现是我这里主动发出断开的.难道是检测到libvirtd有些问题导致的?
+
+当时使用virt-manage可以查询到远程的信息.估计是sshd出现的问题把.
+
+解决:我没有重新安装sshd,我是通过tcp协议进行迁移的,因为是做测试,所以没有考虑安全的问题.具体使用tcp进行迁移,查看virsh使用qemu+tcp访问远程libvirtd .
+
+
+virsh使用qemu+tcp访问远程libvirtd
+2013 年 7 月 11 日 / 东东东 / 6 条评论
+因为ssh的不能访问 所以使用tcp进行对远程libvirtd进行连接访问，例如
+
+virsh -c qemu+tcp://example.com/system
+
+修改文件vim /etc/sysconfig/libvirtd，用来启用tcp的端口
+
+LIBVIRTD_CONFIG=/etc/libvirt/libvirtd.conf
+
+LIBVIRTD_ARGS="--listen"
+修改文件vim /etc/libvirt/libvirtd.conf
+
+listen_tls = 0
+
+listen_tcp = 1
+
+tcp_port = "16509"
+
+listen_addr = "0.0.0.0"
+
+auth_tcp = "none"
+运行 libvirtd
+
+service libvirtd restart
+如果没起效果(我的就没有生效 :( )，那么使用命令行:
+
+libvirtd --daemon --listen --config /etc/libvirt/libvirtd.conf
+查看运行进程
+
+[root@ddd run]# ps aux | grep libvirtd
+root 16563 1.5 0.1 925880 7056 ? Sl 16:01 0:28 libvirtd -d -l --config /etc/libvirt/libvirtd.conf
+查看端口
+
+[root@ddd run]# netstat -apn | grep tcp
+tcp        0      0 0.0.0.0:16509           0.0.0.0:*               LISTEN      13971/libvirtd      
+在source host连接dest host远程libvirtd查看信息
+
+virsh -c qemu+tcp://211.87.***.97/system
+
+Welcome to virsh, the virtualization interactive terminal.
+
+Type: 'help' for help with commands
+'quit' to quit
+成功使用tcp去访问libvirtd。

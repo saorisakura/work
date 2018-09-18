@@ -1,0 +1,24 @@
+libvirt-qemu-Host与Guest之间共享文件夹
+本文实践在Host和Gues之间共享文件夹，方式是qemu实现的Plan 9 folder sharing over Virtio。
+
+
+在Host上建立一个共享文件夹：
+# mkdir /tmp/shared_host
+
+在Host上启动虚拟机qemu：
+# qemu-system-x86_64 -smp 2 -m 4096 -enable-kvm -drive file=/home/test/ubuntu.img,if=virtio -vnc :2 \
+-fsdev local,security_model=passthrough,id=fsdev-fs0,path=/tmp/shared_host -device virtio-9p-pci,id=fs0,fsdev=fsdev-fs0,mount_tag=test_mount
+
+在Host上启动虚拟机libvirt：
+<devices>
+    <filesystem type='mount' accessmode='passthrough'>
+      <source dir='/tmp/shared_host'/>
+      <target dir='test_mount'/>
+    </filesystem>
+</devices>
+
+在Guest上mount共享文件夹：
+# mkdir /tmp/shared_guest
+# mount -t 9p -o trans=virtio test_mount /tmp/shared_guest/ -oversion=9p2000.L,posixacl,cache=loose
+
+现在就可在Host的/tmp/shared_host和Guest的/tmp/shared_guest/之间进行文件的共享了。

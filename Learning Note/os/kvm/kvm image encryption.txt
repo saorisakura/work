@@ -1,0 +1,187 @@
+qcow2磁盘加密及libvirt访问
+
+1.创建qcow2加密磁盘
+[root@Coc-5 test_encrypt]# qemu-img convert -f qcow2 -O qcow2 -o encryption template_xp encry1.qcow2
+Disk image 'encry1.qcow2' is encrypted.
+password:   //这里输入密码 123456
+
+
+[root@Coc-5 test_encrypt]# qemu-img info encry1.qcow2 
+image: encry1.qcow2
+file format: qcow2
+virtual size: 10G (10737418240 bytes)
+disk size: 2.1G
+encrypted: yes
+cluster_size: 65536
+
+
+2.virsh edit修改配置文件，将磁盘改为encry1.qcow2 
+
+
+3.virsh start 显示错误
+virsh # start instance-00000009
+error: Failed to start domain instance-00000009
+error: internal error: unable to execute QEMU command 'cont': 'drive-virtio-disk0' (/usr/local/noc/var/lib/noc/instances/test_encrypt/encry1.qcow2) is encrypted
+
+
+4.在本地创建一个秘钥xml
+[root@Coc-5 test_encrypt]# cat secret.xml 
+<secret ephemeral='no' private='yes'>
+</secret>
+
+
+5.define秘钥
+
+
+[root@Coc-5 test_encrypt]# virsh secret-define secret.xml 
+Secret 3f8475e9-868c-4543-a510-7f668ba83d46 created
+
+
+6.为秘钥设置密码
+密码就用上面的123456
+
+
+[root@Coc-5 test_encrypt]# MYSECRET=`printf %s "123456" | base64`
+[root@Coc-5 test_encrypt]# echo $MYSECRET
+MTIzNDU2
+[root@Noc-5 test_encrypt]# virsh secret-set-value 3f8475e9-868c-4543-a510-7f668ba83d46 $MYSECRET
+Secret value set
+
+
+7.在libvirt配置文件磁盘段中添加秘钥
+<encryption format='qcow'>
+        <secret type='passphrase' uuid='3f8475e9-868c-4543-a510-7f668ba83d46'/>
+      </encryption>
+
+
+8.运行虚拟机
+[root@Coc-5 test_encrypt]# virsh start instance-00000009
+Domain instance-00000009 started
+
+
+qemu提供了磁盘加密的功能。本文介绍如何给磁盘加密，以及如何使用加密后的磁盘。现在qemu2.9的版本已经不支持这种磁盘加密了。
+
+
+1.给磁盘加密
+# qemu-img convert -f qcow2 -O qcow2 -o encryption mydisk.img encrypt.qcow2
+Disk image 'encrypt.qcow2' is encrypted.
+password:   //这里输入密码例如123456
+这里是给mydisk.img加密成encry.qcow2
+
+2.在本地创建一个秘钥xml
+# vi secret.xml 
+<secret ephemeral='no' private='yes'>
+<uuid>7d195d98-6a06-4bb9-a0e9-6a2fde302f31</uuid>
+</secret>
+注：uuid项可以没有，那么将随机生成一个uuid
+
+3.定义一个libvirt的secret
+# virsh secret-define secret.xml 
+Secret 7d195d98-6a06-4bb9-a0e9-6a2fde302f31 created
+
+4.给secret设置密码值（这里的密码就是给磁盘加密时使用的密码123456）
+# virsh secret-set-value 7d195d98-6a06-4bb9-a0e9-6a2fde302f31 $MYSECRET
+Secret value set
+注：密值是base64的（MYSECRET=`printf %s "123456" | base64`）
+注：产生的secret以及密码在/etc/libvirt/secrets/中存在
+
+5.在虚拟机xml文件的disk段中加入secret
+<encryption format='qcow'>
+  <secret type='passphrase' uuid='7d195d98-6a06-4bb9-a0e9-6a2fde302f31'/>
+</encryption>
+
+6.启动虚拟机。虚拟启动后就是使用的加密的磁盘。
+
+7.磁盘加密虚拟机的迁移
+在迁移之前要在远程libvirt建立相同的secret。远程建立secret的方式有两种：使用libvrit远程rpc的方式执行secret-define和secret-set-value ，或者直接在目标主机上执行上述过程。
+
+
+
+
+
+
+LUKS：Linux下磁盘加密
+2017年06月15日 10:25:22 568人阅读 评论(0) 收藏  举报
+原文 
+LUKS(Linux Unified Key Setup)为Linux硬盘加密提供了一种标准，它不仅能通用于不同的Linux发行版本，还支持多用户/口令。因为它的加密密钥独立于口令，所以如果口令失密，我们可以迅速改变口令而无需重新加密真个硬盘。通过提供一个标准的磁盘上的格式，它不仅方便之间分布的兼容性，而且还提供了多个用户密码的安全管理。必须首先对加密的卷进行解密,才能挂载其中的文件系统。
+
+工具：cryptsetup（默认已经安装）
+常用参数：luksFormat、luksOpen、luksClose、luksAddKey
+使用cryptsetup对分区进行了加密后，这个分区就不再允许直接挂载。LUKS也是一种基于device mapper 机制的加密方案。如果要使用这个分区，必须对这个分区做一个映射，映射到/dev/mapper这个目录里去，我们只能挂载这个映射才能使用。然而做映射的时候是需要输入解密密码的。
+
+Crypsetup工具加密的特点： 
+- 加密后不能直接挂载 
+- 加密后硬盘丢失也不用担心数据被盗 
+- 加密后必须做映射才能挂载
+
+步骤：
+
+1.   创建分区并加密分区
+2.   映射分区
+3.   格式化分区并挂载使用
+4.  关闭映射分区
+创建一个磁盘分区/dev/sdb1，不进行格式化 
+1、加密分区
+
+# cryptsetup -v -y -c aes-cbc-plain luksFormat /dev/sdb1
+WARNING!
+========
+This will overwrite data on /dev/sdb1 irrevocably.
+Are you sure? (Type uppercase yes): YES  --> 注意这里必须是大写的YES
+Enter LUKS passphrase:
+Verify passphrase:
+Command successful.
+#
+2、 映射分区
+
+# cryptsetup luksOpen /dev/sdb1 sx_disk  //把sdb1映射为sx_disk
+Enter passphrase for /dev/sdb1:
+
+# ll -d /dev/mapper/sx_disk
+lrwxrwxrwx. 1 root root 7  6月 25 03:24 /dev/mapper/sx_disk -> ../dm-0
+
+# cryptsetup status /dev/mapper/sx_disk //查看映射分区状态
+/dev/mapper//dev/mapper/sx_disk is active.
+
+type:  LUKS1
+cipher:  aes-cbc-plain
+keysize: 256 bits
+device:  /dev/sdb1
+offset:  4096 sectors
+size:    16767701 sectors
+mode:    read/write
+#
+3、挂载使用
+
+# mkdir /mnt/sx_disk
+# mkfs.ext3 /dev/mapper/sx_disk
+# mount /dev/sdb1 /mnt/sx_disk/   //直接挂载是不可以的
+mount: unknown filesystem type 'crypto_LUKS'
+# mount /dev/mapper/sx_disk /mnt/sx_disk/ //挂载映射设备，挂载成功
+4、关闭映射，先卸载后关闭
+
+# umount /mnt/sx_disk/
+# cryptsetup luksClose sx_disk  //关闭映射
+# ll /dev/mapper/  //映射设备已经不见了
+总用量 0
+crw-rw----. 1 root root 10, 58  6月 25 03:01 control
+#
+5、设置开机自动挂载 
+生成密钥文件，如果想开机时手动输入密码可以不生成
+
+# touch /root/cryptpasswd
+# cryptsetup luksAddKey /dev/sdb1 /root/cryptpasswd
+Enter any passphrase:
+# cat /root/cryptpasswd  //直接查看密钥为空
+#
+设置开机启动
+
+# vim /etc/crypttab
+# cat /etc/crypttab
+sx_disk /dev/sdb1 /root/cryptpasswd
+sx_disk为映射名称，/dev/sdb1是加密设备设备，/root/cryptpasswd为密码文件，如果想开机手动输入密码，密码文件处空着即可
+
+# vim /etc/fstab
+# tail -1 /etc/fstab
+/dev/mapper/sx_disk       /mnt/sx_disk             ext4 defaults   0 0
+#

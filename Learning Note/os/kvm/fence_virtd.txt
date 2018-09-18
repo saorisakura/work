@@ -1,0 +1,618 @@
+Fencing KVM Virtual Servers
+ AN!Wiki :: How To :: Fencing KVM Virtual Servers
+
+It's difficult to image a production use-case for clusters built on virtual machines. As a learning and test bed though, clusters of virtual machines can be invaluable.
+
+Clusters of VMs still require fencing, just the same. Generally this is accomplished by using a fence agent that calls the hypervisor and asks it to force the target VM off.
+
+Each hypervisor will have it's own methods for doing this. In this tutorial, we will discuss fencing virtual machines running on the KVM hypervisor using the fence_virtd daemon and the fence_xvm guest fence agent.
+
+Template note icon.png	Note: This tutorial was based on Clusterlabs.org's "Guest Fencing" tutorial. Thanks to Andrew Beekhof for writing this and helping me sort out some problems I ran into.
+Contents [hide] 
+1 Steps
+2 Host Configuration
+2.1 Fedora 18/19
+2.1.1 Fedora 18/19 Host; Installing Components
+2.1.2 Fedora 18 Host; Create The Key
+2.1.3 Fedora 18 Host; Configure the Daemon
+2.1.4 Fedora 18 Host; Starting the Daemon
+2.1.5 Fedora 18 Host; Restarting fence_virtd
+2.1.6 Fedora 18 Host; Testing the Daemon
+2.1.7 Fedora 18 Host; Bridge Configuration Issue
+3 Guest Configuration
+3.1 Fedora 19
+3.1.1 Install fence-virt
+3.1.2 Copy the Host's Key to the VMs
+3.1.3 Testing The Virtual Server Nodes
+4 Configuring fence_xvm
+Steps
+
+Setting up fencing requires two steps;
+
+Configure the host's fence_virtd to listen for fence requests from guests.
+Configure the guests to talk to the host's daemon using their fence_xvm fence agents.
+There is no need for the guest and host operating systems to match. So the specific steps for each of these two steps will vary somewhat depending on which OS you are using.
+
+Host Configuration
+
+This tutorial will use Fedora 18 as the host operating system.
+
+Fedora 18/19
+
+Configuring the host is a three step process;
+
+Install the needed components.
+Create a key.
+Configure the fence_virtd daemon.
+Fedora 18/19 Host; Installing Components
+The first step is to install the fence_virtd components;
+
+yum install fence-virt fence-virtd fence-virtd-multicast fence-virtd-libvirt
+Loaded plugins: langpacks, presto, refresh-packagekit
+Resolving Dependencies
+--> Running transaction check
+---> Package fence-virt.x86_64 0:0.3.0-5.fc18 will be installed
+---> Package fence-virtd.x86_64 0:0.3.0-5.fc18 will be installed
+---> Package fence-virtd-libvirt.x86_64 0:0.3.0-5.fc18 will be installed
+---> Package fence-virtd-multicast.x86_64 0:0.3.0-5.fc18 will be installed
+--> Finished Dependency Resolution
+ 
+Dependencies Resolved
+ 
+================================================================================
+ Package                     Arch         Version            Repository    Size
+================================================================================
+Installing:
+ fence-virt                  x86_64       0.3.0-5.fc18       fedora        38 k
+ fence-virtd                 x86_64       0.3.0-5.fc18       fedora        30 k
+ fence-virtd-libvirt         x86_64       0.3.0-5.fc18       fedora        13 k
+ fence-virtd-multicast       x86_64       0.3.0-5.fc18       fedora        19 k
+ 
+Transaction Summary
+================================================================================
+Install  4 Packages
+ 
+Total download size: 101 k
+Installed size: 173 k
+Is this ok [y/N]: y
+Downloading Packages:
+(1/4): fence-virt-0.3.0-5.fc18.x86_64.rpm                  |  38 kB   00:00     
+(2/4): fence-virtd-0.3.0-5.fc18.x86_64.rpm                 |  30 kB   00:00     
+(3/4): fence-virtd-libvirt-0.3.0-5.fc18.x86_64.rpm         |  13 kB   00:00     
+(4/4): fence-virtd-multicast-0.3.0-5.fc18.x86_64.rpm       |  19 kB   00:00     
+--------------------------------------------------------------------------------
+Total                                           187 kB/s | 101 kB     00:00     
+Running Transaction Check
+Running Transaction Test
+Transaction Test Succeeded
+Running Transaction
+  Installing : fence-virtd-0.3.0-5.fc18.x86_64                              1/4 
+  Installing : fence-virtd-multicast-0.3.0-5.fc18.x86_64                    2/4 
+  Installing : fence-virtd-libvirt-0.3.0-5.fc18.x86_64                      3/4 
+  Installing : fence-virt-0.3.0-5.fc18.x86_64                               4/4 
+  Verifying  : fence-virtd-multicast-0.3.0-5.fc18.x86_64                    1/4 
+  Verifying  : fence-virt-0.3.0-5.fc18.x86_64                               2/4 
+  Verifying  : fence-virtd-0.3.0-5.fc18.x86_64                              3/4 
+  Verifying  : fence-virtd-libvirt-0.3.0-5.fc18.x86_64                      4/4 
+ 
+Installed:
+  fence-virt.x86_64 0:0.3.0-5.fc18                                              
+  fence-virtd.x86_64 0:0.3.0-5.fc18                                             
+  fence-virtd-libvirt.x86_64 0:0.3.0-5.fc18                                     
+  fence-virtd-multicast.x86_64 0:0.3.0-5.fc18                                   
+ 
+Complete!
+Fedora 18 Host; Create The Key
+For security reasons, we want to use a file with a secret key in it. This will ensure that only nodes in our cluster can send requests to terminate VMs to our fence_virtd daemon.
+
+This key is stored in a file called /etc/fence_xvm.key file. You can use any string you want, including simple words or traditional passwords. In our case though, we will use dd to read in 512 bytes from the kernel's /dev/random (pseudo-)random number generator to create a nice, strong and random key.
+
+dd if=/dev/random of=/etc/fence_xvm.key bs=512 count=1
+0+1 records in
+0+1 records out
+128 bytes (128 B) copied, 0.000143983 s, 889 kB/s
+If you try to look at the contents of this, you will find that it does not render as ASCII text very well. This is expected and not a problem.
+
+Fedora 18 Host; Configure the Daemon
+There is a nice configuration mode for fence_virtd that makes configuring it very simple. In this example, we will use all default values.
+
+Template note icon.png	Note: We will use multicast for communication between the guests and the host. The multicast address should not match the multicast address used by your cluster.
+fence_virtd -c
+Module search path [/usr/lib64/fence-virt]:
+Available backends:
+    libvirt 0.1
+Available listeners:
+    multicast 1.2
+ 
+Listener modules are responsible for accepting requests
+from fencing clients.
+Listener module [multicast]:
+The multicast listener module is designed for use environments
+where the guests and hosts may communicate over a network using
+multicast.
+ 
+The multicast address is the address that a client will use to
+send fencing requests to fence_virtd.
+Multicast IP Address [225.0.0.12]:
+Using ipv4 as family.
+Multicast IP Port [1229]:
+Setting a preferred interface causes fence_virtd to listen only
+on that interface.  Normally, it listens on all interfaces.
+In environments where the virtual machines are using the host
+machine as a gateway, this *must* be set (typically to virbr0).
+Set to 'none' for no interface.
+Interface [virbr0]:
+The key file is the shared key information which is used to
+authenticate fencing requests.  The contents of this file must
+be distributed to each physical host and virtual machine within
+a cluster.
+Key File [/etc/cluster/fence_xvm.key]: /etc/fence_xvm.key
+Backend modules are responsible for routing requests to
+the appropriate hypervisor or management layer.
+Backend module [libvirt]:
+Configuration complete.
+ 
+=== Begin Configuration ===
+backends {
+	libvirt {
+		uri = "qemu:///system";
+	}
+ 
+}
+ 
+listeners {
+	multicast {
+		port = "1229";
+		family = "ipv4";
+		interface = "virbr0";
+		address = "225.0.0.12";
+		key_file = "/etc/fence_xvm.key";
+	}
+ 
+}
+ 
+fence_virtd {
+	module_path = "/usr/lib64/fence-virt";
+	backend = "libvirt";
+	listener = "multicast";
+}
+ 
+=== End Configuration ===
+Replace /etc/fence_virt.conf with the above [y/N]? y
+Note that it will ask if you want to replace the /etc/fence_virt.conf, even though it doesn't exist.
+
+Done!
+
+Fedora 18 Host; Starting the Daemon
+There is no init.d or systemd tool for starting or stopping the fence_virtd daemon. So to start it, simple call it at the command line;
+
+fence_virtd
+Nothing will be displayed, but we can check that it started well by checking it's exit code and using pidof to check for it's process ID.
+
+echo $?
+0
+pidof fence_virtd
+3244
+Template note icon.png	Note: The process ID you see will almost certainly be different from the one above.
+That's it!
+
+Fedora 18 Host; Restarting fence_virtd
+If you ever want to stop fence_virtd, in order to load an updated configuration for example, you can use kill to do so.
+
+kill $(pidof fence_virtd)
+If you re-run the pidof command, you will see that no process ID is returned any more.
+
+pidof fence_virtd
+Now start it back up again;
+
+fence_virtd
+pidof fence_virtd
+29210
+Fedora 18 Host; Testing the Daemon
+To test that the daemon is listening, you can run fence_xvm and ask it to list the clients. We have not configured any guests yet, so it should return immediately with no output.
+
+fence_xvm -o list
+Had there been a problem, you would see an error like:
+
+fence_xvm -o list
+Timed out waiting for response
+Operation failed
+Fedora 18 Host; Bridge Configuration Issue
+Template note icon.png	Note: This may not be needed on you system. Please see rhbz#880035, in particular, comment #8.
+In earlier versions of Fedora, fence_xvm "just worked". However, the behaviour of bridging changed and now it is required that the multicast querier for the bridge we use for fencing be enabled manually.
+
+Later, when you configure the clients, you may find that calling fence_xvm -o list times out, despite everything being configured properly. That will indicate that you need to manually enable the multicast querier.
+
+We are using the virbr0 bridge in this tutorial. So to check if we should make the fix, read it's sys file;
+
+cat /sys/class/net/virbr0/bridge/multicast_querier
+0
+This tells us that it is off. To enable it, write a 1 to that file.
+
+echo 1 > /sys/class/net/virbr0/bridge/multicast_querier
+cat /sys/class/net/virbr0/bridge/multicast_querier
+1
+You should now be able to run fence_xvm -o list on the guests without issue.
+
+If you wish to make this persistent, trapier from Red Hat shared a nice little udev rule and bash script to do this.
+
+First, as the root user, or using sudo, create the script that loops through all bridges named virbrX and enables their multicast querier.
+
+touch /etc/sysconfig/network-scripts/vnet_querier_enable
+chmod 755 /etc/sysconfig/network-scripts/vnet_querier_enable
+vim /etc/sysconfig/network-scripts/vnet_querier_enable
+#!/bin/sh
+if [[ $INTERFACE == virbr* ]]; then
+    /bin/echo 1 > /sys/devices/virtual/net/$INTERFACE/bridge/multicast_querier
+fi
+Now create the udev rules file.
+
+vim /etc/udev/rules.d/61-virbr-querier.rules
+ACTION=="add", SUBSYSTEM=="net", RUN+="/etc/sysconfig/network-scripts/vnet_querier_enable"
+Now the querier should be enabled for all virbrX bridges on boot.
+
+Guest Configuration
+
+This tutorial will use Fedora 19 as the guest VMs.
+
+Fedora 19
+
+If you kept default values, the only step you will need to take is to install fence-virt and copy the host's /etc/cluster/fence_xvm.key key to the virtual servers.
+
+Install fence-virt
+yum -y install fence-virt
+Resolving Dependencies
+--> Running transaction check
+---> Package fence-virt.x86_64 0:0.3.0-13.fc19 will be installed
+--> Finished Dependency Resolution
+ 
+Dependencies Resolved
+ 
+=========================================================================================================
+ Package                  Arch                 Version                        Repository            Size
+=========================================================================================================
+Installing:
+ fence-virt               x86_64               0.3.0-13.fc19                  fedora                39 k
+ 
+Transaction Summary
+=========================================================================================================
+Install  1 Package
+ 
+Total download size: 39 k
+Installed size: 71 k
+Downloading packages:
+fence-virt-0.3.0-13.fc19.x86_64.rpm                                               |  39 kB  00:00:02     
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : fence-virt-0.3.0-13.fc19.x86_64                                                       1/1 
+  Verifying  : fence-virt-0.3.0-13.fc19.x86_64                                                       1/1 
+ 
+Installed:
+  fence-virt.x86_64 0:0.3.0-13.fc19                                                                      
+ 
+Complete!
+
+Copy the Host's Key to the VMs
+From the host, copy it's key to pcmk1:
+
+rsync -av /etc/cluster/fence_xvm.key root@pcmk1:/etc/cluster/
+sending incremental file list
+fence_xvm.key
+ 
+sent 209 bytes  received 31 bytes  160.00 bytes/sec
+total size is 128  speedup is 0.53
+again from the host, copy it's key to pcmk2:
+
+rsync -av /etc/cluster/fence_xvm.key root@pcmk2:/etc/cluster/
+sending incremental file list
+fence_xvm.key
+ 
+sent 209 bytes  received 31 bytes  480.00 bytes/sec
+total size is 128  speedup is 0.53
+Testing The Virtual Server Nodes
+With the keys loaded, testing the fence_xvm client is pretty straight forward.
+
+Log into both nodes are run;
+
+fence_xvm -o list
+pcmk1                83f6abdc-bb48-d794-4aca-13f091f32c8b on
+pcmk2                2d778455-de7d-a9fa-994c-69d7b079fda8 on
+Excellent!
+
+Before we begin, check the status of the VMs on the host by running;
+
+virsh list --all
+ Id    Name                           State
+----------------------------------------------------
+ 4     pcmk1                          running
+ 6     pcmk2                          running
+On pcmk1, we can call fence_xvm with the status option against the pcmk2 "domain" and we will see no output. We need to check the exit code to see if it is running or not. If it is running, it will return 0. If pcmk2 is not running, then there will be no exit code at all. Right now, it is running so let's call status and verify the exit code by running echo $? immediately after fence_xvm.
+
+On pcmk1, run:
+
+fence_xvm -H pcmk2 -o status && echo $?
+0
+Now, still on pcmk1, try to forcibly power off pcmk2.
+
+fence_xvm -H pcmk2 -o off && echo $?
+0
+You should notice that pcmk2 is now shut off. We can verify this on the host;
+
+virsh list --all
+ 4     pcmk1                          running
+ -     pcmk2                          shut off
+Success!
+
+Back on pcmk1, check the status again. This time there will be no exit code.
+
+fence_xvm -H pcmk2 -o status && echo $?
+# no value returned.
+Now we can turn it back on;
+
+fence_xvm -H pcmk2 -o on && echo $?
+0
+Sure enough, you should be able to log back into pcmk2 shortly.
+
+Test rebooting pcmk1 from pcmk2. If you can power pcmk1 off and back on, you are done and are ready to configure fencing in pacemaker and rhcs!
+
+Configuring fence_xvm
+
+There are two ways you can configure pacemaker; You can use crm or, as of recently, pcs. Given that Red Hat's plan is to use pcs in RHEL 7, we will use that here.
+
+To start, stonith has been disabled. So we will configure the fence primitives, set the location constraints and then enable stonith.
+
+Here is our start point;
+
+pcs status
+Cluster name: an-cluster-03
+WARNING: no stonith devices and stonith-enabled is not false
+Last updated: Mon Jul  1 17:11:57 2013
+Last change: Mon Jul  1 17:10:45 2013 via cibadmin on pcmk1.alteeve.ca
+Stack: corosync
+Current DC: pcmk1.alteeve.ca (1) - partition with quorum
+Version: 1.1.9-3.fc19-781a388
+2 Nodes configured, unknown expected votes
+0 Resources configured.
+ 
+ 
+Online: [ pcmk1.alteeve.ca pcmk2.alteeve.ca ]
+ 
+Full list of resources:
+Template note icon.png	Note: The port="..." must match the name shown on the host when you call virsh list --all.
+Now add the two fence primitives.
+
+pcs stonith create fence_pcmk1_xvm fence_xvm port="pcmk1" pcmk_host_list="pcmk1.alteeve.ca"
+pcs stonith create fence_pcmk2_xvm fence_xvm port="pcmk2" pcmk_host_list="pcmk2.alteeve.ca"
+You can confirm that they are now in the config.
+
+pcs status
+Cluster name: an-cluster-03
+Last updated: Mon Jul  1 17:14:36 2013
+Last change: Mon Jul  1 17:14:29 2013 via cibadmin on pcmk1.alteeve.ca
+Stack: corosync
+Current DC: pcmk1.alteeve.ca (1) - partition with quorum
+Version: 1.1.9-3.fc19-781a388
+2 Nodes configured, unknown expected votes
+2 Resources configured.
+ 
+ 
+Online: [ pcmk1.alteeve.ca pcmk2.alteeve.ca ]
+ 
+Full list of resources:
+ 
+ fence_pcmk1_xvm        (stonith:fence_xvm):    Started pcmk1.alteeve.ca
+ fence_pcmk2_xvm        (stonith:fence_xvm):    Started pcmk2.alteeve.ca
+However, if we check the config, we'll see that stonith is still disabled.
+
+pcs config show
+Cluster Name: an-cluster-03
+Corosync Nodes:
+ pcmk1.alteeve.ca pcmk2.alteeve.ca 
+Pacemaker Nodes:
+ pcmk1.alteeve.ca pcmk2.alteeve.ca 
+ 
+Resources: 
+ 
+Location Constraints:
+Ordering Constraints:
+Colocation Constraints:
+ 
+Cluster Properties:
+ cluster-infrastructure: corosync
+ dc-version: 1.1.9-3.fc19-781a388
+ no-quorum-policy: ignore
+ stonith-enabled: false
+Enabling it is as easy as:
+
+pcs property set stonith-enabled=true
+Confirm;
+
+pcs config show
+Cluster Name: an-cluster-03
+Corosync Nodes:
+ pcmk1.alteeve.ca pcmk2.alteeve.ca 
+Pacemaker Nodes:
+ pcmk1.alteeve.ca pcmk2.alteeve.ca 
+ 
+Resources: 
+ 
+Location Constraints:
+Ordering Constraints:
+Colocation Constraints:
+ 
+Cluster Properties:
+ cluster-infrastructure: corosync
+ dc-version: 1.1.9-3.fc19-781a388
+ no-quorum-policy: ignore
+ stonith-enabled: true
+And test! Let's crash 'pcmk2';
+
+echo c > /proc/sysrq-trigger
+On 'pcmk1', you should see this in the logs;
+
+Jul  1 17:15:22 pcmk1 corosync[387]:  [TOTEM ] A processor joined or left the membership and a new membership (192.168.122.11:40) was formed.
+Jul  1 17:15:22 pcmk1 corosync[387]:  [MAIN  ] Completed service synchronization, ready to provide service.
+Jul  1 17:15:23 pcmk1 crmd[405]:  warning: match_down_event: No match for shutdown action on 2
+Jul  1 17:15:23 pcmk1 crmd[405]:   notice: peer_update_callback: Stonith/shutdown of pcmk2.alteeve.ca not matched
+Jul  1 17:15:23 pcmk1 attrd[403]:   notice: attrd_local_callback: Sending full refresh (origin=crmd)
+Jul  1 17:15:23 pcmk1 attrd[403]:   notice: attrd_trigger_update: Sending flush op to all hosts for: probe_complete (true)
+Jul  1 17:15:23 pcmk1 pengine[404]:   notice: unpack_config: On loss of CCM Quorum: Ignore
+Jul  1 17:15:23 pcmk1 pengine[404]:  warning: pe_fence_node: Node pcmk2.alteeve.ca will be fenced because the node is no longer part of the cluster
+Jul  1 17:15:23 pcmk1 pengine[404]:  warning: determine_online_status: Node pcmk2.alteeve.ca is unclean
+Jul  1 17:15:23 pcmk1 pengine[404]:  warning: custom_action: Action fence_pcmk2_xvm_stop_0 on pcmk2.alteeve.ca is unrunnable (offline)
+Jul  1 17:15:23 pcmk1 pengine[404]:  warning: stage6: Scheduling Node pcmk2.alteeve.ca for STONITH
+Jul  1 17:15:23 pcmk1 pengine[404]:   notice: LogActions: Move    fence_pcmk2_xvm#011(Started pcmk2.alteeve.ca -> pcmk1.alteeve.ca)
+Jul  1 17:15:23 pcmk1 pengine[404]:  warning: process_pe_message: Calculated Transition 23: /var/lib/pacemaker/pengine/pe-warn-1.bz2
+Jul  1 17:15:23 pcmk1 crmd[405]:   notice: te_fence_node: Executing reboot fencing operation (9) on pcmk2.alteeve.ca (timeout=60000)
+Jul  1 17:15:23 pcmk1 stonith-ng[401]:   notice: handle_request: Client crmd.405.be9644f2 wants to fence (reboot) 'pcmk2.alteeve.ca' with device '(any)'
+Jul  1 17:15:23 pcmk1 stonith-ng[401]:   notice: initiate_remote_stonith_op: Initiating remote operation reboot for pcmk2.alteeve.ca: 1359b987-68ba-48ee-812f-9d8afafa9e41 (0)
+Jul  1 17:15:24 pcmk1 stonith-ng[401]:   notice: log_operation: Operation 'reboot' [1635] (call 3 from crmd.405) for host 'pcmk2.alteeve.ca' with device 'fence_pcmk2_xvm' returned: 0 (OK)
+Jul  1 17:15:24 pcmk1 stonith-ng[401]:   notice: remote_op_done: Operation reboot of pcmk2.alteeve.ca by pcmk1.alteeve.ca for crmd.405@pcmk1.alteeve.ca.1359b987: OK
+Jul  1 17:15:24 pcmk1 crmd[405]:   notice: tengine_stonith_callback: Stonith operation 3/9:23:0:49d423be-6d17-47bd-83b7-528c0c6faf82: OK (0)
+Jul  1 17:15:24 pcmk1 crmd[405]:   notice: tengine_stonith_notify: Peer pcmk2.alteeve.ca was terminated (reboot) by pcmk1.alteeve.ca for pcmk1.alteeve.ca: OK (ref=1359b987-68ba-48ee-812f-9d8afafa9e41) by client crmd.405
+Jul  1 17:15:24 pcmk1 crmd[405]:   notice: te_rsc_command: Initiating action 7: start fence_pcmk2_xvm_start_0 on pcmk1.alteeve.ca (local)
+Jul  1 17:15:24 pcmk1 stonith-ng[401]:   notice: stonith_device_register: Added 'fence_pcmk2_xvm' to the device list (2 active devices)
+Jul  1 17:15:25 pcmk1 crmd[405]:   notice: process_lrm_event: LRM operation fence_pcmk2_xvm_start_0 (call=42, rc=0, cib-update=141, confirmed=true) ok
+Jul  1 17:15:25 pcmk1 crmd[405]:   notice: run_graph: Transition 23 (Complete=5, Pending=0, Fired=0, Skipped=0, Incomplete=0, Source=/var/lib/pacemaker/pengine/pe-warn-1.bz2): Complete
+Jul  1 17:15:25 pcmk1 pengine[404]:   notice: unpack_config: On loss of CCM Quorum: Ignore
+Jul  1 17:15:25 pcmk1 pengine[404]:   notice: process_pe_message: Calculated Transition 24: /var/lib/pacemaker/pengine/pe-input-17.bz2
+Jul  1 17:15:25 pcmk1 crmd[405]:   notice: run_graph: Transition 24 (Complete=0, Pending=0, Fired=0, Skipped=0, Incomplete=0, Source=/var/lib/pacemaker/pengine/pe-input-17.bz2): Complete
+Jul  1 17:15:25 pcmk1 crmd[405]:   notice: do_state_transition: State transition S_TRANSITION_ENGINE -> S_IDLE [ input=I_TE_SUCCESS cause=C_FSA_INTERNAL origin=notify_crmd ]
+You should see that 'pcmk2' has now rebooted!
+
+Once it's back up, rejoin it to the cluster and test crashing 'pcmk1'. Done!
+
+
+Guest Fencing
+Pacemaker can use fence_virtd to fence nodes that are virtual machines. In such a setup:
+The physical host does not need to run Pacemaker, and runs fence_virtd to accept fencing requests.
+The virtual hosts do run Pacemaker, and initiate fencing requests.
+
+Contents [hide] 
+1 Assumptions
+2 Choose a multicast address and a TCP port
+3 Configure the physical host
+4 Configure the virtual machine
+5 Configure Pacemaker
+6 Alternative configuration for guests running on multiple hosts
+7 See also
+Assumptions
+
+This walk-through makes certain assumptions for simplicity:
+All virtual machines run on the same physical host. (This is appropriate for a test environment, but in a production environment, the physical host would become a single point of failure.)
+The physical host and virtual machines run RHEL 7 (for example commands, but the concepts apply to any distribution and should be easily adaptable).
+The virtual machines do not have addresses on the local LAN, but instead use a virtual bridge virbr0 to communicate with each other and the physical host, which they use as their gateway.
+fence_virtd will use multicast IP for communication, so Pacemaker will use the fence_xvm fencing device. (fence_virtd also supports fence_virt for communication via serial or VMChannel, which are not covered here.)
+
+Choose a multicast address and a TCP port
+
+fence_virtd will use a multicast IP address to communicate among the host and VMs. It will also contact clients directly on a TCP port when sending replies to requests.
+By default, the multicast address is 225.0.0.12, and the TCP port is 1229.
+You can choose other values if you prefer. In particular, choosing a multicast address has some common pitfalls, and a better choice might be in the site-local (239.255.x.y) or organization-local (239.192-251.x.y) ranges.
+Configure the physical host
+
+Install the software:
+  yum install fence-virt fence-virtd fence-virtd-multicast fence-virtd-libvirtd
+If a local firewall is enabled, allow traffic involving the chosen multicast IP. For simplicity, here we allow all traffic on the virtual bridge (which is appropriate only if you trust all VMs to the same degree as the host):
+  firewall-cmd --permanent --zone=trusted --change-interface=virbr0
+Run the configuration tool:
+ fence_virtd -c
+Accept all the defaults except for the items listed below, and the multicast IP and TCP port if you selected non-default ones:
+ Setting a preferred interface causes fence_virtd to listen only
+ on that interface.  Normally, it listens on all interfaces.
+ In environments where the virtual machines are using the host
+ machine as a gateway, this *must* be set (typically to virbr0).
+ Set to 'none' for no interface.
+ 
+ Interface [none]: virbr0
+You can accept the default (none) if the guests have IPs on the local LAN. Here, we assume they do not.
+ Key File [none]: /etc/cluster/fence_xvm.key
+This ensures only machines with the same key can initiate fencing requests.
+At the end, it will ask
+ Replace /etc/fence_virt.conf with the above [y/N]? y
+Say yes.
+You should end up with a configuration like this in /etc/fence_virt.conf:
+ backends {
+         libvirt {
+                 uri = "qemu:///system";
+         }
+ }
+ 
+ listeners {
+         multicast {
+                 key_file = "/etc/cluster/fence_xvm.key";
+                 interface = "virbr0";
+                 port = "1229";
+                 address = "225.0.0.12";
+                 family = "ipv4";
+         }
+ }
+ 
+ fence_virtd {
+         backend = "libvirt";
+         listener = "multicast";
+         module_path = "/usr/lib64/fence-virt";
+ }
+Create a random shared key:
+  mkdir -p /etc/cluster
+  touch /etc/cluster/fence_xvm.key
+  chmod 0600 /etc/cluster/fence_xvm.key
+  dd if=/dev/urandom bs=512 count=1 of=/etc/cluster/fence_xvm.key
+Start the daemon:
+ fence_virtd
+Note that there are currently no startup scripts (init script, systemd service, etc.) for the daemon. You may want to write your own if you want fence_virtd to start at boot.
+Test the host's multicast connectivity (if you chose a non-default multicast address, specify it via the -a $MULTICAST_IP argument):
+ fence_xvm -o list
+You should see output like:
+ [root@myhost ~]# fence_xvm -o list
+ pcmk-1               17bd6b6a-928f-2820-64ac-7c8d536df65f on
+ pcmk-2               f0062842-0196-7ec1-7623-e5bbe3a6632c on
+ pcmk-3               33e954b8-39ae-fb4b-e6e8-ecc443516b92 on
+ pcmk-4               98cda6de-74c4-97bf-0cfb-3954ff76a5c3 on
+ Remote: Operation was successful
+Configure the virtual machine
+
+Install the software:
+  yum install fence-virt fence-virtd
+If a local firewall is enabled, open the chosen TCP port (in this example, the default of 1229) to the host (in this example 192.168.122.1):
+  firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.122.1" port port="1229" protocol="tcp" accept'
+  firewall-cmd --reload
+Create a place for the shared key:
+  mkdir -p /etc/cluster
+Copy the shared key from the host to /etc/cluster/fence_xvm.key.
+Test the guest's multicast connectivity (if you chose a non-default multicast address, specify it via the -a $MULTICAST_IP argument):
+ fence_xvm -o list
+You should see the same output as you saw on the host, e.g.:
+ [root@pcmk-1 ~]# fence_xvm -o list
+ pcmk-1               17bd6b6a-928f-2820-64ac-7c8d536df65f on
+ pcmk-2               f0062842-0196-7ec1-7623-e5bbe3a6632c on
+ pcmk-3               33e954b8-39ae-fb4b-e6e8-ecc443516b92 on
+ pcmk-4               98cda6de-74c4-97bf-0cfb-3954ff76a5c3 on
+ Remote: Operation was successful
+Configure Pacemaker
+
+On any Pacemaker node, create the fencing resource:
+  pcs stonith create Fencing fence_xvm ip_family="ipv4" 
+  pcs property set stonith-enabled=true
+If you chose a non-default multicast address and/or TCP port, add multicast_address="$MULTICAST_IP" and/or ipport=$TCP_PORT to the create line. See pcs stonith describe fence_xvm for more options.
+Test the configuration by fencing a node:
+ pcs cluster standby $NODE_NAME
+ stonith_admin --reboot $NODE_NAME
+
+Alternative configuration for guests running on multiple hosts
+
+Not yet supported. Rough commands:
+ yum install -y libvirt-qpid qpidd
+ chkconfig --level 2345 qpidd on
+ chkconfig --level 2345 libvirt-qpid on
+ service qpidd start
+ service libvirt-qpid start
+ sed -i.sed s/libvirt/libvirt-qpid/g /etc/fence_virt.conf
+
+See also
+
+fence-virt upstream source
+Categories: Help:HowtoFencing
+

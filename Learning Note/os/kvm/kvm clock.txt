@@ -1,0 +1,31 @@
+kvm虚拟化之时钟虚拟化
+
+我们知道kvm有一个半虚拟化的时钟kvm-clock，但是现在只对Linux Guest支持，半虚拟化的时钟具有准确高效的有点，而使用TSC和RTC等时钟存在效率低高延迟的缺点，本文具体介绍一下虚拟化下的时钟原理。
+
+
+传统时钟
+      我们知道传统时钟有RTC/HPET/PIT/ACPI PM TIMER/TSC等, 这些时钟按原理可分成两类：提供中断的周期性时钟, 如RTC/PIT/HPET等；另一种是提供COUNTER计数器的单步递增性时钟，如TSC。
+
+虚拟化下的时钟
+
+1.TSC
+Guest中使用rdtsc指令读取TSC时，会因为EXIT_REASON_RDTSC导致VM Exit。VMM读取Host的TSC和VMCS中的TSC_OFFSET，然后把host_tst+tsc_offset返回给Guest。
+要做出OFFSET的原因是考虑到vcpu热插拔和Guest会在不同的Host间迁移。
+
+2.qemu软件模拟的时钟：
+qemu中有对RTC和hpet都模拟出了相应的设备，例如RTC的典型芯片mc146818。
+这种软件模拟时钟中断存在的问题：由于qemu也是应用程序，收到cpu调度的影响，软件时钟中断不能及时产生，并且软件时钟中断注入则是每次发生VM Exit/Vm Entry的时刻。所以软件模拟时钟就无法精准的出发并注入到Guest，存在延迟较大的问题。
+
+3.kvm-clock：
+    kvm-clock是KVM下Linux Guest默认的半虚拟化时钟源。在Guest上实现一个kvmclock驱动，Guest通过该驱动向VMM查询时间。
+   其工作流程也比较简单：Guest分配一个内存页，将该内存地址通过写入MSR告诉VMM，VMM把Host系统时间写入这个内存页，然后Guest去读取这个时间来更新。
+  这里使用到的两个MSR是：MSR_KVM_WALL_CLOCK_NEW和MSR_KVM_SYSTEM_TIME_NEW（这是新的，使用cpuid 0x40000001来标志使用新的还是旧的）分别对应pvclock_wall_clock和pvclock_vcpu_time_info（具体结构体中的内容在内核代码中可查看）。
+
+Linux Guest中查看当前时钟源是否为kvm-clock：
+$ cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+kvm-clock
+
+Windows Guest处理时间漂移问题：
+摘一下qemu代码中qemu-options.hx的原文：
+（-rtc [base=utc|localtime|date][,clock=host|vm][,driftfix=none|slew]）
+Enable @option{driftfix} (i386 targets only) if you experience time drift problems, specifically with Windows' ACPI HAL. This option will try to figure out how many timer interrupts were not processed by the Windows guest and will re-inject them.

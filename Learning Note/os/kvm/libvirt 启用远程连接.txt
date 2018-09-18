@@ -1,0 +1,98 @@
+libvirt 启用远程连接
+
+（1）SSH方式
+
+使用最简单的SSH方式，只要拥有SSH连接到服务器的权限，就可以无需配置：
+
+qemu+ssh://root@example.com/system
+
+例如： qemu+ssh://root@172.16.0.12/system ，本机SSH连接到172.16.0.12时，要使用证书登录，否则每次连接都需要输入SSH用户名和密码。
+
+
+
+
+
+（2）TCP方式：
+
+qemu+tcp://example.com/system
+
+例如：qemu+tcp://172.16.0.15/system，服务端只需要做简单配置即可：
+
+vim /etc/libvirt/libvirtd.conf:
+
+listen_tls = 0　　　　　　　　　　#禁用tls登录
+listen_tcp = 1　　　　　　　　　  #启用tcp方式登录
+tcp_port = "16509"　　　　　　　#tcp端口16509
+listen_addr = "0.0.0.0"
+unix_sock_group = "libvirtd"
+unix_sock_rw_perms = "0770"
+auth_unix_ro = "none"
+auth_unix_rw = "none"
+auth_tcp = "none"　　　　　　   #TCP不使用认证
+max_clients = 1024　　　　　　  #最大总的连接客户数1024
+min_workers = 50　　　　　　    #libvirtd启动时，初始的工作线程数目
+max_workers = 200　　　　　　 #同上，最大数目
+max_requests = 1000　　　　　 #最大同时支持的RPC调用，必须大于等于max_workers
+max_client_requests = 200　　 #每个客户端支持的最大连接数
+
+ 
+
+同时修改libvirt-bin的配置文件：
+
+vim /etc/default/libvirt-bin:
+
+# Start libvirtd to handle qemu/kvm:
+start_libvirtd="yes"
+
+# options passed to libvirtd, add "-l" to listen on tcp
+libvirtd_opts="-d -l --config /etc/libvirt/libvirtd.conf"
+
+ 
+
+以上修改后，执行service libvirt-bin restart即可。 netstat -anpt就能看到libvirtd监听在TCP 16509端口。
+
+
+libvirt-qemu-TLS加密
+
+    TLS(Transport Layer Security Protocol)，即安全传输层协议，其核心是加密两台计算机之间的通信。
+libvirt中使用TLS，可以实现libvirt的安全加密。例如，虚拟机在不同的主机之间迁移或者远程链接libvirt的守护进程对libvirt进程控制时，都可以走TLS通道进行加密。本文将实践libvirt的TLS配置和具体使用。有以下四个步骤。
+
+1.CA证书文件：
+http://wiki.libvirt.org/page/TLSCreateCACert
+
+2.创建服务端证书：
+http://wiki.libvirt.org/page/TLSCreateServerCerts
+
+3.创建客户端证书：
+ http://wiki.libvirt.org/page/TLSCreateClientCerts
+（以上三个步骤时TLS的通用配置方式）
+
+4：配置libvirt守护进程
+/etc/libvirt/libvirtd.conf 
+#在最后添加下面
+#auth_unix_rw="sasl"
+ca_file="/etc/pki/CA/cacert.pem"
+cert_file = "/etc/pki/libvirt/servercert.pem"
+key_file = "/etc/pki/libvirt/private/serverkey.pem"
+listen_addr="0.0.0.0"
+unix_sock_group="qemu"
+unix_sock_rw_perms="0770"
+/etc/sysconfig/libvirtd
+#libvirtd启动时添加--listen参数
+LIBVIRTD_ARGS="--listen"
+
+以上4个步骤就完成了libvrit中TLS的配置。可查看端口监控信息：
+# netstat -tulpen | grep libvirt
+tcp        0      0 0.0.0.0:16514           0.0.0.0:*               LISTEN      0          34065      3505/libvirtd
+
+使用tls通道测试链接libvirt的守护进程：
+# virsh -c qemu+tls://host1/system hostname 
+（远程查看名为host1的计算机的hostname）
+
+使用tls通道测试虚拟机在不同的主机间迁移
+# virsh migrate centos_test1 qemu+tls://host1/system --p2p --tunnelled
+（使用tls加密可以使用tunnelled参数，例子是把虚拟机centos_test1在线迁移到host1这台服务器上）
+（使用--p2p --tunnelled的方式迁移数据会走tls端口，默认是16514）
+
+具体操作可参考libvirt官方文档：
+http://wiki.libvirt.org/page/TLSSetup

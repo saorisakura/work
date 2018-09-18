@@ -1,0 +1,30 @@
+云主机IP丢失问题
+问题描述：
+
+云主机在一段时间之后IP失效，无法获取。导致云主机连接不上。 
+
+解决方案：
+
+DHCP获取的IP失效，把DHCP IP失效时间设长可以解决问题。 
+
+
+
+一：所有计算节点nova的配置文件(nova.conf)里面添加DHCP失效时间配置项： 
+
+vim /etc/nova/nova.conf 
+[DEFAULT] 
+dhcp_lease_time=153792000    #失效时间设为5年
+二、所有计算节点重启nova相关服务:  
+
+service nova-compute restart 
+service nova-network restart
+三、虚拟机网卡重启/虚拟机重启 
+
+Linux网卡重启：
+
+例如重启eth0网卡：
+ifconfig eth0 down   #停止                             
+ifconfig eth0 up        #启动
+Windows网卡重启： 
+
+打开“控制面板\网络和 Internet\网络连接”，右击""以太网"，“禁用”网卡，然后在“启用”网卡，完成Windows系统网卡重启。
