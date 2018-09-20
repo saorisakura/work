@@ -1,0 +1,25 @@
+vname=`echo $file|awk -F'-' '{if (NF == 8) {print $1"-"$2} else {print $1"-"$2"-"$3}}'`
+
+def dup_func(l):
+    """
+    给定一个列表判断里面是否有重复元素
+    :param l:
+    :return:
+    """
+    if len(l) != len(set(l)):
+        return "dup!!!!!"
+    else:
+        return "none"
+
+
+def filter_func(item):
+    """
+    过滤列表的多余项
+    :param item:
+    :return:
+    """
+    if item in uniq:
+        repq.append(item)
+    else:
+        uniq.append(item)
+    return uniq
