@@ -1,0 +1,40 @@
+#!usr/bin/env python
+#encoding:utf-8
+ 
+ 
+'''
+__Author__:liyang
+功能：给定一个列表判断里面是否有重复元素
+'''
+ 
+from collections import Counter
+ 
+ 
+def func1(num_list):
+    '''
+    直接使用set方法
+    '''
+    if len(num_list)!=len(set(num_list)):
+        print 'have duplicates!!!'
+    else:
+        print 'no duplicates!!'
+ 
+ 
+def func2(num_list):
+    '''
+    使用collection的Counter类
+    '''
+    cou=Counter(num_list)
+    first=cou.most_common(1)
+    if first[0][1]>1:
+        print 'have duplicates!!!'
+    else:
+        print 'no duplicates!!'
+ 
+ 
+if __name__ == '__main__':
+    num_list=[[1,2,3,4],[6,7,8],[4,5,6,6,6]]
+    for one_list in num_list:
+        print 'one_list', one_list
+        func1(one_list)
+        func2(one_list)
