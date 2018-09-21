@@ -1,179 +1,202 @@
 python builtin function
 
+repr() 函数将对象转化为供解释器读取的形式。
+
+	语法
+	以下是 repr() 方法的语法:
+
+	repr(object)
+	参数
+	object -- 对象。
+	返回值
+	返回一个对象的 string 格式。
+
+	实例
+	以下展示了使用 repr() 方法的实例：
+
+	>>>s = 'RUNOOB'
+	>>> repr(s)
+	"'RUNOOB'"
+	>>> dict = {'runoob': 'runoob.com', 'google': 'google.com'};
+	>>> repr(dict)
+	"{'google': 'google.com', 'runoob': 'runoob.com'}"
+	>>>
+
+
 Python all() 函数
-Python 内置函数 Python 内置函数
+	Python 内置函数 Python 内置函数
 
-描述
-all() 函数用于判断给定的可迭代参数 iterable 中的所有元素是否都为 TRUE，如果是返回 True，否则返回 False。
+	描述
+	all() 函数用于判断给定的可迭代参数 iterable 中的所有元素是否都为 TRUE，如果是返回 True，否则返回 False。
 
-元素除了是 0、空、FALSE 外都算 TRUE。
+	元素除了是 0、空、FALSE 外都算 TRUE。
 
-函数等价于：
+	函数等价于：
 
-def all(iterable):
-    for element in iterable:
-        if not element:
-            return False
-    return True
-Python 2.5 以上版本可用。
+	def all(iterable):
+		for element in iterable:
+			if not element:
+				return False
+		return True
+	Python 2.5 以上版本可用。
 
-语法
-以下是 all() 方法的语法:
+	语法
+	以下是 all() 方法的语法:
 
-all(iterable)
-参数
-iterable -- 元组或列表。
-返回值
-如果iterable的所有元素不为0、''、False或者iterable为空，all(iterable)返回True，否则返回False；
+	all(iterable)
+	参数
+	iterable -- 元组或列表。
+	返回值
+	如果iterable的所有元素不为0、''、False或者iterable为空，all(iterable)返回True，否则返回False；
 
-注意：空元组、空列表返回值为True，这里要特别注意。
+	注意：空元组、空列表返回值为True，这里要特别注意。
 
-实例
-以下展示了使用 all() 方法的实例：
+	实例
+	以下展示了使用 all() 方法的实例：
 
->>>all(['a', 'b', 'c', 'd'])  # 列表list，元素都不为空或0
-True
->>> all(['a', 'b', '', 'd'])   # 列表list，存在一个为空的元素
-False
->>> all([0, 1，2, 3])          # 列表list，存在一个为0的元素
-False
-   
->>> all(('a', 'b', 'c', 'd'))  # 元组tuple，元素都不为空或0
-True
->>> all(('a', 'b', '', 'd'))   # 元组tuple，存在一个为空的元素
-False
->>> all((0, 1, 2, 3))          # 元组tuple，存在一个为0的元素
-False
-   
->>> all([])             # 空列表
-True
->>> all(())             # 空元组
+	>>>all(['a', 'b', 'c', 'd'])  # 列表list，元素都不为空或0
+	True
+	>>> all(['a', 'b', '', 'd'])   # 列表list，存在一个为空的元素
+	False
+	>>> all([0, 1，2, 3])          # 列表list，存在一个为0的元素
+	False
+	   
+	>>> all(('a', 'b', 'c', 'd'))  # 元组tuple，元素都不为空或0
+	True
+	>>> all(('a', 'b', '', 'd'))   # 元组tuple，存在一个为空的元素
+	False
+	>>> all((0, 1, 2, 3))          # 元组tuple，存在一个为0的元素
+	False
+	   
+	>>> all([])             # 空列表
+	True
+	>>> all(())             # 空元组
 True
 
 Python any() 函数
-Python 内置函数 Python 内置函数
+	Python 内置函数 Python 内置函数
 
-描述
-any() 函数用于判断给定的可迭代参数 iterable 是否全部为 False，则返回 False，如果有一个为 True，则返回 True。
+	描述
+	any() 函数用于判断给定的可迭代参数 iterable 是否全部为 False，则返回 False，如果有一个为 True，则返回 True。
 
-元素除了是 0、空、FALSE 外都算 TRUE。
+	元素除了是 0、空、FALSE 外都算 TRUE。
 
-函数等价于：
+	函数等价于：
 
-def any(iterable):
-    for element in iterable:
-        if element:
-            return True
-    return False
-Python 2.5 以上版本可用。
+	def any(iterable):
+		for element in iterable:
+			if element:
+				return True
+		return False
+	Python 2.5 以上版本可用。
 
-语法
-以下是 any() 方法的语法:
+	语法
+	以下是 any() 方法的语法:
 
-any(iterable)
-参数
-iterable -- 元组或列表。
-返回值
-如果都为空、0、false，则返回false，如果不都为空、0、false，则返回true。
+	any(iterable)
+	参数
+	iterable -- 元组或列表。
+	返回值
+	如果都为空、0、false，则返回false，如果不都为空、0、false，则返回true。
 
-实例
-以下展示了使用 any() 方法的实例：
+	实例
+	以下展示了使用 any() 方法的实例：
 
->>>any(['a', 'b', 'c', 'd'])  # 列表list，元素都不为空或0
-True
- 
->>> any(['a', 'b', '', 'd'])   # 列表list，存在一个为空的元素
-True
- 
->>> any([0, '', False])        # 列表list,元素全为0,'',false
-False
- 
->>> any(('a', 'b', 'c', 'd'))  # 元组tuple，元素都不为空或0
-True
- 
->>> any(('a', 'b', '', 'd'))   # 元组tuple，存在一个为空的元素
-True
- 
->>> any((0, '', False))        # 元组tuple，元素全为0,'',false
-False
-  
->>> any([]) # 空列表
-False
- 
->>> any(()) # 空元组
-False
+	>>>any(['a', 'b', 'c', 'd'])  # 列表list，元素都不为空或0
+	True
+	 
+	>>> any(['a', 'b', '', 'd'])   # 列表list，存在一个为空的元素
+	True
+	 
+	>>> any([0, '', False])        # 列表list,元素全为0,'',false
+	False
+	 
+	>>> any(('a', 'b', 'c', 'd'))  # 元组tuple，元素都不为空或0
+	True
+	 
+	>>> any(('a', 'b', '', 'd'))   # 元组tuple，存在一个为空的元素
+	True
+	 
+	>>> any((0, '', False))        # 元组tuple，元素全为0,'',false
+	False
+	  
+	>>> any([]) # 空列表
+	False
+	 
+	>>> any(()) # 空元组
+	False
 
 
 execfile() 函数可以用来执行一个文件。
 
-语法
-以下是 execfile() 方法的语法:
+	语法
+	以下是 execfile() 方法的语法:
 
-execfile(filename[, globals[, locals]])
-参数
-filename -- 文件名。
-globals -- 变量作用域，全局命名空间，如果被提供，则必须是一个字典对象。
-locals -- 变量作用域，局部命名空间，如果被提供，可以是任何映射对象。
-返回值
-返回表达式执行结果。
+	execfile(filename[, globals[, locals]])
+	参数
+	filename -- 文件名。
+	globals -- 变量作用域，全局命名空间，如果被提供，则必须是一个字典对象。
+	locals -- 变量作用域，局部命名空间，如果被提供，可以是任何映射对象。
+	返回值
+	返回表达式执行结果。
 
-实例
-以下展示了使用 execfile 函数的实例：
+	实例
+	以下展示了使用 execfile 函数的实例：
 
-假设文件 hello.py，内容如下：
+	假设文件 hello.py，内容如下：
 
-print('runoob');
-execfile 调用该文件
->>>execfile('hello.py')
-runoob
+	print('runoob');
+	execfile 调用该文件
+	>>>execfile('hello.py')
+	runoob
 
 set() 函数创建一个无序不重复元素集，可进行关系测试，删除重复数据，还可以计算交集、差集、并集等。
 
-语法
-set 语法：
+	语法
+	set 语法：
 
-class set([iterable])
-参数说明：
+	class set([iterable])
+	参数说明：
 
-iterable -- 可迭代对象对象；
-返回值
-返回新的集合对象。
+	iterable -- 可迭代对象对象；
+	返回值
+	返回新的集合对象。
 
-实例
-以下实例展示了 set 的使用方法：
+	实例
+	以下实例展示了 set 的使用方法：
 
->>>x = set('runoob')
->>> y = set('google')
->>> x, y
-(set(['b', 'r', 'u', 'o', 'n']), set(['e', 'o', 'g', 'l']))   # 重复的被删除
->>> x & y         # 交集
-set(['o'])
->>> x | y         # 并集
-set(['b', 'e', 'g', 'l', 'o', 'n', 'r', 'u'])
->>> x - y         # 差集
-set(['r', 'b', 'u', 'n'])
->>>
+	>>>x = set('runoob')
+	>>> y = set('google')
+	>>> x, y
+	(set(['b', 'r', 'u', 'o', 'n']), set(['e', 'o', 'g', 'l']))   # 重复的被删除
+	>>> x & y         # 交集
+	set(['o'])
+	>>> x | y         # 并集
+	set(['b', 'e', 'g', 'l', 'o', 'n', 'r', 'u'])
+	>>> x - y         # 差集
+	set(['r', 'b', 'u', 'n'])
+	>>>
 
 locals() 函数会以字典类型返回当前位置的全部局部变量。
 
-对于函数, 方法, lambda 函式, 类, 以及实现了 __call__ 方法的类实例, 它都返回 True。
+	对于函数, 方法, lambda 函式, 类, 以及实现了 __call__ 方法的类实例, 它都返回 True。
 
-语法
-locals() 函数语法：
+	语法
+	locals() 函数语法：
 
-locals()
-参数
-无
-返回值
-返回字典类型的局部变量。
+	locals()
+	参数
+	无
+	返回值
+	返回字典类型的局部变量。
 
-实例
-以下实例展示了 locals() 的使用方法：
+	实例
+	以下实例展示了 locals() 的使用方法：
 
->>>def runoob(arg):    # 两个局部变量：arg、z
-...     z = 1
-...     print (locals())
-... 
->>> runoob(4)
-{'z': 1, 'arg': 4}      # 返回一个名字/值对的字典
->>>
+	>>>def runoob(arg):    # 两个局部变量：arg、z
+	...     z = 1
+	...     print (locals())
+	... 
+	>>> runoob(4)
+	{'z': 1, 'arg': 4}      # 返回一个名字/值对的字典
+	>>>
