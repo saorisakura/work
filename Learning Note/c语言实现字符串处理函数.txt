@@ -1,0 +1,93 @@
+strcmp函数的C语言实现
+
+#include <stdio.h>
+#include<string.h>
+void Strcmp(char *str1,char *str2)
+{
+    while((*str1!='\0')&&(*str1==*str2))
+    {
+        str1++;
+        str2++;
+    }
+    int t;
+    t=*str1-*str2;
+    if(t==0)
+        printf("same string\n");
+    if(t>0)
+        printf("str1 is bigger\n");
+    if(t<0)
+        printf("str2 is bigger\n");
+}
+int main()
+{
+    char str1[10],str2[10];
+    start:
+    gets(str1);
+    gets(str2);
+    Strcmp(str1,str2);
+    goto start;
+    return 0;
+}
+
+
+随便定义一个char类型字符串数组，此以char string[] = "iphone";为例。
+
+实现strlen
+
+    char string[] = "iphone";
+    int i = 0;
+    while (string[i] != '\0') {
+        i ++;
+    }
+    printf("%d", i);
+
+---------------------
+
+
+实现strcpy
+
+    char string1[20] = "ios";
+    char string2[] = "android";
+    //strcpy(string1,string2);
+    int i = 0;
+    while (string2[i] != '\0') {    //计算机识别到字符串后面 ‘\0’，条件成立，拷贝停止
+        string1[i] = string2[i];
+        i ++;
+    }
+
+    string1[i] = '\0';   //第i个字符串是‘\0’，最后给字符串加上
+
+    printf("%s", string1);
+
+---------------------
+
+
+实现strcat
+
+    char string1[] = "ios";
+    char string2[] = "android";
+    long int length = strlen(string1);
+    int i = 0;
+    while (string2[i] != '\0') {      //计算机直到识别到 ‘\0’，条件成立，拼接停止
+        string1[i + length] = string2[i];
+        i ++;
+    }
+    string1[i + length] = '\0';   //加上目的字符串的长度
+    printf("%s", string1);
+---------------------
+
+
+实现strcmp
+
+
+    char string1[] = "aww";
+    char string2[] = "awwgwgg";
+    int i = 0, j = 0;
+    while (string1[1] - string2[i] != 0) {
+        j = string1[i] -string2[i];
+        i ++;
+    }
+    printf("%d", j);
+
+---------------------
+
