@@ -1,0 +1,555 @@
+ElasticSearch之CURL操作
+
+问题描述
+
+	curl -XPOST 192.168.14.173:32000/test_index_1221/test_type/5 -d '{'user_name':"xiaoming"}'
+	{"error":"Content-Type header [application/x-www-form-urlencoded] is not supported","status":406}12
+
+	官方解释： 
+	官方改变
+
+
+
+	解决方法
+
+
+
+	curl -H "Content-Type: application/json" -XPOST 192.168.14.173:32000/test_index_1221/test_type/5 -d '{'user_name':"xiaoming"}'
+	{"error":"Content-Type header [application/x-www-form-urlencoded] is not supported","status":406}12
+
+	指定header头即可
+
+	---------------------
+
+curl -XPUT http://localhost:9200/bigdata
+curl -XGET http://localhost:9200
+curl -H "Content-Type: application/json" -XPOST http://localhost:9200/bigdata/product/ -d '{"name": "liyang", "age": "27", "position": "engineer"}'
+curl -H "Content-Type: application/json" -XPOST http://localhost:9200/bigdata/product/ -d '{"name": "seiya", "age": "31", "position": "saint"}'
+curl -H "Content-Type: application/json" -XPOST http://localhost:9200/bigdata/product/1 -d '{"name": "pegasus", "age": "*", "position": "zodiac"}'
+curl -XGET http://localhost:9200/bigdata/_search?pretty
+
+# curl -XGET http://localhost:9200/bigdata/_search?pretty
+{
+  "took" : 4,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 5,
+    "successful" : 5,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : 3,
+    "max_score" : 1.0,
+    "hits" : [
+      {
+        "_index" : "bigdata",
+        "_type" : "product",
+        "_id" : "LzPMGWYBEp6Ms1v9Loh8",
+        "_score" : 1.0,
+        "_source" : {
+          "name" : "liyang",
+          "age" : "27",
+          "position" : "engineer"
+        }
+      },
+      {
+        "_index" : "bigdata",
+        "_type" : "product",
+        "_id" : "1",
+        "_score" : 1.0,
+        "_source" : {
+          "name" : "pegasus",
+          "age" : "*",
+          "position" : "zodiac"
+        }
+      },
+      {
+        "_index" : "bigdata",
+        "_type" : "product",
+        "_id" : "MDPNGWYBEp6Ms1v9KIi1",
+        "_score" : 1.0,
+        "_source" : {
+          "name" : "seiya",
+          "age" : "31",
+          "position" : "saint"
+        }
+      }
+    ]
+  }
+}
+
+
+
+CURL的操作 
+
+
+curl是利用URL语法在命令行方式下工作的开源文件传输工具，使用curl可以简单实现常见的get/post请求。简单的认为是可以在命令行下面访问url的一个工具。在centos的默认库里面是有curl工具的，如果没有请yum安装即可。 
+
+
+curl 
+-X 指定http的请求方法 有HEAD GET POST PUT DELETE 
+-d 指定要传输的数据 
+-H 指定http请求头信息 
+
+
+
+浏览ES服务器 
+curl -XGET http://master:9200  <=> 在浏览器中访问 
+
+
+创建索引库 
+curl -XPUT http://master:9200/bigdata_p 
+这样就在es中创建了一个索引库bigdata_p 
+     
+POST和PUT都可以用于创建，二者之间的区别： 
+PUT是幂等方法，POST不是。所以PUT用户更新，POST用于新增比较合适。 
+
+
+ES创建索引库和索引时的注意点 
+1)索引库名称必须要全部小写，不能以下划线开头，也不能包含逗号 
+2)如果没有明确指定索引数据的ID，那么es会自动生成一个随机的ID，需要使用POST参数 
+curl -XPOST http://localhost:9200/bigdata/product/ -d '{"author" : "Doug Cutting"}' 
+
+
+往索引库中新增数据 
+在具体的type里面，添加相关的document 
+curl -XPUT http://master:9200/bigdata_p/product/ -d '{"name"："hadoop", "author": "Doug Cutting", "c_version": "2.7.3"}' 
+    
+
+查询某一个索引库中的数据 
+查询整个索引库：curl -XGET http://master:9200/bigdata_p/_search?pretty 
+在url后面加上一个pretty则会对返回结果进行格式化， 
+查询某一个type：curl -XGET http://master:9200/bigdata_p/product/_search?pretty 
+查询具体的一条记录：curl -XGET http://master:9200/bigdata_p/product/1?pretty 
+查询一条索引文档中的具体的字段：curl -XGET http://master:9200/bigdata_p/product/1?_source=name&pretty 
+ 如果要查询多个字段，使用","进行隔开。eg. 
+curl -XGET http://master:9200/bigdata_p/product/1?_source=name,author&pretty 
+获取source所有数据 
+curl -XGET http://master:9200/bigdata_p/product/1?_source&pretty 
+根据条件进行查询 
+curl -XGET http://master:9200/bigdata_p/product/_search?q=name:hbase,hive&pretty 
+   
+
+-------------------         
+ES更新
+
+
+
+ES可以使用PUT或者POST对文档进行更新，如果指定ID的文档已经存在，则执行更新操作 
+
+
+注意：执行更新操作的时候，ES首先将旧的文档标记为删除状态，然后添加新的文档，旧的文 
+
+
+档不会立即消失，但是你也无法访问，ES会继续添加更多数据的时候在后台清理已经标记为删 
+
+
+除状态的文档。 
+局部更新 
+可以添加新字段或者更新已经存在字段(必须使用POST) 
+curl -XPOST http://master:9200/bigdata_p/product/2/_update -d '{"doc":{"c_version": "2.0.0", "publish_time": "2017-03-23"}}' 
+        查询结果： 
+        "hits" : [ { 
+              "_index" : "bigdata_p", 
+              "_type" : "product", 
+              "_id" : "2", 
+              "_score" : 0.30685282, 
+              "_source" : { 
+                "name" : "hbase", 
+                "author" : "apache", 
+                "c_version" : "2.0.0", 
+                "publish_time" : "2017-03-23" 
+              } 
+            } ] 
+普通删除，根据主键删除 
+curl -XDELETE http://master:9200/bigdata_p/product/3/ 
+说明：如果文档存在，es属性found：true，successful:1，_version属性的值+1。 
+
+
+如果文档不存在，es属性found为false，但是版本值version依然会+1，这个就是内部 
+
+
+管理的一部分，有点像svn版本号，它保证了我们在多个节点间的不同操作的顺序被正确标记了。 
+
+
+注意：一个文档被删除之后，不会立即生效，他只是被标记为已删除。ES将会在你之后添加 
+
+
+更多索引的时候才会在后台进行删除。 
+     
+批量操作-bulk
+
+Bulk api可以帮助我们同时执行多个请求 
+格式： 
+       action:[index|create|update|delete] 
+       metadata:_index,_type,_id 
+       request body:_source(删除操作不需要) 
+       {action:{metadata}}\n 
+       {request body}\n 
+       {action:{metadata}}\n 
+       {request body}\n 
+      create和index的区别 
+如果数据存在，使用create操作失败，会提示文档已经存在，使用index则可以成功执行。 
+         
+使用文件的方式 
+curl -XPOST/PUT http://master:9200/index/type/_bulk --data-binary @path 
+
+
+比如     
+curl -XPOST 'http://master:9200/bank/account/_bulk --data-binary @/home/uplooking/Documents/accounts.json 
+
+
+查询结果： 
+            http://master:9200/bank/_search?pretty 
+            { 
+              "took" : 10,    ---->默认取出其中前10条记录 
+              "timed_out" : false, 
+              "_shards" : { 
+                "total" : 5, 
+                "successful" : 5, 
+                "failed" : 0 
+              }, 
+              "hits" : { 
+                "total" : 1000, ----->总共有1000条记录 
+                "max_score" : 1.0, 
+
+
+可以查看一下各个索引库信息 
+
+curl 'http://localhost:9200/_cat/indices?v'
+
+  
+
+简介：
+Curl工具是一种可以在命令行访问url的工具，支持get和post请求方式。-X指定http请求的方法，-d指定要传输的数据。
+
+创建索引：
+Put创建
+
+curl -XPUThttp://localhost:9200/shb01/student/1-d'{"name":"jack","age":30,"info":"Ilove you"}'
+
+{"_index":"shb01","_type":"student","_id":"1","_version":1,"created":true}Youhave new mail in /var/spool/mail/root
+
+ 
+
+执行put后有返回值
+
+_index索引名称
+
+_type类型名
+
+_version版本号
+
+created:true表示是新创建的。
+
+上面的命令每执行一次version就会加1，-XPUT必须制定id。
+
+ 
+
+Post创建索引
+
+curl -XPOSThttp://localhost:9200/shb01/student -d'{"name":"tom","age":21,"info":"tom"}'
+
+{"_index":"shb01","_type":"student","_id":"AVadzuNgxskBS1Rg2tdp","_version":1,"created":true}
+
+使用post创建索引数据，-XPOST可以指定id，此时如果存在相同数据则是修改，不指定id的话会随机生成id，且每次执行都会生成新数据。
+
+ 
+
+如果需要每次执行都产生新的数据可以使用post命令且不指定id。
+
+如果使用put命令则需要增加create，命令格式如下
+
+curl -XPUT http://localhost:9200/shb01/student/1/_create-d '{"name":"jackk","age":31}'
+
+curl -XPUThttp://localhost:9200/shb01/student/1?op_type=create -d'{"name":"jackk","age":31}'
+
+以上两条命令执行时如果存在id相同的数据则会给出error信息
+
+{"error":"DocumentAlreadyExistsException[[shb01][2][student][1]: document already exists]","status":409}
+
+ 
+
+Post与put的区别
+
+Put是等幂操作，即无论执行多少次结果都一样，例如DEL无论删除多少次索引库中的结果都一样，put只要指定了id且数据不变无论执行多少次索引库中的数据都不变，只有version会变化。
+
+Post每次执行都会产生新数据。
+
+查询
+1：查询索引库shb01中的类型student
+
+浏览器：http://192.168.79.131:9200/shb01/student/_search?pretty
+
+
+
+
+
+Curl：curl -XGET http://192.168.79.131:9200/shb01/student/_search?pretty
+
+其显示结果与浏览器一样。
+
+ 
+
+2：查询文档1中的数据
+
+http://192.168.79.131:9200/shb01/student/1?pretty
+
+http://192.168.79.131:9200/shb01/student/1?_source&pretty
+
+两者结果一样
+
+
+
+
+
+http://192.168.79.131:9200/shb01/student/1?_source=name&pretty
+
+可以通过source指定显示那些字段
+
+ 
+
+3：查询所有索引库信息
+
+浏览器：http://192.168.79.131:9200/_search?pretty
+
+
+
+
+
+将索引库shb01和shb02的数据都显示出来。
+
+ 
+
+4：根据条件查询
+
+浏览器：http://192.168.79.131:9200/shb01/student/_search?q=name:zs&pretty
+
+查询name为zs的数据
+
+
+
+
+
+
+
+
+
+5：查询集群状态
+
+
+Curl –XGET http://192.168.79.131:9200/_cluster/health?pretty
+
+http://192.168.79.131:9200/_cluster/health?pretty
+
+
+
+
+
+
+
+6：多索引，多类型查询,分页查询,超时
+
+
+Curl：curl -XGET http://192.168.79.131:9200/shb01,shb02/stu,tea/_search?pretty
+
+curl -XGET http://192.168.79.131:9200/_all/stu,tea/_search?pretty
+
+浏览器去掉curl –XGET即可
+
+分页
+
+curl -XGET http://192.168.79.131:9200/shb01/stu/_search?size=2&from=0
+
+超时
+
+     curl -XPOST http://192.168.79.131:9200/_search?_timeout=100
+
+
+
+
+
+更新
+Es
+
+部分更新
+
+如果文档1的字段很多而我们只需要更新其中的一两个字段则可以通过doc指定需要修改的字段其他字段则不必修改。
+
+crul –XPUT
+
+http:192.168.79.131:9200/shb01/student/1/_update?version=1
+
+ –d ‘{“doc”:{“name”:”updatename”}’
+
+ 
+
+全量更新：
+
+    更新文档1中所有字段的内容。
+
+curl -XPUThttp://192.168.79.131:9200/shb01/student/1 -d'{"name":"will","age":100,"info":"newonw"}'
+
+ 
+
+更新流程
+
+es会将旧的文档进行标记然后再添加新数据，旧的文档也不能再被访问，在后续添加数据时es会清理已经为删除状态的数据。
+
+删除
+删除文档并不会立即生效，只会将其标记为已删除，当后续添加更多索引时才会在后台删除。
+
+curl -XDELETE http://192.168.79.131:9200/shb01/student/AVad05EExskBS1Rg2tdq
+
+根据id删除，删除成功返回found:true，找不到found:false,版本号都会加1。
+
+
+
+
+
+根据条件删除,删除索引shb01，shb02种类型student，tea中所有name为zs的文档
+
+curl -XDELETEhttp://192.168.79.131:9200/shb01,shb02/student,tea/_query?q=name:zs
+
+
+
+删除所有的索引库中名称为tom的文档
+
+curl -XDELETE http://192.168.79.131:9200/_all/_query?q=name:tom
+
+ 
+
+批处理
+将一批数据加载入内存然后和es交互一次，一次性同时处理多个请求和redis的管道类似。
+
+格式：
+
+Action:index/create/delete/update
+
+Metadata:_index/_type/_id
+
+Create：如果数据存在则报错；index：如果数据存在仍会执行成功。
+
+步骤：
+
+1：在liunx下创建一个文件request1，vi request1
+
+    {"index":{"_index":"shb01","_type":"student","_id":"1"}}
+
+{"name":"st01","age":"10","info":"st01"}
+
+{"create":{"_index":"shb100","_type":"student","_id":"2"}}
+
+{"name":"tea01","age":"10","info":"tea01"}
+
+{"delete":{"_index":"shb01","_type":"student","_id":"AVadzuNgxskBS1Rg2tdp"}
+
+{"update":{"_index":"shb02","_type":"tea","_id":"1"}}
+
+{"doc":{"name":"zszszszs"}}
+
+ 
+
+文件中
+
+index表示操作类型
+
+_index指定索引库，_type指定类型，_id指定操作文档
+
+ 
+
+ 
+
+2：执行批处理命令，关键字_bulk
+
+curl  -XPUThttp://192.168.79.131:9200/_bulk --data-binary @/usr/local/request1
+
+注意：--data-binary@之间有空格隔开，我在实验中没有空格一直提示操作参数不对。
+
+ 
+
+3：返回值
+
+{
+
+"took":957,"errors":false,"items":[
+
+{"index":{"_index":"shb01","_type":"student","_id":"1","_version":12,"status":200}},
+
+{"create":{"_index":"shb100","_type":"student","_id":"2","_version":1,"status":201}},
+
+{"delete":{"_index":"shb01","_type":"student","_id":"AVadzuNgxskBS1Rg2tdp","_version":2,"status":200,"found":true}},
+
+{"update":{"_index":"shb02","_type":"tea","_id":"1","_version":2,"status":200}}
+
+]
+
+ 
+
+返回信息中errors表示批处理有没有错误，注意version和status，其中shb100为新创建的索引库
+
+下面是我第二次执行request1文件的返回信息，errors为true，表示批处理中有操作执行失败，可以看到create因为库中已有id相同的文档所以报错。但是虽然存在错误操作但其他的操作依然成功执行。这点和redis中的事务操作类似。
+
+{
+
+"took":22,"errors":true,"items":[
+
+{"index":{"_index":"shb01","_type":"student","_id":"1","_version":13,"status":200}},
+
+{"create":{"_index":"shb100","_type":"student","_id":"2","status":409,"error":"DocumentAlreadyExistsException[[shb100][3][student][2]: document already exists]"}},
+
+{"delete":{"_index":"shb01","_type":"student","_id":"AVadzuNgxskBS1Rg2tdp","_version":1,"status":404,"found":false}},
+
+{"update":{"_index":"shb02","_type":"tea","_id":"1","_version":3,"status":200}}
+
+]
+
+}
+
+ 
+
+4：在命令中指定索引库和类型
+
+创建一个文件，文件中没有配置索引库和类型
+
+{"index":{"_id":"1"}}
+
+{"name":"st1_1","age":"10","info":"st1_1"}
+
+{"create":{"_id":"200"}}
+
+{"name":"st200","age":"10","info":"st200"}
+
+ 
+
+执行如下命令，在命令中指定了索引库和类型
+
+curl  -XPUThttp://192.168.79.131:9200/shb01/student/_bulk --data-binary@/usr/local/request2
+
+ 
+
+返回信息
+
+{
+
+"took":24,"errors":false,"items":[
+
+{"index":{"_index":"shb01","_type":"student","_id":"1","_version":17,"status":200}},
+
+{"create":{"_index":"shb01","_type":"student","_id":"200","_version":1,"status":201}}
+
+]
+
+}
+
+ 
+
+5：也可以使用-XPOST替换-XPUT
+
+
+
+阅读原文
+
+微信扫一扫
+关注该公众号
