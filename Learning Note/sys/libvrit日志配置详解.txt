@@ -1,0 +1,158 @@
+libvrit日志配置详解
+
+
+一、测试环境说明
+
+Compiled against library: libvirt 1.2.17
+
+Using library: libvirt 1.2.17
+
+Using API: QEMU 1.2.17
+
+Running hypervisor: QEMU 2.3.0
+
+OS：CentOS 7.1
+
+
+
+二、libvirt配置文件详解
+
+配置文件：/etc/libvirt/libvirtd.conf
+
+#################################################################
+
+#
+
+# 日志控制
+
+#
+
+
+
+# 日志级别: 4 errors, 3 warnings, 2 information, 1 debug
+
+# 基本上debug级别可以记录所有日志信息
+
+# 注意: 
+
+#     journald会锁定libvirt守护进行，限制日志记录级别，如果想监控debug级别日志，必须显式配置到“log_outputs"选项中，
+
+#     否则，只有information级别的日志会被记录。
+
+#     如果日志级别设置为2，则通过log_outputs获取不到1 debug级别的日志。
+
+#     默认情况下，不会将日志输出到journald中，也不会输出到其它地方。
+
+log_level = 1
+
+
+
+# 日志过滤:
+
+# 日志过滤允许对给定类别的日志选择特定日志级别。
+
+# 过滤格式可以是如下的一种:
+
+#    x:name
+
+#    x:+name
+
+#      当name字符串匹配到源文件名，比如：“remote”、“qemu”、“util/json”，“+”前缀会告诉libvirt去记录匹配名字的调用栈日志。
+
+#      x为匹配日志的最低级别:
+
+#    1: DEBUG
+
+#    2: INFO
+
+#    3: WARNING
+
+#    4: ERROR
+
+#
+
+# 多个过滤器可以同时使用，只需要用空格隔开就行。
+
+# 示例如下：
+
+#     只从remote层获取警告和错误信息，并且从event层获取错误信息。
+
+#log_filters="3:remote 4:event"
+
+
+
+# 日志输出:
+
+# 日志输出可以是如下的几个地方：
+
+# 日志输出配置格式如下:
+
+#    x:stderr
+
+#      输出到标准错误输出中
+
+#    x:syslog:name
+
+#      使用自定义的name标识符，输出到系统日志
+
+#    x:file:file_path
+
+#      输出到指定路径的文件中
+
+#    x:journald
+
+#      输出到journald日志系统中
+
+# x代表最小的日志输出过滤级别
+
+#    1: DEBUG
+
+#    2: INFO
+
+#    3: WARNING
+
+#    4: ERROR
+
+#
+
+# 可以同时定义多个输出，只需要用空格分开就行。
+
+# 注意：
+
+#     这里要保证日志级别大于等于log_level中的配置，否则无效
+
+# 例如：使用libvirtd标识记录WARNING以上日志信息到syslog中
+
+#log_outputs="3:syslog:libvirtd"
+
+#
+
+# 同时将日志记录到libvirtd.log文件和journald（可通过journalctl -u libvirtd来查看）中。
+
+#log_outputs="3:file:/var/log/libvirt/libvirtd.log 3:journald"
+
+
+
+# 调试日志缓冲区大小:
+
+# 自从删除了全局日志缓冲区功能，这个配置选项就不再使用。
+
+# 请配置合适的log_outputs/log_filters值去获取日志。
+
+#log_buffer_size = 64
+
+ 
+
+三、配置方法
+
+1、编辑文件 /etc/libvirt/libvirtd.conf，修改如下行，将libvirt调试日志输出到/var/log/libvirt/libvirtd.log文件中：
+
+log_level=1
+
+log_outputs="1:file:/var/log/libvirt/libvirtd.log"
+
+
+
+2、重启libvirtd服务使配置生效。
+
+service libvirtd restart

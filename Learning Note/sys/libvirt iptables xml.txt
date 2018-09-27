@@ -1,0 +1,393 @@
+
+libvirt网络过滤规则， 一个过滤规则定义的示例：
+
+
+
+< filter name='no-ip-spoold'chain='ipv4' >
+
+ < uuid >fce8ae33-e69e-83bf-262e-30786c1f8072< /uuid >
+
+ < rule action='drop' direction='out' priority='500' >
+
+   < ip match='no' srcipaddr='192.168.1.1'/ >
+
+ < /rule >
+
+< filterref filter='no-mac-spoofing'/ >
+
+< /filter >
+
+
+
+根元素 < filter >的主要属性包括“name"和“chain”，子元素主要包括“< uuid >”、“< filterref >”、“< rule >”等。“name”属性定义该过滤规则的名称，“chain”属性定义该过滤器所在的链，过滤链用于组织过滤规则。目前，可用的chain只有root、ipv4、ipv6、arp和rarp。子元素"< rule > "定义一条规则。“<filterref >”可以直接引用其它定义好的过滤器。在这个例子中，规则匹配“IP”协议，因此，过滤器在“IPV4”链中。
+
+ 
+
+在XML定义中，一条过滤规则就是一个rule节点，rule节点主要有三个属性：
+
+
+
+“action”：可以是“drop”，表示丢弃；
+
+“reject”，拒绝但同时生成一个ICMP拒绝消息；
+
+“accept”表示允许通过；
+
+“return”返回到调用该过滤器的上一级过滤器进行配；
+
+“continue”跳到下一条规格进行匹配。
+
+“direction”：数据包到方向，可以是“in”，入方向；“out”，出方向；“inout"，双方向。
+
+“priority”：相对于其它规则的顺序，值越低，优先级越高，取值范围为-1000到1000。如果缺省，自动赋值500。
+
+“statematch ”：连接状态匹配，缺省为'true'，还可以选择'false'忽略连接状态。
+
+
+
+过滤规则在做匹配时，所有条件都须同时满足，即进行逻辑与。
+
+ 
+
+过滤规则支持的协议，即“rule”标签下的内容（例如上面例子中的ip）：
+
+
+
+Mac
+
+
+
+srcmacaddr    MAC_ADDR   源MAC地址
+
+srcmacmask    MAC_MASK   源MAC地址掩码
+
+dstmacaddr    MAC_ADDR   目标MAC地址
+
+dstmacmask    MAC_MASK   目标MAC地址掩码
+
+protocolid    STRING   第三层协议的ID，可以是arp, rarp, ipv4, ipv6
+
+comment        STRING
+
+
+
+ 
+
+
+
+Vlan
+
+
+
+srcmacaddr    MAC_ADDR   源MAC地址
+
+srcmacmask    MAC_MASK   源MAC地址掩码
+
+dstmacaddr    MAC_ADDR   目标MAC地址
+
+dstmacmask    MAC_MASK   目标MAC地址掩码
+
+vlanid   UINT16 (0x0-0xfff, 0 - 4095)   VLANID
+
+encap-protocol    String   封装的第三层协议ID，可以是arp, ipv4, ipv6
+
+comment    STRING
+
+ 
+
+
+
+IPv4
+
+
+
+srcmacaddr    MAC_ADDR   源MAC地址
+
+srcmacmask    MAC_MASK   源MAC地址掩码
+
+dstmacaddr    MAC_ADDR   目标MAC地址
+
+dstmacmask    MAC_MASK   目标MAC地址掩码
+
+srcipaddr   IP_ADDR    源IP地址
+
+srcipmask   IP_MASK    源IP地址掩码
+
+dstipaddr   IP_ADDR    目标IP地址
+
+dstipmask   IP_MASK    目标IP地址掩码
+
+protocol   UINT8, STRING    第四层协议到标识，可以是tcp,udp, udplite, esp, ah, icmp, igmp, sctp
+
+srcportstart    UINT16   源端口范围的开始值
+
+srcportend    UINT16   源端口范围的结束值
+
+dstportstart    UINT16   目标端口范围的开始值
+
+dstportend    UINT16   目标端口范围的结束值
+
+dscp   UINT8 (0x0-0x3f, 0 - 63)    服务区分代码点
+
+comment   STRING
+
+
+
+TCP/UDP/SCTP
+
+
+
+srcmacaddr    MAC_ADDR 源MAC地址
+
+srcipaddr   IP_ADDR    源IP地址
+
+srcipmask   IP_MASK    源IP地址掩码
+
+dstipaddr   IP_ADDR    目标IP地址
+
+dstipmask   IP_MASK    目标IP地址掩码
+
+srcipfrom   IP_ADDR    源IP地址范围的开始值
+
+srcipto   IP_ADDR    源IP地址范围的结束值
+
+dstipfrom   IP_ADDR    目标IP地址范围的开始值
+
+dstipto   IP_ADDR    目标IP地址范围的结束值
+
+srcportstart    UINT16   源端口范围的开始值
+
+srcportend    UINT16   源端口范围的结束值
+
+dstportstart    UINT16   目标端口范围的开始值
+
+dstportend    UINT16   目标端口范围的结束值
+
+dscp   UINT8 (0x0-0x3f, 0 - 63)    服务区分代码点
+
+comment   STRING
+
+
+
+state STRING    逗号分隔的列表，可以是NEW,ESTABLISHED,RELATED,INVALID，NONE
+
+
+
+flags STRING    只适用于TCP，逗号分隔的列表，可以是SYN,ACK,URG,PSH,FIN,RST，NONE，ALL
+
+ 
+
+
+
+ICMP
+
+
+
+该类规则chain的参数被忽略
+
+
+
+srcmacaddr    MAC_ADDR   源MAC地址
+
+srcmacmask    MAC_MASK   源MAC地址掩码
+
+dstmacaddr    MAC_ADDR   目标MAC地址
+
+dstmacmask    MAC_MASK   目标MAC地址掩码
+
+srcipaddr   IP_ADDR    源IP地址
+
+srcipmask   IP_MASK    源IP地址掩码
+
+dstipaddr   IP_ADDR    目标IP地址
+
+dstipmask   IP_MASK    目标IP地址掩码
+
+srcipfrom   IP_ADDR    源IP地址范围的开始值
+
+srcipto   IP_ADDR    源IP地址范围的结束值
+
+dstipfrom   IP_ADDR    目标IP地址范围的开始值
+
+dstipto   IP_ADDR    目标IP地址范围的结束值
+
+type   UINT16    ICMP类型
+
+code   UINT16    ICMP代码
+
+dscp   UINT8 (0x0-0x3f, 0 - 63)    服务区分代码点
+
+comment (Since 0.8.5)    STRING
+
+
+
+state    STRING    逗号分隔的列表，可以是NEW,ESTABLISHED,RELATED,INVALID，NONE
+
+
+
+IGMP, ESP, AH, UDPLITE, 'ALL'
+
+
+
+该类规则chain的参数被忽略
+
+
+
+srcmacaddr    MAC_ADDR   源MAC地址
+
+srcmacmask    MAC_MASK   源MAC地址掩码
+
+dstmacaddr    MAC_ADDR   目标MAC地址
+
+dstmacmask    MAC_MASK   目标MAC地址掩码
+
+srcipaddr   IP_ADDR    源IP地址
+
+srcipmask   IP_MASK    源IP地址掩码
+
+dstipaddr   IP_ADDR    目标IP地址
+
+dstipmask   IP_MASK    目标IP地址掩码
+
+srcipfrom   IP_ADDR    源IP地址范围的开始值
+
+srcipto   IP_ADDR    源IP地址范围的结束值
+
+dstipfrom   IP_ADDR    目标IP地址范围的开始值
+
+dstipto   IP_ADDR    目标IP地址范围的结束值
+
+dscp   UINT8 (0x0-0x3f, 0 - 63)    服务区分代码点
+
+comment (Since 0.8.5)    STRING
+
+
+
+state    STRING    逗号分隔的列表，可以是NEW,ESTABLISHED,RELATED,INVALID，NONE。
+
+
+libvirt网络过滤规则：禁止客户机（bridge方式）连接外网
+
+首先是libvirt定义网络过滤规则的相关命令：
+
+
+
+virsh nwfilter-define 
+
+
+
+后面加上一个xml文件，从一个XML文件中定义或者更新一个网络过滤规则。
+
+
+
+virsh nwfilter-dumpxml 
+
+
+
+后面加上某个网络过滤规则的名称，查看一个网络规则的XML详细信息。
+
+
+
+virsh nwfilter-edit 
+
+
+
+后面加上某个网络过滤规则的名称，编辑一个网络规则。
+
+
+
+virsh nwfilter-list
+
+
+
+列出所有定义成功的网络过滤规则。
+
+
+
+virsh nwfilter-undefine
+
+
+
+后面加上一个网络过滤规则的名称，须消该网络过滤规则。
+
+
+
+注意：定义网络过滤规则可以无视客户机的状态，并且可以及时生效，即使在客户机活跃的情况下。
+
+
+
+禁止客户机使用外网时的xml文件内容： 
+
+
+
+<filter name='no-ip-inout' chain='ipv4'>
+
+    <uuid>fce8ae34-e69e-83bf-262e-30786c1f8072</uuid>
+
+    <rule action='accept' direction='out' priority='100'>
+
+        <ip srcipaddr='192.168.x.0' dstipaddr='255.255.255.255' protocol='udp' srcportstart='67' srcportend='67' dstportstart='67' dstportend='68'/>
+
+    </rule>
+
+    <rule action='accept' direction='in' priority='100'>
+
+        <ip protocol='udp' srcportstart='67' srcportend='68' dstportstart='67' dstportend='68'/>
+
+    </rule>
+
+    <rule action='drop' direction='out' priority='200'>
+
+        <ip match='no' dstipaddr='192.168.x.0' dstipmask='255.255.255.0'/>
+
+    </rule>
+
+</filter>
+
+drop.xml
+
+
+
+允许客户机使用外网时的xml文件内容：
+
+
+
+<filter name='no-ip-inout' chain='ipv4'>
+
+    <uuid>fce8ae34-e69e-83bf-262e-30786c1f8072</uuid>
+
+    <rule action='accept' direction='out' priority='100'>
+
+    </rule>
+
+</filter>
+
+accept.xml
+
+
+
+linux和DHCP与UDP相关的端口分别是67和68号端口，定义优先级为100的规则：允许源地址接受DHCP和UDP信息，并且可以发送UDP信息，目的地址也一样。定义优先级为200的规则：丢弃所有发发送到网管的包。通过优先级可以获取到需要的信息，（如DHCP网络的获取），并且限制虚拟机上网，丢弃发送出去的包。
+
+
+
+当使客户机禁止使用外网的时候：
+
+
+
+virsh nwfilter-define drop.xml
+
+
+
+当使客户机可以使用外网的时候：
+
+
+
+virsh nwfilter-define accept.xml
+
+
+
+当要取消这个网络过滤规则的时候：
+
+
+
+virsh nwfilter-undefine no-ip-inout

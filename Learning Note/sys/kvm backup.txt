@@ -1,0 +1,195 @@
+虚拟机的备份方法
+
+方法一 停机备份
+
+在业务的维护时间，将虚拟机的镜像复制一份，并拷贝到其他宿主机上，这种方式操作最简单，也最有效，缺点是只能业务停机时间操作，备份的周期比较长。
+
+方法二 通过快照备份虚拟机
+
+在线虚拟机的快照实际有两个层面，磁盘快照和内存快照，如果是关机情况下，就只有磁盘快照了。如果是关机情况，虚拟机的备份就很简单。下面主要讨论在线虚拟机的备份方法
+
+虚拟机快照操作命令很简单
+
+virsh # snapshot-create-as test
+
+Domain snapshot 1419296749 created
+
+但是centos6 centos7中，创建虚拟机的快照，虚拟机会被暂停几秒中！
+
+virsh # list --all
+
+Id Name State
+
+----------------------------------------------------
+
+48 test paused
+
+快照查看
+
+virsh # snapshot-list test
+
+Name Creation Time State
+
+------------------------------------------------------------
+
+1419296749 2014-12-22 20:05:49 -0500 running
+
+1419296772 2014-12-22 20:06:12 -0500 running
+
+通过qemu-img命令查看
+
+qemu-img info test
+
+image: test
+
+file format: qcow2
+
+virtual size: 100G (107374182400 bytes)
+
+disk size: 4.0G
+
+cluster_size: 65536
+
+Snapshot list:
+
+ID TAG VM SIZE DATE VM CLOCK
+
+1 1419296749 1.8G 2014-12-22 20:05:49 01:07:36.123
+
+2 1419296772 1.8G 2014-12-22 20:06:12 01:07:48.249
+
+Format specific information:
+
+compat: 1.1
+
+lazy refcounts: false
+
+将快照迁移出来，并拷贝到其他宿主机上，就可以完成虚拟机的备份
+
+qemu-img convert -f qcow2 -O qcow2 -s s1 test.qcow2 test-s1.qcow2
+
+
+
+因为快照对虚拟机的性能有影响，备份完成后，删除快照
+
+virsh # snapshot-delete test 1419296749
+
+Domain snapshot 1419296749 deleted
+
+
+virsh # snapshot-delete test 1419296772
+
+Domain snapshot 1419296772 deleted
+
+virsh # snapshot-list test
+
+Name Creation Time State
+
+
+先回答两个朋友在后台提的问题
+
+
+
+问题一
+
+
+你最新文章的最后一段，我的理解是做快照过程中对虚拟机性能有影响，做完之后只是个文件吧，没有性能影响吧？
+
+解答
+
+快照对虚拟机的性能影响很大的，一般基于系统的快照，都是采用写时复制的技术，一份快照的时候，要写一份数据，需要先把改变的地方复制出来，然后在写如，如果是两份快照，就要写三次，所以对性能影响很大的。
+
+
+
+问题二
+
+如何选择虚拟化的存储方式？本地？nfs?iscsi?gluster?其他？有没有相关的测试数据？
+
+解答
+
+这个和硬件有很大的关系，比如用ssd，无论用那种方式，肯定要比普通的sas快很多。其次，基于网络的文件系统，和网络带宽关系也很大。如果虚拟机数量比较少，建议使用本地的存储方式，如果虚拟机数量多，并且要做高可用，就需要使用共享存储。共享存储使用商业存储还是分布式文件系统，这个第一要看自己对性能的要求，第二还要看自己的预算。总之应该先确定自己的需求，然后在决定选择那种方式。
+
+
+
+
+虚拟机的灾备方式（二）
+
+
+
+方法三 使用lvm快照备份虚拟机
+
+如果虚拟机全部使用的是lvm，可以利用lvm的特性，通过lvm快照备份虚拟机
+
+通过lvcreate 创建lvm快照
+
+lvcreate -s -n centos7s1 -L 10G /dev/testvg/centos7onlvm
+
+Logical volume "centos7s1" created
+
+通过lvs命令查看快照
+
+lvs
+
+LV VG Attr LSize Pool Origin Data% Move Log Cpy%Sync Convert
+
+centos7onlvm testvg owi-aos--- 200.00g
+
+centos7s1 testvg swi-a-s--- 10.00g centos7onlvm 0.06
+
+通过dd命令将lv快照备份到文件中
+
+dd if=/dev/testvg/centos7s1 of=/home/centos7.bak
+
+在将文件复制到其他宿主机，恢复的时候，直接使用raw格式的文件，或者在通过dd命令将备份文件复制到备用宿主机上的lvm都可以
+
+方法四 使用qcow2块复制备份
+
+很遗憾目前centos6 centos7默认携带的qemu还不支持qcow2块复制的功能，如果要使用这个功能，只能手工编译qemu或者使用fedaro，下面的测试需要在fedaro21上测试。
+
+blockcopy必须是临时生成的虚拟机，不能是define状态的虚拟机，先将在线的虚拟机xml文件备份
+
+virsh dumpxml --inactive win7 >/tmp/win.xml
+
+然后undefine之后才能使用blockcopy
+
+virsh # undefine win7
+
+将虚拟机的一块硬盘blockcopy到/home/win72.bak文件中，命令如下
+
+virsh blockcopy --domain win7 hda /home/win72.bak --wait --finish --verbose
+
+块复制: [100 %]
+
+通过qemu-img 查看
+
+[root@f21b home]# qemu-img info win72.bak 
+image: win72.bak 
+file format: qcow2 
+virtual size: 50G (53687091200 bytes) 
+disk size: 8.3G 
+cluster_size: 65536 
+Format specific information: 
+compat: 1.1 
+lazy refcounts: false
+
+在将文件复制到备用宿主机上就可以。
+
+方法五 在线的带存储迁移
+
+从centos6.4开始，支持在线的带存储迁移，这个是一个非常强大的功能，操作方法如下
+
+第一步 在备用宿主机上通过qemu-img create 创建好空文件，大小和要备份的虚拟机一模一样
+
+qemu-img create -f qcow2 -o preallocation=metadata centos6.qcow2 150G
+空文件需加预分配参数，要不复制过去的文件会是按照qcow2预分配文件的大小
+第二步 设置迁移速度，一般不希望迁移的时候对正常业务造成影响，设置迁移速度限制到600M/秒
+
+virsh migrate-setspeed centos6 600
+
+
+
+第三步 迁移
+
+virsh migrate --live --copy-storage-all --unsafe --persistent centos6 qemu+ssh://192.168.0.101/system
+
+迁移时间随磁盘空间大小而不通，磁盘空间越大，迁移时间越长，迁移的过程是先迁移磁盘，然后迁移内存，迁移内存的时候，一般业务会瞬断下。虚拟机一瞬间在会在一边关闭，领一边的宿主机开启。
