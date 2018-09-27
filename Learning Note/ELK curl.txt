@@ -5,14 +5,7 @@ ElasticSearch之CURL操作
 	curl -XPOST 192.168.14.173:32000/test_index_1221/test_type/5 -d '{'user_name':"xiaoming"}'
 	{"error":"Content-Type header [application/x-www-form-urlencoded] is not supported","status":406}12
 
-	官方解释： 
-	官方改变
-
-
-
 	解决方法
-
-
 
 	curl -H "Content-Type: application/json" -XPOST 192.168.14.173:32000/test_index_1221/test_type/5 -d '{'user_name':"xiaoming"}'
 	{"error":"Content-Type header [application/x-www-form-urlencoded] is not supported","status":406}12

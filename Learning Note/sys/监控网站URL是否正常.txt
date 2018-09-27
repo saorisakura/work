@@ -1,0 +1,243 @@
+监控网站URL是否正常
+
+监控网站URL是否正常最常见的方法莫过于wget和curl命令了，这两个命令都是非常强大的，强大到网友查看帮助都无从选择的地步了，今天呢，老男孩老师正好录制Shell编程实战课程，因此，顺便总结了一下和大家分享。
+
+
+
+wget命令
+
+wget命令的参数非常多，至少也有数十个， 但是运维工作中常用的并不多，老男孩老师把最有用的列表如下。
+
+
+
+wget命令
+
+下载网页或文件
+
+--spider
+
+模拟爬虫的行为去访问网站，但不会下载网页
+
+-q,    --quiet
+
+安静的访问，禁止输出，类似-o /dev/null功能
+
+-o,    --output-file=FILE
+
+记录输出到文件
+
+-T,    --timeout=SECONDS
+
+访问网站的超时时间
+
+-t,    --tries=NUMBER
+
+当网站异常时重试网站的次数
+
+实际监控方法如下：利用wget命令返回值确定网站是否正常
+
+[root@oldboy ~]# wget --spider -T 5 -q -t 2 www.oldboyedu.com
+
+[root@oldboy ~]# echo $? #<==利用返回值确定网站是否正常。
+
+0
+
+
+
+curl命令
+
+
+
+curl命令的参数比wget的参数还多，但运维中常用的参数也并不多，因此也是列表如下：
+
+
+
+curl命令
+
+访问网站url
+
+-I/--head
+
+显示响应头信息
+
+-m/--max-time <seconds>
+
+访问超时的时间
+
+-o/--output <file>
+
+记录访问信息到文件
+
+-s/--silent
+
+沉默模式访问，就是不输出信息
+
+-w/--write-out <format>
+
+以固定特殊的格式输出，例如：%{http_code}，输出状态码
+
+实际监控方法如下：
+
+1、利用curl命令返回值确定网站是否正常
+
+[root@oldboy ~]# curl -s -o /dev/null www.oldboyedu.com
+
+[root@oldboy ~]# echo $?
+
+0
+
+2、获取命令执行后的状态码（200表示正常）
+
+[root@oldboy ~]# curl -I -m 5 -s -w "%{http_code}\n" -o /dev/null  www.baidu.com
+
+200
+
+
+
+开发Shell脚本实现监控指定的URL是否正常
+
+解答：
+
+方法1：
+
+#!/bin/sh
+
+function usage() {     #<==帮助函数
+
+    echo $"usage:$0 url"
+
+    exit 1
+
+}
+
+function check_url() { #<==检测URL函数。
+
+    wget --spider -q -o /dev/null --tries=1 -T 5 $1
+
+#<==采用wget返回值方法，这里的$1就是函数传参。
+
+    #curl -s -o /dev/null $1 #<==采用curl返回值方法也是可以的。
+
+    if [ $? -eq 0 ]
+
+    then
+
+        echo "$1 is yes."
+
+        exit 0
+
+    else
+
+        echo "$1 is fail."
+
+        exit 1
+
+    fi
+
+}
+
+function main() {   #<==主函数。
+
+     if [ $# -ne 1 ]   #<==如果传入的多个参数，则打印帮助函数，提示用户。
+
+     then
+
+         usage
+
+     fi
+
+     check_url $1     #<==接收函数的传参，即把结尾的$*传到这里。
+
+}
+
+main $*            #<==这里的$*就是把命令行接收的所有参数作为函数参数传给函数内部，常用手法。
+
+实践结果：
+
+[root@oldboy ~]# sh checkurl.sh www.oldboyedu.com
+
+www.oldboyedu.com is ok
+
+[root@oldboy ~]# sh checkurl.sh www.baidu.com
+
+www.baidu.com is ok
+
+[root@oldboy ~]# sh checkurl.sh 10.0.0.8
+
+10.0.0.8 is fail
+
+方法2：
+
+[root@oldboy ~]# cat checkurl1.sh
+
+#!/bin/bash
+
+##############################################################
+
+# File Name: checkurl.sh
+
+# Version: V1.0
+
+# Author: oldboy
+
+# Organization: www.oldboyedu.com
+
+# Created Time : 2018-06-07 18:29:19
+
+##############################################################
+
+usage(){
+
+    echo "Usage:$0 url"
+
+    exit 1
+
+}
+
+checkurl(){
+
+    local num=`curl -I -m 5 -s -w "%{http_code}\n" -o /dev/null|grep 200|wc -l`
+
+    if [ $num -eq 1 ] #<==采用获取状态码，并转为数字的方式判断，如果301认为正确也可以加上egrep过滤。
+
+    then
+
+         echo "$1 is ok"
+
+    else
+
+         echo "$1 is fail"
+
+    fi
+
+}
+
+main(){
+
+    if [ $# -ne 1 ]
+
+    then
+
+        usage
+
+    fi
+
+    checkurl $1
+
+}
+
+main $*
+
+实践结果：
+
+[root@oldboy ~]# sh checkurl.sh www.oldboyedu.com
+
+www.oldboyedu.com is ok
+
+[root@oldboy ~]# sh checkurl.sh www.baidu.com
+
+www.baidu.com is ok
+
+[root@oldboy ~]# sh checkurl.sh 10.0.0.8
+
+10.0.0.8 is fail
