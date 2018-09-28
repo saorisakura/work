@@ -1,0 +1,966 @@
+Elasticsearch分布式一致性原理剖析(一)-节点篇
+
+数据存储与数据库
+ 
+分布式
+ 
+Java核心技术
+ 
+架构
+ 
+算法
+ 
+分布式系统与计算
+ 
+配置
+cluster
+ 
+集群
+ 
+node
+ 
+Elasticsearch
+ 
+分布式系统
+ 
+Commit
+ 
+zookeeper
+摘要： ES目前是最流行的开源分布式搜索引擎系统，其使用Lucene作为单机存储引擎并提供强大的搜索查询能力。学习其搜索原理，则必须了解Lucene，而学习ES的架构，就必须了解其分布式如何实现，而一致性是分布式系统的核心之一。
+
+前言
+“Elasticsearch分布式一致性原理剖析”系列将会对Elasticsearch的分布式一致性原理进行详细的剖析，介绍其实现方式、原理以及其存在的问题等(基于6.2版本)。 
+ES目前是最流行的开源分布式搜索引擎系统，其使用Lucene作为单机存储引擎并提供强大的搜索查询能力。学习其搜索原理，则必须了解Lucene，而学习ES的架构，就必须了解其分布式如何实现，而一致性是分布式系统的核心之一。
+本篇将介绍ES的集群组成、节点发现与Master选举，错误检测与扩缩容相关的内容。ES在处理节点发现与Master选举等方面没有选择Zookeeper等外部组件，而是自己实现的一套，本文会介绍ES的这套机制是如何工作的，存在什么问题。本文的主要内容如下：
+
+ES集群构成
+节点发现
+Master选举
+错误检测
+集群扩缩容
+与Zookeeper、raft等实现方式的比较
+小结
+ES集群构成
+首先，一个Elasticsearch集群(下面简称ES集群)是由许多节点(Node)构成的，Node可以有不同的类型，通过以下配置，可以产生四种不同类型的Node：
+
+conf/elasticsearch.yml:
+    node.master: true/false
+    node.data: true/false
+四种不同类型的Node是一个node.master和node.data的true/false的两两组合。当然还有其他类型的Node，比如IngestNode(用于数据预处理等)，不在本文讨论范围内。
+
+当node.master为true时，其表示这个node是一个master的候选节点，可以参与选举，在ES的文档中常被称作master-eligible node，类似于MasterCandidate。ES正常运行时只能有一个master(即leader)，多于1个时会发生脑裂。
+
+当node.data为true时，这个节点作为一个数据节点，会存储分配在该node上的shard的数据并负责这些shard的写入、查询等。
+
+此外，任何一个集群内的node都可以执行任何请求，其会负责将请求转发给对应的node进行处理，所以当node.master和node.data都为false时，这个节点可以作为一个类似proxy的节点，接受请求并进行转发、结果聚合等。
+
+image_201803211434532
+
+上图是一个ES集群的示意图，其中Node_A是当前集群的Master，Node_B和Node_C是Master的候选节点，其中Node_A和Node_B同时也是数据节点(DataNode)，此外，Node_D是一个单纯的数据节点，Node_E是一个proxy节点。
+
+到这里，我们提一个问题，供读者思考：一个ES集群应当配置多少个master-eligible node，当集群的存储或者计算资源不足，需要扩容时，新扩上去的节点应该设置为何种类型？
+
+节点发现
+Node启动后，首先要通过节点发现功能加入集群。ZenDiscovery是ES自己实现的一套用于节点发现和选主等功能的模块，没有依赖Zookeeper等工具，官方文档：
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-zen.html
+
+简单来说，节点发现依赖以下配置：
+
+conf/elasticsearch.yml:
+    discovery.zen.ping.unicast.hosts: [1.1.1.1, 1.1.1.2, 1.1.1.3]
+这个配置可以看作是，在本节点到每个hosts中的节点建立一条边，当整个集群所有的node形成一个联通图时，所有节点都可以知道集群中有哪些节点，不会形成孤岛。
+
+官方推荐这里设置为所有的master-eligible node，读者可以想想这样有何好处：
+
+    It is recommended that the unicast hosts list be maintained as the list of master-eligible nodes in the cluster.
+Master选举
+上面提到，集群中可能会有多个master-eligible node，此时就要进行master选举，保证只有一个当选master。如果有多个node当选为master，则集群会出现脑裂，脑裂会破坏数据的一致性，导致集群行为不可控，产生各种非预期的影响。
+
+为了避免产生脑裂，ES采用了常见的分布式系统思路，保证选举出的master被多数派(quorum)的master-eligible node认可，以此来保证只有一个master。这个quorum通过以下配置进行配置：
+
+conf/elasticsearch.yml:
+    discovery.zen.minimum_master_nodes: 2
+这个配置对于整个集群非常重要。
+
+1 master选举谁发起，什么时候发起？
+master选举是由master-eligible节点发起，当一个master-eligible节点发现满足以下条件时发起选举：
+
+该master-eligible节点的当前状态不是master。
+该master-eligible节点通过ZenDiscovery模块的ping操作询问其已知的集群其他节点，没有任何节点连接到master。
+包括本节点在内，当前已有超过minimum_master_nodes个节点没有连接到master。
+总结一句话，即当一个节点发现包括自己在内的多数派的master-eligible节点认为集群没有master时，就可以发起master选举。
+
+2 当需要选举master时，选举谁？
+首先是选举谁的问题，如下面源码所示，选举的是排序后的第一个MasterCandidate(即master-eligible node)。
+
+    public MasterCandidate electMaster(Collection<MasterCandidate> candidates) {
+        assert hasEnoughCandidates(candidates);
+        List<MasterCandidate> sortedCandidates = new ArrayList<>(candidates);
+        sortedCandidates.sort(MasterCandidate::compare);
+        return sortedCandidates.get(0);
+    }
+那么是按照什么排序的？
+
+public static int compare(MasterCandidate c1, MasterCandidate c2) {
+    // we explicitly swap c1 and c2 here. the code expects "better" is lower in a sorted
+    // list, so if c2 has a higher cluster state version, it needs to come first.
+    int ret = Long.compare(c2.clusterStateVersion, c1.clusterStateVersion);
+    if (ret == 0) {
+        ret = compareNodes(c1.getNode(), c2.getNode());
+    }
+    return ret;
+}
+如上面源码所示，先根据节点的clusterStateVersion比较，clusterStateVersion越大，优先级越高。clusterStateVersion相同时，进入compareNodes，其内部按照节点的Id比较(Id为节点第一次启动时随机生成)。
+
+总结一下：
+
+当clusterStateVersion越大，优先级越高。这是为了保证新Master拥有最新的clusterState(即集群的meta)，避免已经commit的meta变更丢失。因为Master当选后，就会以这个版本的clusterState为基础进行更新。(一个例外是集群全部重启，所有节点都没有meta，需要先选出一个master，然后master再通过持久化的数据进行meta恢复，再进行meta同步)。
+当clusterStateVersion相同时，节点的Id越小，优先级越高。即总是倾向于选择Id小的Node，这个Id是节点第一次启动时生成的一个随机字符串。之所以这么设计，应该是为了让选举结果尽可能稳定，不要出现都想当master而选不出来的情况。
+3 怎么算选举成功？
+当一个master-eligible node(我们假设为Node_A)发起一次选举时，它会按照上述排序策略选出一个它认为的master。
+
+假设Node_A选Node_B当Master：
+Node_A会向Node_B发送join请求，那么此时：
+
+(1) 如果Node_B已经成为Master，Node_B就会把Node_A加入到集群中，然后发布最新的cluster_state, 最新的cluster_state就会包含Node_A的信息。相当于一次正常情况的新节点加入。对于Node_A，等新的cluster_state发布到Node_A的时候，Node_A也就完成join了。
+
+(2) 如果Node_B在竞选Master，那么Node_B会把这次join当作一张选票。对于这种情况，Node_A会等待一段时间，看Node_B是否能成为真正的Master，直到超时或者有别的Master选成功。
+
+(3) 如果Node_B认为自己不是Master(现在不是，将来也选不上)，那么Node_B会拒绝这次join。对于这种情况，Node_A会开启下一轮选举。
+
+假设Node_A选自己当Master：
+此时NodeA会等别的node来join，即等待别的node的选票，当收集到超过半数的选票时，认为自己成为master，然后变更cluster_state中的master node为自己，并向集群发布这一消息。
+
+有兴趣的同学可以看看下面这段源码：
+
+        if (transportService.getLocalNode().equals(masterNode)) {
+            final int requiredJoins = Math.max(0, electMaster.minimumMasterNodes() - 1); // we count as one
+            logger.debug("elected as master, waiting for incoming joins ([{}] needed)", requiredJoins);
+            nodeJoinController.waitToBeElectedAsMaster(requiredJoins, masterElectionWaitForJoinsTimeout,
+                    new NodeJoinController.ElectionCallback() {
+                        @Override
+                        public void onElectedAsMaster(ClusterState state) {
+                            synchronized (stateMutex) {
+                                joinThreadControl.markThreadAsDone(currentThread);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Throwable t) {
+                            logger.trace("failed while waiting for nodes to join, rejoining", t);
+                            synchronized (stateMutex) {
+                                joinThreadControl.markThreadAsDoneAndStartNew(currentThread);
+                            }
+                        }
+                    }
+
+            );
+        } else {
+            // process any incoming joins (they will fail because we are not the master)
+            nodeJoinController.stopElectionContext(masterNode + " elected");
+
+            // send join request
+            final boolean success = joinElectedMaster(masterNode);
+
+            synchronized (stateMutex) {
+                if (success) {
+                    DiscoveryNode currentMasterNode = this.clusterState().getNodes().getMasterNode();
+                    if (currentMasterNode == null) {
+                        // Post 1.3.0, the master should publish a new cluster state before acking our join request. we now should have
+                        // a valid master.
+                        logger.debug("no master node is set, despite of join request completing. retrying pings.");
+                        joinThreadControl.markThreadAsDoneAndStartNew(currentThread);
+                    } else if (currentMasterNode.equals(masterNode) == false) {
+                        // update cluster state
+                        joinThreadControl.stopRunningThreadAndRejoin("master_switched_while_finalizing_join");
+                    }
+
+                    joinThreadControl.markThreadAsDone(currentThread);
+                } else {
+                    // failed to join. Try again...
+                    joinThreadControl.markThreadAsDoneAndStartNew(currentThread);
+                }
+            }
+        }
+按照上述流程，我们描述一个简单的场景来帮助大家理解：
+
+假如集群中有3个master-eligible node，分别为Node_A、 Node_B、 Node_C, 选举优先级也分别为Node_A、Node_B、Node_C。三个node都认为当前没有master，于是都各自发起选举，选举结果都为Node_A(因为选举时按照优先级排序，如上文所述)。于是Node_A开始等join(选票)，Node_B、Node_C都向Node_A发送join，当Node_A接收到一次join时，加上它自己的一票，就获得了两票了(超过半数)，于是Node_A成为Master。此时cluster_state(集群状态)中包含两个节点，当Node_A再收到另一个节点的join时，cluster_state包含全部三个节点。
+
+4 选举怎么保证不脑裂？
+基本原则还是多数派的策略，如果必须得到多数派的认可才能成为Master，那么显然不可能有两个Master都得到多数派的认可。
+
+上述流程中，master候选人需要等待多数派节点进行join后才能真正成为master，就是为了保证这个master得到了多数派的认可。但是我这里想说的是，上述流程在绝大部份场景下没问题，听上去也非常合理，但是却是有bug的。
+
+因为上述流程并没有限制在选举过程中，一个Node只能投一票，那么什么场景下会投两票呢？比如Node_B投Node_A一票，但是Node_A迟迟不成为Master，Node_B等不及了发起了下一轮选主，这时候发现集群里多了个Node_0，Node_0优先级比Node_A还高，那Node_B肯定就改投Node_0了。假设Node_0和Node_A都处在等选票的环节，那显然这时候Node_B其实发挥了两票的作用，而且投给了不同的人。
+
+那么这种问题应该怎么解决呢，比如raft算法中就引入了选举周期(term)的概念，保证了每个选举周期中每个成员只能投一票，如果需要再投就会进入下一个选举周期，term+1。假如最后出现两个节点都认为自己是master，那么肯定有一个term要大于另一个的term，而且因为两个term都收集到了多数派的选票，所以多数节点的term是较大的那个，保证了term小的master不可能commit任何状态变更(commit需要多数派节点先持久化日志成功，由于有term检测，不可能达到多数派持久化条件)。这就保证了集群的状态变更总是一致的。
+
+而ES目前(6.2版本)并没有解决这个问题，构造类似场景的测试case可以看到会选出两个master，两个node都认为自己是master，向全集群发布状态变更，这个发布也是两阶段的，先保证多数派节点“接受”这次变更，然后再要求全部节点commit这次变更。很不幸，目前两个master可能都完成第一个阶段，进入commit阶段，导致节点间状态出现不一致，而在raft中这是不可能的。那么为什么都能完成第一个阶段呢，因为第一个阶段ES只是将新的cluster_state做简单的检查后放入内存队列，如果当前cluster_state的master为空，不会对新的cluster_state中的master做检查，即在接受了Node_A成为master的cluster_state后(还未commit)，还可以继续接受Node_B成为cluster_state。这就使Node_A和Node_B都能达到commit条件，发起commit命令，从而将集群状态引向不一致。当然，这种脑裂很快会自动恢复，因为不一致发生后某个master再次发布cluster_state时就会发现无法达到多数派条件，或者是发现它的follower并不构成多数派而自动降级为candidate等。
+
+这里要表达的是，ES的ZenDiscovery模块与成熟的一致性方案相比，在某些特殊场景下存在缺陷，下面讲ES的meta变更流程时也会分析其他的ES无法满足一致性的场景。
+
+错误检测
+1. MasterFaultDetection与NodesFaultDetection
+这里的错误检测可以理解为类似心跳的机制，有两类错误检测，一类是Master定期检测集群内其他的Node，另一类是集群内其他的Node定期检测当前集群的Master。检查的方法就是定期执行ping请求。ES文档：
+
+There are two fault detection processes running. The first is by the master, to ping all the other nodes in the cluster and verify that they are alive. And on the other end, each node pings to master to verify if its still alive or an election process needs to be initiated.
+如果Master检测到某个Node连不上了，会执行removeNode的操作，将节点从cluster_state中移除，并发布新的cluster_state。当各个模块apply新的cluster_state时，就会执行一些恢复操作，比如选择新的primaryShard或者replica，执行数据复制等。
+
+如果某个Node发现Master连不上了，会清空pending在内存中还未commit的new cluster_state，然后发起rejoin，重新加入集群(如果达到选举条件则触发新master选举)。
+
+2. rejoin
+除了上述两种情况，还有一种情况是Master发现自己已经不满足多数派条件(>=minimumMasterNodes)了，需要主动退出master状态(退出master状态并执行rejoin)以避免脑裂的发生，那么master如何发现自己需要rejoin呢？
+
+上面提到，当有节点连不上时，会执行removeNode。在执行removeNode时判断剩余的Node是否满足多数派条件，如果不满足，则执行rejoin。
+            if (electMasterService.hasEnoughMasterNodes(remainingNodesClusterState.nodes()) == false) {
+                final int masterNodes = electMasterService.countMasterNodes(remainingNodesClusterState.nodes());
+                rejoin.accept(LoggerMessageFormat.format("not enough master nodes (has [{}], but needed [{}])",
+                                                         masterNodes, electMasterService.minimumMasterNodes()));
+                return resultBuilder.build(currentState);
+            } else {
+                return resultBuilder.build(allocationService.deassociateDeadNodes(remainingNodesClusterState, true, describeTasks(tasks)));
+            }
+在publish新的cluster_state时，分为send阶段和commit阶段，send阶段要求多数派必须成功，然后再进行commit。如果在send阶段没有实现多数派返回成功，那么可能是有了新的master或者是无法连接到多数派个节点等，则master需要执行rejoin。
+        try {
+            publishClusterState.publish(clusterChangedEvent, electMaster.minimumMasterNodes(), ackListener);
+        } catch (FailedToCommitClusterStateException t) {
+            // cluster service logs a WARN message
+            logger.debug("failed to publish cluster state version [{}](not enough nodes acknowledged, min master nodes [{}])",
+                newState.version(), electMaster.minimumMasterNodes());
+
+            synchronized (stateMutex) {
+                pendingStatesQueue.failAllStatesAndClear(
+                    new ElasticsearchException("failed to publish cluster state"));
+
+                rejoin("zen-disco-failed-to-publish");
+            }
+            throw t;
+        }
+在对其他节点进行定期的ping时，发现有其他节点也是master，此时会比较本节点与另一个master节点的cluster_state的version，谁的version大谁成为master，version小的执行rejoin。
+        if (otherClusterStateVersion > localClusterState.version()) {
+            rejoin("zen-disco-discovered another master with a new cluster_state [" + otherMaster + "][" + reason + "]");
+        } else {
+            // TODO: do this outside mutex
+            logger.warn("discovered [{}] which is also master but with an older cluster_state, telling [{}] to rejoin the cluster ([{}])", otherMaster, otherMaster, reason);
+            try {
+                // make sure we're connected to this node (connect to node does nothing if we're already connected)
+                // since the network connections are asymmetric, it may be that we received a state but have disconnected from the node
+                // in the past (after a master failure, for example)
+                transportService.connectToNode(otherMaster);
+                transportService.sendRequest(otherMaster, DISCOVERY_REJOIN_ACTION_NAME, new RejoinClusterRequest(localClusterState.nodes().getLocalNodeId()), new EmptyTransportResponseHandler(ThreadPool.Names.SAME) {
+
+                    @Override
+                    public void handleException(TransportException exp) {
+                        logger.warn((Supplier<?>) () -> new ParameterizedMessage("failed to send rejoin request to [{}]", otherMaster), exp);
+                    }
+                });
+            } catch (Exception e) {
+                logger.warn((Supplier<?>) () -> new ParameterizedMessage("failed to send rejoin request to [{}]", otherMaster), e);
+            }
+        }
+集群扩缩容
+上面讲了节点发现、Master选举、错误检测等机制，那么现在我们可以来看一下如何对集群进行扩缩容。
+
+1 扩容DataNode
+假设一个ES集群存储或者计算资源不够了，我们需要进行扩容，这里我们只针对DataNode，即配置为：
+
+conf/elasticsearch.yml:
+    node.master: false
+    node.data: true
+然后需要配置集群名、节点名等其他配置，为了让该节点能够加入集群，我们把discovery.zen.ping.unicast.hosts配置为集群中的master-eligible node。
+
+conf/elasticsearch.yml:
+    cluster.name: es-cluster
+    node.name: node_Z
+    discovery.zen.ping.unicast.hosts: ["x.x.x.x", "x.x.x.y", "x.x.x.z"]
+然后启动节点，节点会自动加入到集群中，集群会自动进行rebalance，或者通过reroute api进行手动操作。
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-reroute.html
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/shards-allocation.html
+
+2 缩容DataNode
+假设一个ES集群使用的机器数太多了，需要缩容，我们怎么安全的操作来保证数据安全，并且不影响可用性呢？
+
+首先，我们选择需要缩容的节点，注意本节只针对DataNode的缩容，MasterNode缩容涉及到更复杂的问题，下面再讲。
+
+然后，我们需要把这个Node上的Shards迁移到其他节点上，方法是先设置allocation规则，禁止分配Shard到要缩容的机器上，然后让集群进行rebalance。
+
+PUT _cluster/settings
+{
+  "transient" : {
+    "cluster.routing.allocation.exclude._ip" : "10.0.0.1"
+  }
+}
+等这个节点上的数据全部迁移完成后，节点可以安全下线。
+
+更详细的操作方式可以参考官方文档：
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-filtering.html
+
+3 扩容MasterNode
+假如我们想扩容一个MasterNode(master-eligible node)， 那么有个需要考虑的问题是，上面提到为了避免脑裂，ES是采用多数派的策略，需要配置一个quorum数：
+
+conf/elasticsearch.yml:
+    discovery.zen.minimum_master_nodes: 2
+假设之前3个master-eligible node，我们可以配置quorum为2，如果扩容到4个master-eligible node，那么quorum就要提高到3。
+
+所以我们应该先把discovery.zen.minimum_master_nodes这个配置改成3，再扩容master，更改这个配置可以通过API的方式：
+
+curl -XPUT localhost:9200/_cluster/settings -d '{
+    "persistent" : {
+        "discovery.zen.minimum_master_nodes" : 3
+    }
+}'
+这个API发送给当前集群的master，然后新的值立即生效，然后master会把这个配置持久化到cluster meta中，之后所有节点都会以这个配置为准。
+
+但是这种方式有个问题在于，配置文件中配置的值和cluster meta中的值很可能出现不一致，不一致很容易导致一些奇怪的问题，比如说集群重启后，在恢复cluster meta前就需要进行master选举，此时只可能拿配置中的值，拿不到cluster meta中的值，但是cluster meta恢复后，又需要以cluster meta中的值为准，这中间肯定存在一些正确性相关的边界case。
+
+总之，动master节点以及相关的配置一定要谨慎，master配置错误很有可能导致脑裂甚至数据写坏、数据丢失等场景。
+
+4 缩容MasterNode
+缩容MasterNode与扩容跟扩容是相反的流程，我们需要先把节点缩下来，再把quorum数调下来，不再详细描述。
+
+与Zookeeper、raft等实现方式的比较
+1. 与使用Zookeeper相比
+本篇讲了ES集群中节点相关的几大功能的实现方式：
+
+节点发现
+Master选举
+错误检测
+集群扩缩容
+试想下，如果我们使用Zookeeper来实现这几个功能，会带来哪些变化？
+
+Zookeeper介绍
+我们首先介绍一下Zookeeper，熟悉的同学可以略过。
+
+Zookeeper分布式服务框架是Apache Hadoop 的一个子项目，它主要是用来解决分布式应用中经常遇到的一些数据管理问题，如：统一命名服务、状态同步服务、集群管理、分布式应用配置项的管理等。
+
+简单来说，Zookeeper就是用于管理分布式系统中的节点、配置、状态，并完成各个节点间进行配置和状态的同步等。大量的分布式系统依赖于Zookeeper或者是类似的组件。
+
+Zookeeper通过目录树的形式来管理数据，每个节点称为一个znode，每个znode由3部分组成:
+
+此为状态信息, 描述该znode的版本, 权限等信息.
+与该znode关联的数据.
+该znode下的子节点.
+stat中有一项是ephemeralOwner，如果有值，代表是一个临时节点，临时节点会在session结束后删除，可以用来辅助应用进行master选举和错误检测。
+
+Zookeeper提供watch功能，可以用于监听相应的事件，比如某个znode下的子节点的增减，某个znode本身的增减，某个znode的更新等。
+
+怎么使用Zookeeper实现ES的上述功能
+节点发现：每个节点的配置文件中配置一下Zookeeper服务器的地址，节点启动后到Zookeeper中某个目录中注册一个临时的znode。当前集群的master监听这个目录的子节点增减的事件，当发现有新节点时，将新节点加入集群。
+master选举：当一个master-eligible node启动时，都尝试到固定位置注册一个名为master的临时znode，如果注册成功，即成为master，如果注册失败则监听这个znode的变化。当master出现故障时，由于是临时znode，会自动删除，这时集群中其他的master-eligible node就会尝试再次注册。使用Zookeeper后其实是把选master变成了抢master。
+错误检测：由于节点的znode和master的znode都是临时znode，如果节点故障，会与Zookeeper断开session，znode自动删除。集群的master只需要监听znode变更事件即可，如果master故障，其他的候选master则会监听到master znode被删除的事件，尝试成为新的master。
+集群扩缩容：扩缩容将不再需要考虑minimum_master_nodes配置的问题，会变得更容易。
+使用Zookeeper的优劣点
+使用Zookeeper的好处是，把一些复杂的分布式一致性问题交给Zookeeper来做，ES本身的逻辑就可以简化很多，正确性也有保证，这也是大部分分布式系统实践过的路子。而ES的这套ZenDiscovery机制经历过很多次bug fix，到目前仍有一些边角的场景存在bug，而且运维也不简单。
+
+那为什么ES不使用Zookeeper呢，大概是官方开发觉得增加Zookeeper依赖后会多依赖一个组件，使集群部署变得更复杂，用户在运维时需要多运维一个Zookeeper。
+
+那么在自主实现这条路上，还有什么别的算法选择吗？当然有的，比如raft。
+
+2. 与使用raft相比
+raft算法是近几年很火的一个分布式一致性算法，其实现相比paxos简单，在各种分布式系统中也得到了应用。这里不再描述其算法的细节，我们单从master选举算法角度，比较一下raft与ES目前选举算法的异同点：
+
+相同点
+多数派原则：必须得到超过半数的选票才能成为master。
+选出的leader一定拥有最新已提交数据：在raft中，数据更新的节点不会给数据旧的节点投选票，而当选需要多数派的选票，则当选人一定有最新已提交数据。在es中，version大的节点排序优先级高，同样用于保证这一点。
+不同点
+正确性论证：raft是一个被论证过正确性的算法，而ES的算法是一个没有经过论证的算法，只能在实践中发现问题，做bug fix，这是我认为最大的不同。
+是否有选举周期term：raft引入了选举周期的概念，每轮选举term加1，保证了在同一个term下每个参与人只能投1票。ES在选举时没有term的概念，不能保证每轮每个节点只投一票。
+选举的倾向性：raft中只要一个节点拥有最新的已提交的数据，则有机会选举成为master。在ES中，version相同时会按照NodeId排序，总是NodeId小的人优先级高。
+看法
+raft从正确性上看肯定是更好的选择，而ES的选举算法经过几次bug fix也越来越像raft。当然，在ES最早开发时还没有raft，而未来ES如果继续沿着这个方向走很可能最终就变成一个raft实现。
+
+raft不仅仅是选举，下一篇介绍meta数据一致性时也会继续比较ES目前的实现与raft的异同。
+
+小结
+本篇介绍了Elasticsearch集群的组成、节点发现、master选举、故障检测和扩缩容等方面的实现，与一般的文章不同，本文对其原理、存在的问题也进行了一些分析，并与其他实现方式进行了比较。
+
+作为Elasticsearch分布式一致性原理剖析系列的第一篇，本文先从节点入手，下一篇会介绍meta数据变更的一致性问题，会在本文的基础上对ES的分布式原理做进一步分析。
+
+Elasticsearch分布式一致性原理剖析(二)-Meta篇
+“Elasticsearch分布式一致性原理剖析”系列将会对Elasticsearch的分布式一致性原理进行详细的剖析，介绍其实现方式、原理以及其存在的问题等(基于6.2版本)。前一篇的内容包括了ES的集群组成、节点发现与Master选举、错误检测与集群扩缩容等。
+
+前言
+“Elasticsearch分布式一致性原理剖析”系列将会对Elasticsearch的分布式一致性原理进行详细的剖析，介绍其实现方式、原理以及其存在的问题等(基于6.2版本)。前一篇的内容包括了ES的集群组成、节点发现与Master选举、错误检测与集群扩缩容等。本篇将在前一篇的基础上，重点分析ES中meta更新的一致性问题，为了便于读者理解 ，本文还介绍了Master管理集群的方式、meta组成、存储方式等等。目录如下：
+
+Master如何管理集群
+Meta组成、存储和恢复
+ClusterState的更新流程
+如何解决当前的一致性问题
+小结
+Master如何管理集群
+在上一篇文章中，我们介绍了ES集群的组成，如何发现节点，选举Master等。那么在选举出Master之后，Master如何管理集群呢？比如以下问题：
+
+Master如何处理新建或删除Index？
+Master如何对Shard进行重新调度，实现负载均衡？
+既然要管理集群，那么Master节点必然需要以某种方式通知其他节点，从而让其他节点执行相应的动作，来完成某些事情。比如建立一个新的Index就需要将其Shard分配在某些节点上，在这些节点上需要创建出对应Shard的目录，并在内存中创建对应Shard的一些结构等。
+
+在ES中，Master节点是通过发布ClusterState来通知其他节点的。Master会将新的ClusterState发布给其他的所有节点，当节点收到新的ClusterState后，会把新的ClusterState发给相关的各个模块，各个模块根据新的ClusterState判断是否要做什么事情，比如创建Shard等。即这是一种通过Meta数据来驱动各个模块工作的方式。
+
+在Master进行Meta变更并通知所有节点的过程中，需要考虑Meta变更的一致性问题，假如这个过程中Master挂掉了，那么可能只有部分节点按照新的Meta执行了操作。当选举出新的Master后，需要保证所有节点都要按照最新的Meta执行操作，不能回退，因为已经有节点按照新的Meta执行操作了，再回退就会导致不一致。
+
+ES中只要新Meta在一个节点上被commit，那么就会开始执行相应的操作。因此我们要保证一旦新Meta在某个节点上被commit，此后无论谁是master，都要基于这个commit来产生更新的meta，否则就可能产生不一致。本文会分析ES处理这一问题的策略和存在的问题。
+
+Meta的组成、存储和恢复
+在介绍Meta更新流程前，我们先介绍一下ES中Meta的组成、存储方式和恢复方式，不关心这部分内容的读者可以略过本节。
+
+1. Meta：ClusterState、MetaData、IndexMetaData
+Meta是用来描述数据的数据。在ES中，Index的mapping结构、配置、持久化状态等就属于meta数据，集群的一些配置信息也属于meta。这类meta数据非常重要，假如记录某个index的meta数据丢失了，那么集群就认为这个index不再存在了。ES中的meta数据只能由master进行更新，master相当于是集群的大脑。
+
+ClusterState
+集群中的每个节点都会在内存中维护一个当前的ClusterState，表示当前集群的各种状态。ClusterState中包含一个MetaData的结构，MetaData中存储的内容更符合meta的特征，而且需要持久化的信息都在MetaData中，此外的一些变量可以认为是一些临时状态，是集群运行中动态构建出来的。
+
+ClusterState内容包括：
+    long version: 当前版本号，每次更新加1
+    String stateUUID：该state对应的唯一id
+    RoutingTable routingTable：所有index的路由表
+    DiscoveryNodes nodes：当前集群节点
+    MetaData metaData：集群的meta数据
+    ClusterBlocks blocks：用于屏蔽某些操作
+    ImmutableOpenMap<String, Custom> customs: 自定义配置
+    ClusterName clusterName：集群名
+MetaData
+上面提到，MetaData更符合meta的特征，而且需要持久化，那么我们看下这个MetaData中主要包含哪些东西：
+
+MetaData中需要持久化的包括：
+    String clusterUUID：集群的唯一id。
+    long version：当前版本号，每次更新加1
+    Settings persistentSettings：持久化的集群设置
+    ImmutableOpenMap<String, IndexMetaData> indices: 所有Index的Meta
+    ImmutableOpenMap<String, IndexTemplateMetaData> templates：所有模版的Meta
+    ImmutableOpenMap<String, Custom> customs: 自定义配置
+我们看到，MetaData主要是集群的一些配置，集群所有Index的Meta，所有Template的Meta。下面我们再分析一下IndexMetaData，后面还会讲到，虽然IndexMetaData也是MetaData的一部分，但是存储上却是分开存储的。
+
+IndexMetaData
+IndexMetaData指具体某个Index的Meta，比如这个Index的shard数，replica数，mappings等。
+
+IndexMetaData中需要持久化的包括：
+    long version：当前版本号，每次更新加1。
+    int routingNumShards: 用于routing的shard数, 只能是该Index的numberOfShards的倍数，用于split。
+    State state: Index的状态, 是个enum，值是OPEN或CLOSE。
+    Settings settings：numbersOfShards，numbersOfRepilicas等配置。
+    ImmutableOpenMap<String, MappingMetaData> mappings：Index的mapping
+    ImmutableOpenMap<String, Custom> customs：自定义配置。
+    ImmutableOpenMap<String, AliasMetaData> aliases： 别名
+    long[] primaryTerms：primaryTerm在每次Shard切换Primary时加1，用于保序。
+    ImmutableOpenIntMap<Set<String>> inSyncAllocationIds：处于InSync状态的AllocationId，用于保证数据一致性，下一篇文章会介绍。
+2. Meta的存储
+首先，在启动ES的一个节点时，会配置一个data目录，例如下面这个目录。该节点只有一个单shard的Index。
+
+$tree
+.
+`-- nodes
+    `-- 0
+        |-- _state
+        |   |-- global-1.st
+        |   `-- node-0.st
+        |-- indices
+        |   `-- 2Scrm6nuQOOxUN2ewtrNJw
+        |       |-- 0
+        |       |   |-- _state
+        |       |   |   `-- state-0.st
+        |       |   |-- index
+        |       |   |   |-- segments_1
+        |       |   |   `-- write.lock
+        |       |   `-- translog
+        |       |       |-- translog-1.tlog
+        |       |       `-- translog.ckp
+        |       `-- _state
+        |           `-- state-2.st
+        `-- node.lock
+我们看到，ES进程会把Meta和Data都写入这个目录中，其中目录名为_state的代表该目录存储的是meta文件，根据文件层级的不同，共有3种meta的存储：
+
+nodes/0/_state/:
+这层目录在节点级别，该目录下的global-1.st文件存储的是上文介绍的MetaData中除去IndexMetaData的部分，即一些集群级别的配置和templates。node-0.st中存储的是NodeId。
+
+nodes/0/indices/2Scrm6nuQOOxUN2ewtrNJw/_state/:
+这层目录在index级别，2Scrm6nuQOOxUN2ewtrNJw是IndexId，该目录下的state-2.st文件存储的是上文介绍的IndexMetaData。
+
+nodes/0/indices/2Scrm6nuQOOxUN2ewtrNJw/0/_state/:
+这层目录在shard级别，该目录下的state-0.st存储的是ShardStateMetaData，包含是否是primary和allocationId等信息。ShardStateMetaData是在IndexShard模块中管理，与其他Meta关联不大，本文不做过多介绍。
+
+可以看到，集群相关的MetaData和Index的MetaData是在不同的目录中存储的。另外，集群相关的Meta会在所有的MasterNode和DataNode上存储，而Index的Meta会在所有的MasterNode和存储了该Index数据的DataNode上存储。
+
+这里有个问题是，MetaData是由Master管理的，为什么DataNode上也要保存MetaData呢？主要原因是考虑到数据的安全性，很多用户没有考虑Master节点的高可用和数据高可靠，在部署ES集群时只配置了一个MasterNode，如果这个节点不可用，就会出现Meta丢失，后果非常严重。
+
+3. Meta的恢复
+假设ES集群重启了，那么所有进程都没有了之前的Meta信息，需要有一个角色来恢复Meta，这个角色就是Master。所以ES集群需要先进行Master选举，选出Master后，才会进行故障恢复。
+
+当Master选举出来后，Master进程还会等待一些条件，比如集群当前的节点数大于某个数目等，这是避免有些DataNode还没有连上来，造成不必要的数据恢复等。
+
+当Master进程决定进行恢复Meta时，它会向集群中的MasterNode和DataNode请求其机器上的MetaData。对于集群的Meta，选择其中version最大的版本。对于每个Index的Meta，也选择其中最大的版本。然后将集群的Meta和每个Index的Meta再组合起来，构成当前的最新Meta。
+
+ClusterState的更新流程
+现在我们开始分析ClusterState的更新流程，并通过这个流程来看ES如何保证Meta更新的一致性。
+
+1. master进程内不同线程更改ClusterState时的原子性保证
+首先，master进程内不同线程更改ClusterState时要保证是原子的。试想一下这个场景，有两个线程都在修改ClusterState，各自更改其中的一部分。假如没有任何并发的保护，那么最后提交的线程可能就会覆盖掉前一个线程的修改，或者产生不符合条件的状态变更的发生。
+
+ES解决这个问题的方式是，每次需要更新ClusterState时提交一个Task给MasterService，MasterService中只使用一个线程来串行处理这些Task，每次处理时把当前的ClusterState作为Task中execute函数的参数。即保证了所有的Task都是在currentClusterState的基础上进行更改，然后不同的Task是串行执行的。
+
+2. ClusterState更改如何保证一旦commit，后续就一定会在此基础上commit，不会回退
+这里是为了解决这样一个问题，我们知道，新的Meta一旦在某个节点上commit，那么这个节点就会执行相应的操作，比如删除某个Shard等，这样的操作是不可回退的。而假如此时Master节点挂掉了，新产生的Master一定要在新的Meta上进行更改，不能出现回退，否则就会出现Meta回退了但是操作无法回退的情况。本质上就是Meta更新没有保证一致性。
+
+早期的ES版本没有解决这个问题，后来引入了两阶段提交的方式(Add two phased commit to Cluster State publishing)。所谓的两阶段提交，是把Master发布ClusterState分成两步，第一步是向所有节点send最新的ClusterState，当有超过半数的master节点返回ack时，再发送commit请求，要求节点commit接收到的ClusterState。如果没有超过半数的节点返回ack，那么认为本次发布失败，同时退出master状态，执行rejoin重新加入集群。
+
+image_201803281423109
+
+两阶段提交可以解决部分一致性问题，比如以下这种场景：
+
+NodeA本来是Master节点，但由于某些原因NodeB成了新的Master节点，而NodeA由于探测不及时还未发现。
+NodeA认为自己仍然是Master，于是照常发布新的ClusterState。
+由于此时NodeB是Master，说明超过半数的Master节点认为NodeB才是新的Master，于是超过半数的Master节点不会返回ack给NodeA。
+NodeA收集不到足够的ack，于是本次发布失败，同时退出master状态。
+新的ClusterState不会在任何节点上commit，于是没有不一致发生。
+但是这种方式也存在很多一致性的问题，我们下一节来具体分析。
+
+3. 一致性问题分析
+ES中，Master发送commit的原则是只要有超过半数MasterNode(master-eligible node)接收了新的ClusterState就发送commit。那么实际上就是认为只要超过半数节点接收了新的ClusterState，这个ClusterState就一定可以被commit，不会在各种场景下回退。
+
+问题1
+第一阶段master节点send新的ClusterState，接收到的节点只是把新的ClusterState放入内存一个队列中，就会返回ack。这个过程没有持久化，所以当master接收到超过半数的ack后，也不能认为这些节点上都有新的ClusterState了。
+
+问题2
+如果master在commit阶段，只commit了少数几个节点就出现了网络分区，将master与这几个少数节点分在了一起，其他节点可以互相访问。此时其他节点构成多数派，会选举出新的master，由于这部分节点中没有任何节点commit了新的ClusterState，所以新的master仍会使用更新前的ClusterState，造成Meta不一致。
+
+ES官方仍在追踪这个bug：
+
+https://www.elastic.co/guide/en/elasticsearch/resiliency/current/index.html
+
+Repeated network partitions can cause cluster state updates to be lost (STATUS: ONGOING)
+...This problem is mostly fixed by #20384 (v5.0.0), which takes committed cluster state updates into account during master election. This considerably reduces the chance of this rare problem occurring but does not fully mitigate it. If the second partition happens concurrently with a cluster state update and blocks the cluster state commit message from reaching a majority of nodes, it may be that the in flight update will be lost. If the now-isolated master can still acknowledge the cluster state update to the client this will amount to the loss of an acknowledged change. Fixing that last scenario needs considerable work. We are currently working on it but have no ETA yet.
+什么情况下会有问题
+在两阶段提交中，很重要的一个条件是，“超过半数节点返回ack，表示接收了这个ClusterState”，这个条件并不能带来任何保证。一方面接收ClusterState并不会持久化，另一方面接收了ClusterState也不会对未来选举新Master产生任何干扰，因为选举时只考虑已经commit的ClusterState。
+
+在两阶段过程中，只到Master在超过半数MasterNode(master-eligible node)上commit了新的ClusterState，并且这些节点都完成了新ClusterState的持久化时，才到达一个安全的状态。在开始commit到达到这个状态之间，如果Master发送故障，就可能导致Meta发生不一致。
+
+如何解决当前的一致性问题
+既然ES目前Meta更新存在一些一致性问题，那么我们来脑洞一下，如何解决这些一致性问题呢？
+
+1. 实现一个标准的一致性算法，比如raft
+第一种方式是实现一个标准的一致性算法，比如raft。在上一篇中，我们也比较了ES的选举算法与raft算法的异同，下面我们继续比较一下ES的meta更新流程与raft的日志复制流程。
+
+相同点：
+
+都是在得到超过半数节点应答之后，执行commit。
+不同点：
+
+raft算法中，follower接收到日志后就会进行持久化，写到磁盘上。ES中，节点接收到ClusterState只是放到内存中的一个队列中即返回，并不持久化。
+raft算法可以保证在超过半数节点应答之后，这条日志一定可以被commit，而ES中没有保证这一点，目前还存在一致性问题。
+通过上面的比较，我们再次看到，ES中meta更新的算法与raft相比很相似，raft使用了更多的机制来保证一致性，而ES还存在一些问题。用ES官方的话来说，fix这些问题还需要大量的工作(considerable work)。
+
+2. 借助额外的组件保证meta一致性
+比如使用Zookeeper来保存Meta，用Zookeeper来保证Meta的一致性。这样可以解决一致性的问题，但是性能的问题还需要再评估一下，比如Meta是否会过大而导致不保存在Zookeeper中，每次请求全量Meta还是Diff等。
+
+3. 使用共享存储来保存Meta
+首先保证不会出现脑裂，然后可以使用共享存储来保存Meta，解决Meta一致性的问题。这种方式会引入一个共享存储，这个存储系统需要具备高可靠、高可用特征。
+
+小结
+作为Elasticsearch分布式一致性原理系列的第二篇，本文主要介绍了ES集群中Master节点发布Meta更新的流程，分析了其中的一致性问题。此外还介绍了Meta数据的组成和存储方式等。下一篇文章会分析ES中如何保证数据的一致性，介绍其写入流程和算法模型等。
+
+Reference
+Elasticsearch Resiliency Status
+Add two phased commit to Cluster State publishing #13062
+The Raft Consensus Algorithm
+
+持久化变更
+如果没有用 fsync 把数据从文件系统缓存刷（flush）到硬盘，我们不能保证数据在断电甚至是程序正常退出之后依然存在。为了保证 Elasticsearch 的可靠性，需要确保数据变化被持久化到磁盘。
+
+在 动态更新索引，我们说一次完整的提交会将段刷到磁盘，并写入一个包含所有段列表的提交点。Elasticsearch 在启动或重新打开一个索引的过程中使用这个提交点来判断哪些段隶属于当前分片。
+
+即使通过每秒刷新（refresh）实现了近实时搜索，我们仍然需要经常进行完整提交来确保能从失败中恢复。但在两次提交之间发生变化的文档怎么办？我们也不希望丢失掉这些数据。
+
+Elasticsearch 增加了一个 translog ，或者叫事务日志，在每一次对 Elasticsearch 进行操作时均进行了日志记录。通过 translog ，整个流程看起来是下面这样：
+
+一个文档被索引之后，就会被添加到内存缓冲区，并且 追加到了 translog ，正如 图 21 “新的文档被添加到内存缓冲区并且被追加到了事务日志” 描述的一样。
+
+图 21. 新的文档被添加到内存缓冲区并且被追加到了事务日志
+
+New documents are added to the in-memory buffer and appended to the transaction log
+
+刷新（refresh）使分片处于 图 22 “刷新（refresh）完成后, 缓存被清空但是事务日志不会” 描述的状态，分片每秒被刷新（refresh）一次：
+
+这些在内存缓冲区的文档被写入到一个新的段中，且没有进行 fsync 操作。
+这个段被打开，使其可被搜索。
+内存缓冲区被清空。
+图 22. 刷新（refresh）完成后, 缓存被清空但是事务日志不会
+
+After a refresh, the buffer is cleared but the transaction log is not
+
+这个进程继续工作，更多的文档被添加到内存缓冲区和追加到事务日志（见 图 23 “事务日志不断积累文档” ）。
+
+图 23. 事务日志不断积累文档
+
+The transaction log keeps accumulating documents
+
+每隔一段时间--例如 translog 变得越来越大--索引被刷新（flush）；一个新的 translog 被创建，并且一个全量提交被执行（见 图 24 “在刷新（flush）之后，段被全量提交，并且事务日志被清空” ）：
+
+所有在内存缓冲区的文档都被写入一个新的段。
+缓冲区被清空。
+一个提交点被写入硬盘。
+文件系统缓存通过 fsync 被刷新（flush）。
+老的 translog 被删除。
+translog 提供所有还没有被刷到磁盘的操作的一个持久化纪录。当 Elasticsearch 启动的时候， 它会从磁盘中使用最后一个提交点去恢复已知的段，并且会重放 translog 中所有在最后一次提交后发生的变更操作。
+
+translog 也被用来提供实时 CRUD 。当你试着通过ID查询、更新、删除一个文档，它会在尝试从相应的段中检索之前， 首先检查 translog 任何最近的变更。这意味着它总是能够实时地获取到文档的最新版本。
+
+图 24. 在刷新（flush）之后，段被全量提交，并且事务日志被清空
+
+After a flush, the segments are fully commited and the transaction log is cleared
+
+flush API编辑
+这个执行一个提交并且截断 translog 的行为在 Elasticsearch 被称作一次 flush 。 分片每30分钟被自动刷新（flush），或者在 translog 太大的时候也会刷新。请查看 translog 文档 来设置，它可以用来 控制这些阈值：
+
+flush API 可以 被用来执行一个手工的刷新（flush）:
+
+POST /blogs/_flush 
+
+POST /_flush?wait_for_ongoing 
+
+
+刷新（flush） blogs 索引。
+
+
+
+刷新（flush）所有的索引并且并且等待所有刷新在返回前完成。
+
+你很少需要自己手动执行一个的 flush 操作；通常情况下，自动刷新就足够了。
+
+这就是说，在重启节点或关闭索引之前执行 flush 有益于你的索引。当 Elasticsearch 尝试恢复或重新打开一个索引， 它需要重放 translog 中所有的操作，所以如果日志越短，恢复越快。
+
+Translog 有多安全?
+
+translog 的目的是保证操作不会丢失。这引出了这个问题： Translog 有多安全 ？
+
+在文件被 fsync 到磁盘前，被写入的文件在重启之后就会丢失。默认 translog 是每 5 秒被 fsync 刷新到硬盘， 或者在每次写请求完成之后执行(e.g. index, delete, update, bulk)。这个过程在主分片和复制分片都会发生。最终， 基本上，这意味着在整个请求被 fsync 到主分片和复制分片的translog之前，你的客户端不会得到一个 200 OK 响应。
+
+在每次请求后都执行一个 fsync 会带来一些性能损失，尽管实践表明这种损失相对较小（特别是bulk导入，它在一次请求中平摊了大量文档的开销）。
+
+但是对于一些大容量的偶尔丢失几秒数据问题也并不严重的集群，使用异步的 fsync 还是比较有益的。比如，写入的数据被缓存到内存中，再每5秒执行一次 fsync 。
+
+这个行为可以通过设置 durability 参数为 async 来启用：
+
+PUT /my_index/_settings
+{
+    "index.translog.durability": "async",
+    "index.translog.sync_interval": "5s"
+}
+这个选项可以针对索引单独设置，并且可以动态进行修改。如果你决定使用异步 translog 的话，你需要 保证 在发生crash时，丢失掉 sync_interval 时间段的数据也无所谓。请在决定前知晓这个特性。
+
+如果你不确定这个行为的后果，最好是使用默认的参数（ "index.translog.durability": "request" ）来避免数据丢失。
+
+Elasticsearch分布式一致性原理剖析(三)-Data篇
+ “Elasticsearch分布式一致性原理剖析”系列将会对Elasticsearch的分布式一致性原理进行详细的剖析，介绍其实现方式、原理以及其存在的问题等(基于6.2版本)。前两篇文章介绍了ES中集群如何组成，master选举算法，master更新meta的流程等，并分析了选举、Meta更新中的一致性问题。
+
+前言
+“Elasticsearch分布式一致性原理剖析”系列将会对Elasticsearch的分布式一致性原理进行详细的剖析，介绍其实现方式、原理以及其存在的问题等(基于6.2版本)。前两篇文章介绍了ES中集群如何组成，master选举算法，master更新meta的流程等，并分析了选举、Meta更新中的一致性问题。本文会分析ES中的数据流，包括其写入流程、算法模型PacificA、SequenceNumber与Checkpoint等，并比较ES的实现与标准PacificA算法的异同。目录如下：
+
+问题背景
+数据写入流程
+PacificA算法
+SequenceNumber、Checkpoint与故障恢复
+ES与PacificA的比较
+小结
+问题背景
+用过ES的同学都知道，ES中每个Index会划分为多个Shard，Shard分布在不同的Node上，以此来实现分布式的存储和查询，支撑大规模的数据集。对于每个Shard，又会有多个Shard的副本，其中一个为Primary，其余的一个或多个为Replica。数据在写入时，会先写入Primary，由Primary将数据再同步给Replica。在读取时，为了提高读取能力，Primary和Replica都会接受读请求。
+
+image_201803300926094
+
+在这种模型下，我们能够感受到ES具有这样的一些特性，比如：
+
+数据高可靠：数据具有多个副本。
+服务高可用：Primary挂掉之后，可以从Replica中选出新的Primary提供服务。
+读能力扩展：Primary和Replica都可以承担读请求。
+故障恢复能力：Primary或Replica挂掉都会导致副本数不足，此时可以由新的Primary通过复制数据产生新的副本。
+另外，我们也可以想到一些问题，比如：
+
+数据怎么从Primary复制到Replica？
+一次写入要求所有副本都成功吗？
+Primary挂掉会丢数据吗？
+数据从Replica读，总是能读到最新数据吗？
+故障恢复时，需要拷贝Shard下的全部数据吗？
+可以看到，对于ES中的数据一致性，虽然我们可以很容易的了解到其大概原理，但是对其细节我们还有很多的困惑。那么本文就从ES的写入流程，采用的一致性算法，SequenceId和Checkpoint的设计等方面来介绍ES如何工作，进而回答上述这些问题。需要注意的是，本文基于ES6.2版本进行分析，可能很多内容并不适用于ES之前的版本，比如2.X的版本等。
+
+数据写入流程
+首先我们来看一下数据的写入流程，读者也可以阅读这篇文章来详细了解：https://zhuanlan.zhihu.com/p/34669354。
+
+Replication角度: Primary -> Replica
+我们从大的角度来看，ES写入流程为先写入Primary，再并发写入Replica，最后应答客户端，流程如下：
+
+检查Active的Shard数。
+
+String activeShardCountFailure = checkActiveShardCount();
+
+写入Primary。
+
+primaryResult = primary.perform(request);
+并发的向所有Replicate发起写入请求
+
+performOnReplicas(replicaRequest, globalCheckpoint, replicationGroup.getRoutingTable());
+等所有Replicate返回或者失败后，返回给Client。
+
+private void decPendingAndFinishIfNeeded() {
+  assert pendingActions.get() > 0 : "pending action count goes below 0 for request [" + request + "]";
+  if (pendingActions.decrementAndGet() == 0) {
+      finish();
+  }
+}
+上述过程在ReplicationOperation类的execute函数中，完整代码如下：
+
+    public void execute() throws Exception {
+        final String activeShardCountFailure = checkActiveShardCount();
+        final ShardRouting primaryRouting = primary.routingEntry();
+        final ShardId primaryId = primaryRouting.shardId();
+        if (activeShardCountFailure != null) {
+            finishAsFailed(new UnavailableShardsException(primaryId,
+                "{} Timeout: [{}], request: [{}]", activeShardCountFailure, request.timeout(), request));
+            return;
+        }
+
+        totalShards.incrementAndGet();
+        pendingActions.incrementAndGet(); // increase by 1 until we finish all primary coordination
+        primaryResult = primary.perform(request);
+        primary.updateLocalCheckpointForShard(primaryRouting.allocationId().getId(), primary.localCheckpoint());
+        final ReplicaRequest replicaRequest = primaryResult.replicaRequest();
+        if (replicaRequest != null) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("[{}] op [{}] completed on primary for request [{}]", primaryId, opType, request);
+            }
+
+            // we have to get the replication group after successfully indexing into the primary in order to honour recovery semantics.
+            // we have to make sure that every operation indexed into the primary after recovery start will also be replicated
+            // to the recovery target. If we used an old replication group, we may miss a recovery that has started since then.
+            // we also have to make sure to get the global checkpoint before the replication group, to ensure that the global checkpoint
+            // is valid for this replication group. If we would sample in the reverse, the global checkpoint might be based on a subset
+            // of the sampled replication group, and advanced further than what the given replication group would allow it to.
+            // This would entail that some shards could learn about a global checkpoint that would be higher than its local checkpoint.
+            final long globalCheckpoint = primary.globalCheckpoint();
+            final ReplicationGroup replicationGroup = primary.getReplicationGroup();
+            markUnavailableShardsAsStale(replicaRequest, replicationGroup.getInSyncAllocationIds(), replicationGroup.getRoutingTable());
+            performOnReplicas(replicaRequest, globalCheckpoint, replicationGroup.getRoutingTable());
+        }
+
+        successfulShards.incrementAndGet();  // mark primary as successful
+        decPendingAndFinishIfNeeded();
+    }
+下面我们针对这个流程，来分析几个问题：
+
+1. 为什么第一步要检查Active的Shard数？
+ES中有一个参数，叫做wait_for_active_shards，这个参数是Index的一个setting，也可以在请求中带上这个参数。这个参数的含义是，在每次写入前，该shard至少具有的active副本数。假设我们有一个Index，其每个Shard有3个Replica，加上Primary则总共有4个副本。如果配置wait_for_active_shards为3，那么允许最多有一个Replica挂掉，如果有两个Replica挂掉，则Active的副本数不足3，此时不允许写入。
+
+这个参数默认是1，即只要Primary在就可以写入，起不到什么作用。如果配置大于1，可以起到一种保护的作用，保证写入的数据具有更高的可靠性。但是这个参数只在写入前检查，并不保证数据一定在至少这些个副本上写入成功，所以并不是严格保证了最少写入了多少个副本。关于这一点，可参考以下官方文档：
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
+...It is important to note that this setting greatly reduces the chances of the write operation not writing to the requisite number of shard copies, but it does not completely eliminate the possibility, because this check occurs before the write operation commences. Once the write operation is underway, it is still possible for replication to fail on any number of shard copies but still succeed on the primary. The _shards section of the write operation’s response reveals the number of shard copies on which replication succeeded/failed.
+2. 写入Primary完成后，为何要等待所有Replica响应(或连接失败)后返回
+在更早的ES版本，Primary和Replica之间是允许异步复制的，即写入Primary成功即可返回。但是这种模式下，如果Primary挂掉，就有丢数据的风险，而且从Replica读数据也很难保证能读到最新的数据。所以后来ES就取消异步模式了，改成Primary等Replica返回后再返回给客户端。
+
+因为Primary要等所有Replica返回才能返回给客户端，那么延迟就会受到最慢的Replica的影响，这确实是目前ES架构的一个弊端。之前曾误认为这里是等wait_for_active_shards个副本写入成功即可返回，但是后来读源码发现是等所有Replica返回的。
+
+https://github.com/elastic/elasticsearch/blob/master/docs/reference/docs/data-replication.asciidoc
+... Once all replicas have successfully performed the operation and responded to the primary, the primary acknowledges the successful completion of the request to the client.
+如果Replica写入失败，ES会执行一些重试逻辑等，但最终并不强求一定要在多少个节点写入成功。在返回的结果中，会包含数据在多少个shard中写入成功了，多少个失败了：
+
+{
+    "_shards" : {
+        "total" : 2,
+        "failed" : 0,
+        "successful" : 2
+    }
+}
+3. 如果某个Replica持续写失败，用户是否会经常查到旧数据？
+这个问题是说，假如一个Replica持续写入失败，那么这个Replica上的数据可能落后Primary很多。我们知道ES中Replica也是可以承担读请求的，那么用户是否会读到这个Replica上的旧数据呢？
+
+答案是如果一个Replica写失败了，Primary会将这个信息报告给Master，然后Master会在Meta中更新这个Index的InSyncAllocations配置，将这个Replica从中移除，移除后它就不再承担读请求。在Meta更新到各个Node之前，用户可能还会读到这个Replica的数据，但是更新了Meta之后就不会了。所以这个方案并不是非常的严格，考虑到ES本身就是一个近实时系统，数据写入后需要refresh才可见，所以一般情况下，在短期内读到旧数据应该也是可接受的。
+
+ReplicationOperation.java，写入Replica失败的OnFailure函数：
+
+            public void onFailure(Exception replicaException) {
+                logger.trace(
+                    (org.apache.logging.log4j.util.Supplier<?>) () -> new ParameterizedMessage(
+                        "[{}] failure while performing [{}] on replica {}, request [{}]",
+                        shard.shardId(),
+                        opType,
+                        shard,
+                        replicaRequest),
+                    replicaException);
+                if (TransportActions.isShardNotAvailableException(replicaException)) {
+                    decPendingAndFinishIfNeeded();
+                } else {
+                    RestStatus restStatus = ExceptionsHelper.status(replicaException);
+                    shardReplicaFailures.add(new ReplicationResponse.ShardInfo.Failure(
+                        shard.shardId(), shard.currentNodeId(), replicaException, restStatus, false));
+                    String message = String.format(Locale.ROOT, "failed to perform %s on replica %s", opType, shard);
+                    replicasProxy.failShardIfNeeded(shard, message,
+                            replicaException, ReplicationOperation.this::decPendingAndFinishIfNeeded,
+                            ReplicationOperation.this::onPrimaryDemoted, throwable -> decPendingAndFinishIfNeeded());
+                }
+            }
+
+调用failShardIfNeeded：
+
+        public void failShardIfNeeded(ShardRouting replica, String message, Exception exception,
+                                      Runnable onSuccess, Consumer<Exception> onPrimaryDemoted, Consumer<Exception> onIgnoredFailure) {
+
+            logger.warn((org.apache.logging.log4j.util.Supplier<?>)
+                    () -> new ParameterizedMessage("[{}] {}", replica.shardId(), message), exception);
+            shardStateAction.remoteShardFailed(replica.shardId(), replica.allocationId().getId(), primaryTerm, message, exception,
+                    createListener(onSuccess, onPrimaryDemoted, onIgnoredFailure));
+        }
+
+shardStateAction.remoteShardFailed向Master发送请求，执行该Replica的ShardFailed逻辑，将Shard从InSyncAllocation中移除。
+
+    public void shardFailed(ShardRouting failedShard, UnassignedInfo unassignedInfo) {
+        if (failedShard.active() && unassignedInfo.getReason() != UnassignedInfo.Reason.NODE_LEFT) {
+            removeAllocationId(failedShard);
+
+            if (failedShard.primary()) {
+                Updates updates = changes(failedShard.shardId());
+                if (updates.firstFailedPrimary == null) {
+                    // more than one primary can be failed (because of batching, primary can be failed, replica promoted and then failed...)
+                    updates.firstFailedPrimary = failedShard;
+                }
+            }
+        }
+
+        if (failedShard.active() && failedShard.primary()) {
+            increasePrimaryTerm(failedShard.shardId());
+        }
+    }
+ES中维护InSyncAllocation的做法，是遵循的PacificA算法，下一节会详述。
+
+Primary自身角度
+从Primary自身的角度，一次写入请求会先写入Lucene，然后写入translog。具体流程可以看这篇文章：https://zhuanlan.zhihu.com/p/34669354 。
+
+1. 为什么要写translog？
+translog类似于数据库中的commitlog，或者binlog。只要translog写入成功并flush，那么这笔数据就落盘了，数据安全性有了保证，Segment就可以晚一点落盘。因为translog是append方式写入，写入性能也会比随机写更高。
+
+另一方面是，translog记录了每一笔数据更改，以及数据更改的顺序，所以translog也可以用于数据恢复。数据恢复包含两方面，一方面是节点重启后，从translog中恢复重启前还未落盘的Segment数据，另一方面是用于Primary和新的Replica之间的数据同步，即Replica逐步追上Primary数据的过程。
+
+2. 为什么先写Lucene，再写translog？
+写Lucene是写入内存，写入后在内存中refresh即可读到，写translog是落盘，为了数据持久化以及恢复。正常来讲，分布式系统中是先写commitLog进行数据持久化，再在内存中apply这次更改，那么ES为什么要反其道而行之呢？主要原因大概是写入Lucene时，Lucene会再对数据进行一些检查，有可能出现写入Lucene失败的情况。如果先写translog，那么就要处理写入translog成功但是写入Lucene一直失败的问题，所以ES采用了先写Lucene的方式。
+
+PacificA算法
+PacificA是微软亚洲研究院提出的一种用于日志复制系统的分布式一致性算法，论文发表于2008年(PacificA paper)。ES官方明确提出了其Replication模型基于该算法：
+
+https://github.com/elastic/elasticsearch/blob/master/docs/reference/docs/data-replication.asciidoc
+Elasticsearch’s data replication model is based on the primary-backup model and is described very well in the PacificA paper of Microsoft Research. That model is based on having a single copy from the replication group that acts as the primary shard. The other copies are called replica shards. The primary serves as the main entry point for all indexing operations. It is in charge of validating them and making sure they are correct. Once an index operation has been accepted by the primary, the primary is also responsible for replicating the operation to the other copies.
+网上讲解这个算法的文章较少，因此本文根据PacificA的论文，简单介绍一下这个算法。该算法具有以下几个特点：
+
+强一致性。
+单Primary向多Secondary的数据同步模式。
+使用额外的一致性组件维护Configuration。
+少数派Replica可用时仍可写入。
+一些名词
+首先我们介绍一下算法中的一些名词：
+
+Replica Group：一个互为副本的数据集合叫做Replica Group，每个副本是一个Replica。一个Replica Group中只有一个副本是Primary，其余为Secondary。
+Configuration：一个Replica Group的Configuration描述了这个Replica Group包含哪些副本，其中Primary是谁等。
+Configuration Version：Configuration的版本号，每次Configuration发生变更时加1。
+Configuration Manager: 管理Configuration的全局组件，其保证Configuration数据的一致性。Configuration变更会由某个Replica发起，带着Version发送给Configuration Manager，Configuration Manager会检查Version是否正确，如果不正确则拒绝更改。
+Query & Update：对一个Replica Group的操作分为两种，Query和Update，Query不会改变数据，Update会更改数据。
+Serial Number(sn)：代表每个Update操作执行的顺序，每次Update操作加1，为连续的数字。
+Prepared List：Update操作的准备序列。
+Committed List：Update操作的提交序列，提交序列中的操作一定不会丢失(除非全部副本挂掉)。在同一个Replica上，Committed List一定是Prepared List的前缀。
+Primary Invariant
+在PacificA算法中，要求采用某种错误检测机制来满足以下不变式：
+
+Primary Invariant: 任何时候，当一个Replica认为自己是Primary时，Configuration Manager中维护的Configuration也认为其是当前的Primary。任何时候，最多只有一个Replica认为自己是这个Replica Group的Primary。
+
+Primary Invariant保证了当一个节点认为自己是Primary时，其肯定是当前的Primary。如果不能满足Primary Invariant，那么Query请求就可能发送给Old Primary，读到旧的数据。
+
+怎么保证满足Primary Invariant呢？论文给出的一种方法是通过Lease机制，这也是分布式系统中常用的一种方式。具体来说，Primary会定期获取一个Lease，获取之后认为某段时间内自己肯定是Primary，一旦超过这个时间还未获取到新的Lease就退出Primary状态。只要各个机器的CPU不出现较大的时钟漂移，那么就能够保证Lease机制的有效性。
+
+论文中实现Lease机制的方式是，Primary定期向所有Secondary发送心跳来获取Lease，而不是所有节点都向某个中心化组件获取Lease。这样的好处是分散了压力，不会出现中心化组件故障而导致所有节点失去Lease的情况。
+
+Query
+Query流程比较简单，Query只能发送给Primary，Primary根据最新commit的数据，返回对应的值。由于算法要求满足Primary Invariant，所以Query总是能读到最新commit的数据。
+
+Update
+Update流程如下：
+
+Primary分配一个Serial Number(简称sn)给一个UpdateRequest。
+Primary将这个UpdateRequest加入自己的Prepared List，同时向所有Secondary发送Prepare请求，要求将这个UpdateRequest加入Prepared List。
+当所有Replica都完成了Prepare，即所有Replica的Prepared List中都包含了该Update请求时，Primary开始Commit这个请求，即将这个UpdateRequest放入Committed List中，同时Apply这个Update。需要注意的是，同一个Replica上，Committed List永远是Prepared List的前缀，所以Primary实际上是提高Committed Point，把这个Update Request包含进来。
+返回客户端，Update操作成功。
+当下一次Primary向Secondary发送请求时，会带上Primary当前的Committed Point，此时Secondary才会提高自己的Committed Point。
+
+从Update流程我们可以得出以下不变式：
+
+Commited Invariant
+我们把某一个Secondary的Committed List记为SecondaryCommittedList，其Prepared List记为SecondaryPreparedList，把Primary的Committed List记为PrimaryCommittedList。
+
+Commited Invariant：SecondaryCommittedList一定是PrimaryCommittedList的前缀，PrimaryCommittedList一定是SecondaryPreparedList的前缀。
+
+Reconfiguration：Secondary故障，Primary故障，新加节点
+1. Secondary故障
+当一个Secondary故障时，Primary向Configuration Manager发起Reconfiguration，将故障节点从Replica Group中删除。一旦移除这个Replica，它就不属于这个Replica Group了，所有请求都不会再发给它。
+
+假设某个Primary和Secondary发生了网络分区，但是都可以连接Configuration Manager。这时候Primary会检测到Secondary没有响应了，Secondary也会检测到Primary没有响应。此时两者都会试图发起Reconfiguration，将对方从Replica Group中移除，这里的策略是First Win的原则，谁先到Configuration Manager中更改成功，谁就留在Replica Group里，而另外一个已经不属于Replica Group了，也就无法再更新Configuration了。由于Primary会向Secondary请求一个Lease，在Lease有效期内Secondary不会执行Reconfiguration，而Primary的探测间隔必然是小于Lease时间的，所以我认为这种情况下总是倾向于Primary先进行Reconfiguration，将Secondary剔除。
+
+2. Primary故障
+当一个Primary故障时，Secondary会收不到Primary的心跳，如果超过Lease的时间，那么Secondary就会发起Reconfiguration，将Primary剔除，这里也是First Win的原则，哪个Secondary先成功，就会变成Primary。
+
+当一个Secondary变成Primary后，需要先经过一个叫做Reconciliation的阶段才能提供服务。由于上述的Commited Invariant，所以原先的Primary的Committed List一定是新的Primary的Prepared List的前缀，那么我们将新的Primary的Prepared List中的内容与当前Replica Group中的其他节点对齐，相当于把该节点上未Commit的记录在所有节点上再Commit一次，那么就一定包含之前所有的Commit记录。即以下不变式：
+
+Reconfiguration Invariant：当一个新的Primary在T时刻完成Reconciliation时，那么T时刻之前任何节点(包括原Primary)的Commited List都是新Primary当前Commited List的前缀。
+
+Reconfiguration Invariant表明了已经Commit的数据在Reconfiguration过程中不会丢。
+
+3. 新加节点
+新加的节点需要先成为Secondary Candidate，这时候Primary就开始向其发送Prepare请求，此时这个节点还会追之前未同步过来的记录，一旦追平，就申请成为一个Secondary，然后Primary向Configuration Manager发起配置变更，将这个节点加入Replica Group。
+
+还有一种情况时，如果一个节点曾经在Replica Group中，由于临时发生故障被移除，现在需要重新加回来。此时这个节点上的Commited List中的数据肯定是已经被Commit的了，但是Prepared List中的数据未必被Commit，所以应该将未Commit的数据移除，从Committed Point开始向Primary请求数据。
+
+算法总结
+PacificA是一个读写都满足强一致性的算法，它把数据的一致性与配置(Configuration)的一致性分开，使用额外的一致性组件(Configuration Manager)维护配置的一致性，在数据的可用副本数少于半数时，仍可以写入新数据并保证强一致性。
+
+ES在设计上参考了PacificA算法，其通过Master维护Index的Meta，类似于论文中的Configuration Manager维护Configuration。其IndexMeta中的InSyncAllocationIds代表了当前可用的Shard，类似于论文中维护Replica Group。下一节我们会介绍ES中的SequenceNumber和Checkpoint，这两个类似于PacificA算法中的Serial Number和Committed Point，在这一节之后，会再有一节来比较ES的实现与PacificA的异同。
+
+SequenceNumber、Checkpoint与故障恢复
+上面介绍了ES的一致性算法模型PacificA，该算法很重要的一点是每个Update操作都会有一个对应的Serial Number，表示执行的顺序。在之前的ES版本中，每个写入操作并没有类似Serial Number的东西，所以很多事情做不了。在15年的时候，ES官方开始规划给每个写操作加入SequenceNumber，并设想了很多应用场景。具体信息可以参考以下两个链接：
+
+Add Sequence Numbers to write operations #10708
+
+Sequence IDs: Coming Soon to an Elasticsearch Cluster Near You
+
+下面我们简单介绍一下Sequence、Checkpoint是什么，以及其应用场景。
+
+Term和SequenceNumber
+每个写操作都会分配两个值，Term和SequenceNumber。Term在每次Primary变更时都会加1，类似于PacificA论文中的Configuration Version。SequenceNumber在每次操作后加1，类似于PacificA论文中的Serial Number。
+
+由于写请求总是发给Primary，所以Term和SequenceNumber会由Primary分配，在向Replica发送同步请求时，会带上这两个值。
+
+LocalCheckpoint和GlobalCheckpoint
+LocalCheckpoint代表本Shard中所有小于该值的请求都已经处理完毕。
+
+GlobalCheckpoint代表所有小于该值的请求在所有的Replica上都处理完毕。GlobalCheckpoint会由Primary进行维护，每个Replica会向Primary汇报自己的LocalCheckpoint，Primary根据这些信息来提升GlobalCheckpoint。
+
+GlobalCheckpoint是一个全局的安全位置，代表其前面的请求都被所有Replica正确处理了，可以应用在节点故障恢复后的数据回补。另一方面，GlobalCheckpoint也可以用于Translog的GC，因为之前的操作记录可以不保存了。不过ES中Translog的GC策略是按照大小或者时间，好像并没有使用GlobalCheckpoint。
+
+快速故障恢复
+当一个Replica故障时，ES会将其移除，当故障超过一定时间，ES会分配一个新的Replica到新的Node上，此时需要全量同步数据。但是如果之前故障的Replica回来了，就可以只回补故障之后的数据，追平后加回来即可，实现快速故障恢复。实现快速故障恢复的条件有两个，一个是能够保存故障期间所有的操作以及其顺序，另一个是能够知道从哪个点开始同步数据。第一个条件可以通过保存一定时间的Translog实现，第二个条件可以通过Checkpoint实现，所以就能够实现快速的故障恢复。这是SequenceNumber和Checkpoint的第一个重要应用场景。
+
+ES与PacificA的比较
+相同点
+Meta一致性和Data一致性分开处理：PacificA中通过Configuration Manager维护Configuration的一致性，ES中通过Master维护Meta的一致性。
+维护同步中的副本集合：PacificA中维护Replica Group，ES中维护InSyncAllocationIds。
+SequenceNumber：在PacificA和ES中，写操作都具有SequenceNumber，记录操作顺序。
+不同点
+不同点主要体现在ES虽然遵循PacificA，但是目前其实现还有很多地方不满足算法要求，所以不能保证严格的强一致性。主要有以下几点：
+
+Meta一致性：上一篇中分析了ES中Meta一致性的问题，可以看到ES并不能完全保证Meta一致性，因此也必然无法严格保证Data的一致性。
+Prepare阶段：PacificA中有Prepare阶段，保证数据在所有节点Prepare成功后才能Commit，保证Commit的数据不丢，ES中没有这个阶段，数据会直接写入。
+读一致性：ES中所有InSync的Replica都可读，提高了读能力，但是可能读到旧数据。另一方面是即使只能读Primary，ES也需要Lease机制等避免读到Old Primary。因为ES本身是近实时系统，所以读一致性要求可能并不严格。
+小结
+本文分析了ES中数据流的一致性问题，可以看到ES最近几年在这一块有很多进展，但也存在许多问题。本文是Elasticsearch分布式一致性原理剖析的最后一篇文章，该系列文章是对ES的一个调研分析总结，逐步分析了ES中的节点发现、Master选举、Meta一致性、Data一致性等，对能够读完该系列文章的同学说一声感谢，期待与大家的交流。
+
+Reference
+[Index API | Elasticsearch Reference [6.2]](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html)
+[Reading and Writing documents | Elasticsearch Reference [6.2]](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-replication.html)
+PacificA: Replication in Log-Based Distributed Storage Systems
+Add Sequence Numbers to write operations #10708
+Sequence IDs: Coming Soon to an Elasticsearch Cluster Near You
