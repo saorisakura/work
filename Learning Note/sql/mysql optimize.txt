@@ -1,0 +1,308 @@
+MYSQL千万级数据量的优化方法积累
+1、分库分表
+很明显，一个主表（也就是很重要的表，例如用户表）无限制的增长势必严重影响性能，分库与分表是一个很不错的解决途径，也就是性能优化途径，现在的案例是我们有一个1000多万条记录的用户表members,查询起来非常之慢，同事的做法是将其散列到100个表中，分别从members0到members99，然后根据mid分发记录到这些表中，牛逼的代码大概是这样子：
+<?php
+for($i=0;$i< 100; $i++ ){
+     //echo "CREATE TABLE db2.members{$i} LIKE db1.members<br>";
+     echo "INSERT INTO members{$i} SELECT * FROM members WHERE mid0={$i}<br>";
+}
+?>
+ 
+2、不停机修改mysql表结构
+同样还是members表，前期设计的表结构不尽合理，随着数据库不断运行，其冗余数据也是增长巨大，同事使用了下面的方法来处理：
+先创建一个临时表：
+CREATE TABLE members_tmp LIKE members
+然后修改members_tmp的表结构为新结构，接着使用上面那个for循环来导出数据，因为1000万的数据一次性导出是不对的，mid是主键，一个区间一个区间的导，基本是一次导出5万条吧，这里略去了
+接着重命名将新表替换上去：
+RENAME TABLE members TO members_bak,members_tmp TO members;
+就是这样，基本可以做到无损失，无需停机更新表结构，但实际上RENAME期间表是被锁死的，所以选择在线少的时候操作是一个技巧。经过这个操作，使得原先8G多的表，一下子变成了2G多
+ 
+另外还讲到了mysql中float字段类型的时候出现的诡异现象，就是在pma中看到的数字根本不能作为条件来查询
+
+
+3、常用SQL语句优化：
+
+1.       数据库(表)设计合理
+
+我们的表设计要符合3NF   3范式(规范的模式) , 有时我们需要适当的逆范式
+
+2.       sql语句的优化(索引，常用小技巧.)
+
+3.       数据的配置(缓存设大)
+
+4.       适当硬件配置和操作系统 (读写分离.)
+
+数据的3NF
+
+1NF :就是具有原子性，不可分割.(只要使用的是关系性数据库，就自动符合)
+
+2NF: 在满足1NF 的基础上，我们考虑是否满足2NF: 只要表的记录满足唯一性,也是说,你的同一张表，不可能出现完全相同的记录, 一般说我们在 表中设计一个主键即可.
+
+3NF: 在满足2NF 的基础上，我们考虑是否满足3NF：即我们的字段信息可以通过关联的关系，派生即可.(通常我们通过外键来处理)
+
+逆范式: 为什么需呀逆范式:
+
+(相册的功能对应数据库的设计)
+
+适当的逆范式.
+
+ 
+
+sql语句的优化
+
+sql语句有几类
+
+ddl (数据定义语言) [create alter drop]
+
+dml(数据操作语言)[insert delete upate ]
+
+select
+
+dtl(数据事务语句) [commit rollback savepoint]
+
+dcl(数据控制语句) [grant  revoke]
+
+show status命令
+
+该命令可以显示你的mysql数据库的当前状态.我们主要关心的是 “com”开头的指令
+
+show status like ‘Com%’  <=> show session  status like ‘Com%’  //显示当前控制台的情况
+
+show global  status like ‘Com%’ ; //显示数据库从启动到 查询的次数
+
+显示连接数据库次数
+
+show status like  'Connections';
+
+这里我们优化的重点是在 慢查询. (在默认情况下是10 ) mysql5.5.19
+
+ 
+
+显示查看慢查询的情况
+
+show variables like ‘long_query_time’
+
+ 
+
+为了教学，我们搞一个海量表(mysql存储过程)
+
+目的，就是看看怎样处理，在海量表中，查询的速度很快!
+
+select * from emp where empno=123456;
+
+需求：如何在一个项目中，找到慢查询的select , mysql数据库支持把慢查询语句，记录到日志中，程序员分析. (但是注意，默认情况下不启动.)
+
+步骤:
+
+1.       要这样启动mysql
+
+进入到 mysql安装目录
+
+2.  启动 xx>bin\mysqld.exe –slow-query-log   这点注意
+
+测试 ,比如我们把
+
+select * from emp where empno=34678 ；
+
+用了1.5秒，我现在优化.
+
+
+快速体验: 在emp表的 empno建立索引.
+
+alter table emp add primary key(empno);
+
+//删除主键索引
+
+alter table emp drop primary key
+
+然后，再查速度变快.
+
+l         索引的原理
+
+介绍一款非常重要工具explain, 这个分析工具可以对 sql语句进行分析,可以预测你的sql执行的效率.
+
+他的基本用法是:
+
+explain sql语句\G
+
+//根据返回的信息，我们可知,该sql语句是否使用索引，从多少记录中取出,可以看到排序的方式.
+
+
+l         在什么列上添加索引比较合适
+
+ 
+
+①     在经常查询的列上加索引.
+
+②     列的数据，内容就只有少数几个值,不太适合加索引.
+
+③     内容频繁变化，不合适加索引
+
+ 
+
+l         索引的种类
+
+①     主键索引 (把某列设为主键，则就是主键索引)
+
+②     唯一索引(unique) （即该列具有唯一性，同时又是索引）
+
+③     index （普通索引）
+
+④     全文索引(FULLTEXT)
+
+select * from article where content like ‘%李连杰%’;
+
+hello, i am a boy
+
+l       你好，我是一个男孩  =>中文 sphinx
+
+ 
+
+⑤     复合索引(多列和在一起)
+
+create index myind on 表名 (列1,列2);
+
+ 
+
+l         如何创建索引
+
+如果创建unique / 普通/fulltext 索引
+
+1. create [unique|FULLTEXT] index 索引名 on 表名 (列名...)
+
+2. alter table 表名 add index 索引名 (列名...)
+
+//如果要添加主键索引
+
+alter table 表名 add primary key (列...)
+
+ 
+
+删除索引
+
+1.       drop index 索引名 on 表名
+
+2.       alter table 表名 drop index index_name;
+
+3.       alter table 表名 drop primary key
+
+显示索引
+
+       show index(es) from 表名
+
+       show keys from 表名
+
+       desc 表名
+
+ 
+
+如何查询某表的索引
+
+show indexes from 表名
+
+
+l         使用索引的注意事项
+
+查询要使用索引最重要的条件是查询条件中需要使用索引。
+
+下列几种情况下有可能使用到索引：
+1，对于创建的多列索引，只要查询条件使用了最左边的列，索引一般就会被使用。
+2，对于使用like的查询，查询如果是  ‘�a’ 不会使用到索引 aaa%’ 会使用到索引。
+
+下列的表将不使用索引：
+1，如果条件中有or，即使其中有条件带索引也不会使用。
+2，对于多列索引，不是使用的第一部分，则不会使用索引。
+3，like查询是以%开头
+4，如果列类型是字符串，那一定要在条件中将数据使用引号引用起来。否则不使用索引。
+5，如果mysql估计使用全表扫描要比使用索引快，则不使用索引。
+
+l         如何检测你的索引是否有效
+
+ 
+
+结论: Handler_read_key 越大越少
+
+Handler_read_rnd_next 越小越好
+
+fdisk
+
+find
+
+
+l         MyISAM 和 Innodb区别是什么
+
+    MyISAM 不支持外键, Innodb支持
+    MyISAM 不支持事务,不支持外键.
+    对数据信息的存储处理方式不同.（如果存储引擎是MyISAM的，则创建一张表，对于三个文件..,如果是Innodb则只有一张文件 *.frm,数据存放到ibdata1）
+
+ 
+
+对于 MyISAM 数据库，需要定时清理
+
+optimize table 表名
+
+ 
+
+l         常见的sql优化手法
+
+1.       使用order by null  禁用排序
+
+比如 select * from dept group by ename order by null
+
+2.       在精度要求高的应用中，建议使用定点数(decimal)来存储数值，以保证结果的准确性
+
+3.  如果字段是字符类型的索引，用作条件查询时一定要加单引号，不然索引无效。
+
+4.  主键索引如果没用到，再查询for update这种情况，会造成表锁定。容易造成卡死。
+
+1000000.32 万
+
+create table sal(t1 float(10,2));
+
+create table sal2(t1 decimal(10,2));
+
+ 
+
+问?在php中 ,int 如果是一个有符号数，最大值. int- 4*8=32   2 31 -1
+
+l         表的水平划分
+
+ 
+
+l         垂直分割表
+
+如果你的数据库的存储引擎是MyISAM的，则当创建一个表，后三个文件. *.frm 记录表结构. *.myd 数据 *.myi 这个是索引.
+
+mysql5.5.19的版本，他的数据库文件，默认放在 （看 my.ini文件中的配置.）
+
+l         读写分离
+
+
+MySQL 对于大表（千万级），要怎么优化呢?
+
+提问：如何设计或优化千万级别的大表？此外无其他信息，个人觉得这个话题有点范，就只好简单说下该如何做，对于一个存储设计，必须考虑业务特点，收集的信息如下：
+1.数据的容量：1-3年内会大概多少条数据，每条数据大概多少字节； 
+
+2.数据项：是否有大字段，那些字段的值是否经常被更新； 
+3.数据查询SQL条件：哪些数据项的列名称经常出现在WHERE、GROUP BY、ORDER BY子句中等； 
+4.数据更新类SQL条件：有多少列经常出现UPDATE或DELETE 的WHERE子句中； 
+5.SQL量的统计比，如：SELECT：UPDATE+DELETE：INSERT=多少？ 
+
+6.预计大表及相关联的SQL，每天总的执行量在何数量级？ 
+7.表中的数据：更新为主的业务 还是 查询为主的业务 
+8.打算采用什么数据库物理服务器，以及数据库服务器架构？ 
+9.并发如何？ 
+10.存储引擎选择InnoDB还是MyISAM？ 
+
+大致明白以上10个问题，至于如何设计此类的大表，应该什么都清楚了！ 
+
+至于优化若是指创建好的表，不能变动表结构的话，那建议InnoDB引擎，多利用点内存，减轻磁盘IO负载，因为IO往往是数据库服务器的瓶颈 
+
+另外对优化索引结构去解决性能问题的话，建议优先考虑修改类SQL语句，使他们更快些，不得已只靠索引组织结构的方式，当然此话前提是， 
+索引已经创建的非常好，若是读为主，可以考虑打开query_cache， 
+
+以及调整一些参数值：sort_buffer_size,read_buffer_size,read_rnd_buffer_size,join_buffer_size 
+
+更多信息参见：
+MySQL数据库服务器端核心参数详解和推荐配置
+http://www.mysqlops.com/2011/10/26/mysql-variables-one.html
