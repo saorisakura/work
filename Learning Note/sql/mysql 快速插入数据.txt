@@ -1,0 +1,294 @@
+鉴黄
+MySQL相关
+	如何快速插入数据
+		mysql快速保存插入大量数据一些方法总结
+		说明：
+		这几天尝试了使用不同的存储引擎大量插入MySQL表数据，主要试验了MyISAM存储引擎和InnoDB。下面是实验过程：
+		实现：
+		一、InnoDB存储引擎。
+		创建数据库和表
+		 代码如下 	
+		1	> CREATE DATABASE ecommerce;
+		> CREATE TABLE employees (     
+			id INT NOT NULL,     
+			fname VARCHAR(30),     
+			lname VARCHAR(30),  
+			birth TIMESTAMP,    
+			hired DATE NOT NULL DEFAULT '1970-01-01',     
+			separated DATE NOT NULL DEFAULT '9999-12-31',     
+			job_code INT NOT NULL,     
+			store_id INT NOT NULL    
+		)      
+		partition BY RANGE (store_id) (     
+			partition p0 VALUES LESS THAN (10000),     
+			partition p1 VALUES LESS THAN (50000),     
+			partition p2 VALUES LESS THAN (100000),     
+			partition p3 VALUES LESS THAN (150000),
+			Partition p4 VALUES LESS THAN MAXVALUE     
+		); 
+		创建存储过程
+		 代码如下 	
+		1	> use ecommerce;
+		> delimiter //   delimiter命令来把语句定界符从;变为//，不然后面的存储过程会出错。到declare var int;mysql就停止
+		> CREATE PROCEDURE BatchInsert(IN init INT, IN loop_time INT)
+		BEGIN
+		 DECLARE Var INT;
+		 DECLARE ID INT;
+		 SET Var = 0;
+		 SET ID = init;
+			  WHILE Var < loop_time DO
+			  insert into employees(id,fname,lname,birth,hired,separated,job_code,store_id) values(ID,CONCAT('chen',ID),CONCAT('haixiang',ID),Now(),Now(),Now(),1,ID);
+			  SET ID = ID + 1;
+			  SET Var = Var + 1;
+			  END WHILE;
+		END;
+		//
+		> delimiter ; 
+		  把定界符变回;
+		调用存储过程插入数据
+		 代码如下 	
+		1	> CALL BatchInsert(30036,200000);
+		用时：3h 37min 8sec
+		二、MyISAM存储引擎
+		创建表
+		 代码如下 	
+		1	> use ecommerce;
+		> CREATE TABLE ecommerce.customer (
+			id INT NOT NULL,
+			email VARCHAR(64) NOT NULL,
+			name VARCHAR(32) NOT NULL,
+			password VARCHAR(32) NOT NULL,
+			phone VARCHAR(13),
+			birth DATE,
+			sex INT(1),
+			avatar BLOB,
+			address VARCHAR(64),
+			regtime DATETIME,
+			lastip VARCHAR(15),
+			modifytime TIMESTAMP NOT NULL,
+			PRIMARY KEY (id)
+		)ENGINE = MyISAM ROW_FORMAT = DEFAULT 
+		partition BY RANGE (id) (     
+			partition p0 VALUES LESS THAN (100000),     
+			partition p1 VALUES LESS THAN (500000),     
+			partition p2 VALUES LESS THAN (1000000),     
+			partition p3 VALUES LESS THAN (1500000),
+			partition p4 VALUES LESS THAN (2000000),
+			Partition p5 VALUES LESS THAN MAXVALUE     
+		);
+		
+CREATE TABLE ecommerce.goods (
+	id INT NOT NULL,
+	name VARCHAR(32) NOT NULL,
+	avatar BLOB,
+	address VARCHAR(64),
+	regtime DATETIME,
+	lastip VARCHAR(15),
+	modifytime TIMESTAMP NOT NULL,
+	PRIMARY KEY (id)
+)ENGINE = MyISAM ROW_FORMAT = DEFAULT 
+partition BY RANGE (id) (     
+	partition p0 VALUES LESS THAN (100000),     
+	partition p1 VALUES LESS THAN (500000),     
+	partition p2 VALUES LESS THAN (1000000),     
+	partition p3 VALUES LESS THAN (1500000),
+	partition p4 VALUES LESS THAN (2000000),
+	Partition p5 VALUES LESS THAN MAXVALUE     
+);
+		创建存储过程
+		 代码如下 	
+		1	> use ecommerce;
+		> DROP PROCEDURE IF EXISTS ecommerce.BatchInsertCustomer;
+		> delimiter //
+		> CREATE PROCEDURE BatchInsertCustomer(IN start INT,IN loop_time INT)
+		BEGIN
+		 DECLARE Var INT;
+		 DECLARE ID INT;
+		 SET Var = 0;
+		 SET ID= start;
+			  WHILE Var < loop_time 
+				DO
+			  insert into customer(ID,email,name,password,phone,birth,sex,avatar,address,regtime,lastip,modifytime) 
+		  values(ID,CONCAT(ID,'@sina.com'),CONCAT('name_',rand(ID)*10000 mod 200),123456,13800000000,adddate('1995-01-01',(rand(ID)*36520) mod 3652),Var%2,'http:///it/u=2267714161,58787848&fm=52&gp=0.jpg','北京市海淀区',adddate('1995-01-01',(rand(ID)*36520) mod 3652),'8.8.8.8',adddate('1995-01-01',(rand(ID)*36520) mod 3652));
+			  SET Var = Var + 1;
+			  SET ID= ID + 1;
+			  END WHILE;
+		END;
+		//
+		> CREATE PROCEDURE BatchInsertGoods(IN start INT,IN loop_time INT)
+		BEGIN
+		 DECLARE Var INT;
+		 DECLARE ID INT;
+		 SET Var = 0;
+		 SET ID= start;
+		  WHILE Var < loop_time 
+			DO
+			insert into customer(ID,name,avatar,address,regtime,lastip,modifytime)   values(ID,CONCAT('name_',rand(ID)*10000 mod 200),'http:///it/u=2267714161,58787848&fm=52&gp=0.jpg','北京市海淀区',adddate('1995-01-01',(rand(ID)*36520) mod 3652),'8.8.8.8',adddate('1995-01-01',(rand(ID)*36520) mod 3652));
+			SET Var = Var + 1;
+			SET ID= ID + 1;
+		  END WHILE;
+		END;
+		//
+		> delimiter ; 
+		调用存储过程插入数据
+		 代码如下 	
+		1	> ALTER  TABLE  customer  DISABLE  KEYS; 
+		> CALL BatchInsertCustomer(1,2000000);
+		> ALTER  TABLE  customer  ENABLE  KEYS;
+		用时：8min 50sec
+		通过以上对比发现对于插入大量数据时可以使用MyISAM存储引擎，如果再需要修改MySQL存储引擎可以使用命令：
+		ALTER TABLE t ENGINE = MYISAM;
+		另一文件
+		很久很久以前，为了写某个程序，必须在MySQL数据库中插入大量的数据，一共有85766121条。近一亿条的数据，怎么才能快速插入到MySQL里呢？
+		当时的做法是用INSERT INTO一条一条地插入，Navicat估算需要十几个小时的时间才能完成，就放弃了。最近几天学习了一下MySQL，提高数据插入效率的基本原则如下：
+		» 批量插入数据的效率比单数据行插入的效率高
+		» 插入无索引的数据表比插入有索引的数据表快一些
+		» 较短的SQL语句的数据插入比较长的语句快
+		这些因素有些看上去是微不足道的，但是如果插入大量的数据，即使很小的影响效率的因素也会形成不同的结果。根据上面讨论的规则，我们可以就如何快速地加载数据得出几个实用的结论。
+		» 使用LOAD DATA语句要比INSERT语句效率高，因为它批量插入数据行。服务器只需要对一个语句（而不是多个语句）进行语法分析和解释。索引只有在所有数据行处理完之后才需要刷新，而不是每处理一行都刷新。
+		» 如果你只能使用INSERT语句，那就要使用将多个数据行在一个语句中给出的格式：
+		INSERT INTO table_name VALUES(...),(...),...这将会减少你需要的语句总数，最大程度地减少了索引刷新的次数。
+		根据上面的结论，今天又对相同的数据和数据表进行了测试，发现用LOAD DATA速度快了不只是一点点，竟然只用了十多分钟！所以在MySQL需要快速插入大量数据时，LOAD DATA是你不二的选择。
+		顺便说一下，在默认情况下，LOAD DATA语句将假设各数据列的值以制表符（t）分阁，各数据行以换行符（n）分隔，数据值的排列顺序与各数据列在数据表里的先后顺序一致。但你完全可以用它来读取其他格式的数据文件或者按其他顺序来读取各数据列的值，有关细节请参照MySQL文档。
+		总结
+		1. 对于Myisam类型的表，可以通过以下方式快速的导入大量的数据。
+		ALTER  TABLE  tblname  DISABLE  KEYS;
+		loading  the  data
+		 ALTER  TABLE  tblname  ENABLE  KEYS;
+		这两个命令用来打开或者关闭Myisam表非唯一索引的更新。在导入大量的数据到一 个非空的Myisam表时，通过设置这两个命令，可以提高导入的效率。对于导入大量 数据到一个空的Myisam表，默认就是先导入数据然后才创建索引的，所以不用进行 设置。
+		2. 而对于Innodb类型的表，这种方式并不能提高导入数据的效率。对于Innodb类型 的表，我们有以下几种方式可以提高导入的效率：
+		a. 因为Innodb类型的表是按照主键的顺序保存的，所以将导入的数据按照主键的顺 序排列，可以有效的提高导入数据的效率。如果Innodb表没有主键，那么系统会默认创建一个内部列作为主键，所以如果可以给表创建一个主键，将可以利用这个优势提高 导入数据的效率。
+		b. 在导入数据前执行SET  UNIQUE_CHECKS=0，关闭唯一性校验，在导入结束后执行SET  UNIQUE_CHECKS=1，恢复唯一性校验，可以提高导入的效率。
+		c. 如果应用使用自动提交的方式，建议在导入前执行SET  AUTOCOMMIT=0，关闭自动 提交，导入结束后再执行
+		相关文章
+			MySql中特殊运算符的使用方法总结
+			09-28
+			mysql 5.7.18 Installer安装下载图文教程
+			09-26
+			mysql 8.0.11 MSI版安装配置图文教程
+			09-26
+			MySQL 数据备份与还原的示例代码
+			09-22
+			Windows10下mysql 5.7.21 Installer版安装图文教程
+			09-22
+			MySql总弹出mySqlInstallerConsole窗口的解决方法
+			09-20
+	MySql查询优化 百万级记录查询优化 limit分页查询
+
+		效率分析关键词：explain + SQL语句
+
+
+		一，最常见MYSQL最基本的分页方式limit：
+
+		select * from `table` order by id desc limit 0, 20
+
+		在中小数据量的情况下，这样的SQL足够用了，唯一需要注意的问题就是确保使用了索引。随着数据量的增加，页数会越来越多,在数据慢慢增长的过程中，可能就会出现limit 10000,20这样的情况，limit 10000,20的意思扫描满足条件的10020行，扔掉前面的10000行，返回最后的20行，问题就在这里，如果是limit 100000,100，需要扫描100100行，在一个高并发的应用里，每次查询需要扫描超过10W行，性能肯定大打折扣。
+
+		这种方式有几个不足：较大的偏移(OFFSET)会增加结果集，小比例的低效分页足够产生磁盘I/O瓶颈，需要扫描的行多。
+
+		简单的解决方法:不显示记录总数，没用户在乎这个数字;不让用户访问页数比较大的记录，重定向他们;避免count(*) ,不显示总数，让用户通过“下一页”来翻页 ,缓存总数;单独统计总数，在插入和删除时递增/递减
+
+		二，第二种就是分表，计算HASH值。
+
+		Mysql分表准则
+		在大量使用mysql时，数据量大、高访问时，为了提高性能需要分表处理，简介下mysql分表的标准，后续会继续补充
+
+		环境：
+		业务类型：OLTP
+		硬件：
+		cpu：8cpu 2.4GHZ
+		mem：48G
+		磁盘：raid5 6×sas
+
+		什么样的表需要拆分：根据表的体积、表的行数、访问特点来衡量表是否需要拆分
+
+		一.拆分标准是：
+		  1.表的体积大于2G或行数大于1000w,以单表主键等简单形式访问数据，这个时候需要分表
+		  2.表的体积大于2G或行数大于500W,以两表jion，小范围查询（结果集小100行）等形式访问数据，这个时候需要分表
+		  3.表的体积大于2G或行数大于200w,以多表join，范围查询，order by，group by，高频率等复杂形式访问数据，尤其DML，这个时候需要分表
+		  4.表的字段中含有text等大字段的、varchar(500)以上的、很少使用的字符型字段拆分成父子表,这种分表可以和以上联合使用
+		  5.数据有时间过期特性的，需要做数据分表归档处理
+
+		只要达到上面任何一个标准，都需要做分表处理
+
+		二.分表方法：
+		  1.冷热数据分表：适用小访问量，冷数据很少使用
+			 1.1 单表字段很多，把频繁使用整型字段的和非频繁使用的字符型字段或大字段拆到两个表中
+			 1.2 表数据具有时间过期性，把过期数据拆分到历史表里或者按时间梯度分表
+		  2.横向分表：适用大访问量
+			 2.1 如哈希等分切表或其他基于对某数字取余的切表，优点是方便数据分布，缺点是无法再扩展
+			 2.2 按主键id递增分表，比如每100w个id一个分表，优点是方便扩展，缺点是压力不均
+			 2.3 按日期分表，比如每天、每月、每年一个分表，优点是方便扩展，缺点是压力不均
+
+		说明
+
+		1.表的体积如何预估
+
+		CREATE TABLE `td_skate` (
+			  `valid` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '值id',
+			  `propertyid` BIGINT(20) NULL DEFAULT NULL COMMENT '属性id',
+			  `text` VARCHAR(400) NULL DEFAULT NULL,
+			  `entext` VARCHAR(400) NULL DEFAULT NULL,
+			  `picurl` VARCHAR(200) NULL DEFAULT NULL COMMENT '属性值说明图片，保存图片相对地址',
+			  `isother` BIGINT(20) NULL DEFAULT NULL COMMENT '是否是other值， 0  否  1  是',
+			  `createtime` DATETIME NULL DEFAULT NULL COMMENT '创建时间',
+			  `createuser` BIGINT(20) NULL DEFAULT NULL COMMENT '创建用户',
+			  `lastmodify` DATETIME NULL DEFAULT NULL COMMENT '最后修改时间',
+			  `updatetimeuser` BIGINT(20) NULL DEFAULT NULL COMMENT '最后修改人',
+			  `deletetime` DATETIME NULL DEFAULT NULL COMMENT '删除时间',
+			  `deleteuser` BIGINT(20) NULL DEFAULT NULL COMMENT '删除人',
+			  `description` VARCHAR(4000) NULL DEFAULT NULL COMMENT '产品描述',
+			  `isdelete` INT(11) NULL DEFAULT '0',
+			  PRIMARY KEY (`valid`),
+			  INDEX `fk_td_prodline_attrval_td_prodline_attr` (`propertyid`),
+			  CONSTRAINT `fk_td_prodline_attrval_td_prodline_attr` FOREIGN KEY (`propertyid`) REFERENCES `td_prodline_attr` (`propertyid`)
+		)
+		COLLATE='utf8_general_ci'
+		ENGINE=InnoDB
+		AUTO_INCREMENT=2491650;
+
+
+		把表的所有字段占用字节数相加，再乘以预估行数就是表的体积，比如上面的表，预估有1000W，那他的体积是
+		（8+8+400+400+200+8+8+8+8+8+8+8+4000+8）×10000000=50.8G，可以看到这个表设计非常不合理，可以修改如下：
+		int替代bigint
+		timestamp替代datetime
+		状态位isdelete用tinyint替代
+		根据业务特点看能否把varchar(4000)放到一个字表中
+		优化后表大小：（4+4+400+400+200+4+4+4+4+4+4+4+1）×10000000=10.37G，如果要进一步提升性能，需要删除外键，分表，保证单表在2G以下。
+		如果需要查看description信息，通过主键关联查看子表，只会扫描有效的子表信息， 性能将会提升非常大。  
+
+
+		2.表的行数预估就很简单，根据业务特点，访问量等预估.
+
+
+		三，第三种是偏移：
+
+
+		SELECT * FROM `table` WHERE id <= (SELECT id FROM `table` ORDER BY id desc LIMIT ".($page-1)*$pagesize.", 1) ORDER BY id desc LIMIT $pagesize
+
+		或者
+
+		select * FROM `table` AS t1 JOIN (SELECT id FROM `table` ORDER BY id desc LIMIT 900,1) AS t2 WHERE t1.id<=t2.id order by t1.id desc limit 5
+
+		原理就是记录住当前页id的最大值和最小值，计算跳转页面和当前页相对偏移，由于页面相近，这个偏移量不会很大，这样的话m值相对较小，大大减少扫 描的行数。其实传统的limit m,n，相对的偏移一直是第一页，这样的话越翻到后面，效率越差，而上面给出的方法就没有这样的问题。
+		比如还是SELECT * FROM `table` ORDER BY id DESC，按id降序分页，每页20条，当前是第10页，当前页条目id最大的是9527，最小的是9500，如果我们只提供”上一页”、”下一页”这样 的跳转（不提供到第N页的跳转），那么在处理”上一页”的时候SQL语句可以是：
+
+		SELECT * FROM `table` WHERE id > 9527 ORDER BY id  ASC LIMIT 20;
+
+		处理”下一页”的时候SQL语句可以是：
+
+		SELECT * FROM `table` WHERE id < 9500 ORDER BY id  DESC LIMIT 20;
+
+		不管翻多少页，每次查询只扫描20行。
+		缺点是只能提供”上一页”、”下一页”的链接形式，但是我一般来说非常喜欢”<上一页 1 2 3 4 5 6 7 8 9 下一页>”这样的链接方式，怎么办呢？
+		如果LIMIT m,n不可避免的话，要优化效率，只有尽可能的让m小一下，我们扩展前面做法，还是SELECT * FROM `table` ORDER BY id DESC，按id降序分页，每页20条，当前是第10页，当前页条目id最大的是9527，最小的是9500，比如要跳到第8页，我看的SQL语句可以这 样写：
+
+		SELECT * FROM `table` WHERE id > 9527 ORDER BY id ASC LIMIT 20,20;
+
+		跳转到第13页：
+
+		SELECT * FROM `table` WHERE id < 9500 ORDER BY id DESC LIMIT 40,20;
+
+		注意SQL语句里面的ASC和DESC，如果是ASC取出来的结果，显示的时候记得倒置一下。
+		整体来说在面对百万级数据的时候如果使用上面第三种方法来优化，系统性能上是能够得到很好的提升，在遇到复杂的查询时也尽量简化，减少运算量。 同时也尽量多的使用内存缓存，有条件的可以考虑分表、分库、阵列之类的大型解决方案了。
+	如何按日期、月分表
