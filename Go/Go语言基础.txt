@@ -3204,6 +3204,78 @@ func main() {
 }
 
 
+Go语言匿名函数
+匿名函数
+
+匿名函数是指不需要定义函数名的一种函数实现方式。1958年LISP首先采用匿名函数。
+
+在Go里面，函数可以像普通变量一样被传递或使用，Go语言支持随时在代码里定义匿名函数。
+
+匿名函数由一个不带函数名的函数声明和函数体组成。匿名函数的优越性在于可以直接使用函数内的变量，不必声明。
+
+匿名函数定义
+
+第一种，先声明一个函数类型的变量，然后定义一个匿名函数
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var sum func(int, int) int
+    sum = func(x, y int) int {
+        return x + y
+    }
+    fmt.Println(sum(1, 2))
+}
+第二种，使用更简略的 ":=" 方式定义一个匿名函数
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    product := func(x, y int) int {
+        return x * y
+    }
+    fmt.Println(product(3, 3))
+}
+匿名函数应用
+
+1、匿名函数的变量为函数地址
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    sum := func(x, y int) int {
+        return x + y
+    }
+    fmt.Printf("sum -> %v  sum(1,3) = %v\n", sum, sum(1, 3))
+}
+2、直接创建匿名函数执行并返回结果
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    product := func(x, y int) int {
+        return x * y
+    }(3, 3)
+    fmt.Printf("product = %d\n", product)
+}
+
+
 Go语言闭包函数
 基本概念
 
