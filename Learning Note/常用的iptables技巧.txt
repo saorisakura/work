@@ -294,11 +294,6 @@ watch --interval=5 'iptables -nvL | grep -v "0     0"'
 以下是FWLogwatch的示例输出：
 
 
-
-
-
-
-
 不仅仅是ACCEPT和DROP
 
 我们已经涵盖了iptables的许多方面，从确保在使用iptables监视iptables以可视化iptables防火墙的活动时确保你没有锁定自己。这些将让你开始实现更多的iptables提示和技巧。
@@ -308,3 +303,182 @@ watch --interval=5 'iptables -nvL | grep -v "0     0"'
 原文链接：
 
 https://opensource.com/article/18/10/iptables-tips-and-tricks
+
+
+在前面的文章中我们已经学习了如何编写一些简单的防火墙规则了，但是这些规则只是临时生效的，当防火墙关闭或者服务器关机，重启之后所有的规则将会清空。因此我需要将编写好的防火墙规则保存下来，以便在防火墙关闭或重新启动系统后，防火墙规则还可以使用，而不需要再次编写。
+
+iptables规则的导出、导人
+
+防火墙规则的批量备份，还原需要用到两个命令iptables-save、iptables-restore，分别用来保存和恢复。
+
+1、备份iptables规则
+
+iptables-save命令用来批量导出iptables防火墙规则，直接执行iptables-save时，将显示出当前启用的所有规则，按照raw、mangle、nat、filter表的顺序依次列出；若只希望显示出某一个表，应添加“-t表名”作为命令选项，然后结合重定向输入“>”将输出内容重定向到某个文件中。
+
+列如：备份所有表的规则，操作如下：
+
+[root@localhost /]#iptables-save > /opt/iprules_all.txt
+
+或者
+
+[root@localhost /]#service iptables save
+
+后者默认将所有规则保存到“/etc/sysconfig/iptables”文件中。
+
+2、恢复iptables规则
+
+iptables-retore命令用来批量导入Linux防火墙规则，如果已经有使用iptable-save命令导出的备份文件，则恢复规则的过程也就是一瞬间的事。与iptables-save命令相对的，iptables-restore命令应结合重定向输入来指定备份文件的位置。
+
+列如：将上所备份的规则恢复到iptables中，操作如下：
+
+[root@localhost /]#iptables-restore < /opt/iprules_all.txt
+
+或者
+
+[root@localhost /]#service iptables start
+
+后者默认将“/etc/sysconfig/iptables”文件中的内容加载到iptables中，也就是说，如果备份使用的是“service iptables save”那么恢复的时候就应该使用“service iptables start”。
+
+
+
+使用iptables服务
+
+开启或关闭iptables服务使用以下命令
+
+[root@localhost /]#service iptables start //开启iptables服务
+
+[root@localhost /]#service iptables stop  //关闭iptables服务
+
+前者开启iptables服务，默认加载“/etc/sysconfig/iptables”中的规则，后者关闭iptables服务，默认将会清空所有的iptables规则。
+
+
+
+编写防火墙脚本
+
+在生产环境中，我很少会一条一条的去编写iptables规则，最普遍的做法就是，将其写到shell脚本，进行一次性处理。常见的防火墙脚本中，通常包括变量定义、模块加载、/proc调整、规则设置等多个部分，某些简单的防火墙脚本可能只包括规则设置部分。下面我们通过一个“网络型”防火墙脚本实例来了解如何编写防火墙脚本。
+
+[root@loaclhost /]#vim /opt/myipfw.sh
+
+#!/bin/bash
+
+# 1.定义基本变量
+
+INET_IF="eth0"                 //外网接口
+
+INET_IP="218.29.30.31"         //外网接口地址
+
+LAN_IF="eth1"                  //内网接口
+
+LAN_IP="192.168.1.1"           //内网接口地址
+
+LAN_NET="192.168.1.0/24"       //内网网段
+
+LAN_WWW_IP="192.168.1.7"       //网站服务器的内部地址
+
+IPT="/sbin/iptables"           //iptables命令的路径
+
+MOD="/sbin/modprobe"           //modprode命令的路径
+
+CTL="/sbin/sysctl"             //sysctl命令的路径
+
+# 2.加载内核模块
+
+$MOD ip_tables              //iptables基本模块
+
+$MOD ip_conntrack           //连接跟踪模块
+
+$MOD ipt_REJECT             //拒绝操作模块
+
+$MOD ipt_LOG                //日志记录模块
+
+$MOD ipt_iprange            //支持IP范围匹配
+
+$MOD xt_tcpudp              //支持tcp、udp协议
+
+$MOD xt_state               //支持状态匹配
+
+$MOD xt_multiport           //支持多端口匹配
+
+$MOD xt_mac                 //支持MAC地址匹配
+
+$MOD ip_nat_ftp             //支持TFP地址转换
+
+$MOD ip_conntrack_ftp       //支持TFP连接跟踪  
+
+# 3.调整/porc参数
+
+$CTL -w net.ipv4.ip_forward=1                      //打开路由转发功能
+
+$CTL -w net.ipv4.ip_default_ttl=128                //修改ICMP响应超时
+
+$CTL -w net.ipv4.icmp_echo_ignore_all=1            //拒绝响应ICMP请求
+
+
+$CTL -w net.ipv4.icmp_echo_ignore_broadcasts       //拒绝响应ICMP广播
+
+
+$CTL -w net.ipv4.tcp_syncookies=1                  //启用SYN Cookie机制
+
+
+$CTL -w net.ipv4.tcp_syn_retries=3                 //最大SYN请求重试次数
+
+
+$CTL -w net.ipv4.tcp_synack_retries=3              //最大ACK确认重试次数
+
+
+$CTL -w net.ipv4.tcp_fin_timeout=60                //TCP连接等待超时
+
+
+$CTL -w net.ipv4.tcp_max_syn_backlog=3200          //SYN请求的队列长度
+
+# 4.设置具体的防火墙规则
+
+# 4.1删除自定义链、清空已有规则
+
+$IPT -t filter -X       //清空各表中定义的链
+
+$IPT -t nat -X
+
+$IPT -t mangel -X
+
+$IPT -t raw -X
+
+$IPT -t filter -F       //清空各表中已有的规则
+
+$IPT -t nat -F
+
+$IPT -t mangel -F
+
+$IPT -t raw -F
+
+# 4.2定义默认规则
+
+$IPT -P INPUT DROP
+
+$IPT -P FORWARD DROP
+
+$IPT -P OUTPUT ACCETP
+
+# 4.3设置nat表中的各种策略
+
+$IPT -t nat -A POSTROUTING -s $LAN_NAT -o $INET_IF -j SNAT --to-source $INET_IP
+
+$IPT -t nat -A PREROUTING -i $INET_IF -d $INET_IP -p tcp --dport 80 -j DNAT --to-destination $LAN_WWW_IP
+
+# 4.4设置filter表中的各种规则
+
+$IPT -A INPUT -m state ESTABLISHED,RELATED -j ACCEPT
+
+$IPT -A FORWARD -s $LAN_NET -o $INET_IF -p udp --dport 53 -j ACCEPT
+
+$IPT -A FORWARD -s $LAN_NET -o $INET_IF -p tcp -m multiport --dport 20,21,25,80,110,143,443 -j ACCEPT
+
+$IPT -A FORWARD -d $LAN_NET -i $INET_IF -m state ESTABLISHED,RELATED -j ACCEPT
+
+$IPT -A FORWARD -d $LAN_WWW_IP -p tcp --dport 80 -j ACCEPT
+
+$IPT -A FORWARD -d $LAN_WWW_IP -p tcp --sport 80 -j ACCEPT
+
+
+
+上述防火墙脚本实例中，仅列出其中最基础的一些规则。更多具体的规则设置取决于实际的应用需求，还有待大家在生产环境中慢慢去体会，逐渐融会贯通。
