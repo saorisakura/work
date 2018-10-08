@@ -1,0 +1,310 @@
+16个系统管理员常用的iptables技巧
+
+
+iptables提供强大的功能来控制进出系统的流量。
+
+
+
+现代Linux内核附带了一个名为Netfilter的包过滤框架。Netfilter可以允许，删除和修改进出系统的流量。iptables用户空间命令行工具以此功能为基础，提供强大的防火墙，可以通过添加规则来配置防火墙以形成防火墙策略。iptables因其丰富的功能和巴洛克式命令语法而非常令人生畏。让我们探讨其中的一些为系统管理员可能遇到许多情况的一套iptables技巧和窍门。
+
+
+
+避免锁定自己
+
+场景：你将对公司主服务器上的iptables策略规则进行更改。你想避免锁定自己 ，可能还有其他所有人。（这会花费时间和金钱，导致半夜手机响起。）
+
+
+
+提示＃1：在开始处理iptables配置之前先备份它。
+
+使用以下命令备份配置：
+
+
+
+/sbin/iptables-save > /root/iptables-works
+
+
+
+提示＃2：更好的方法是，在文件名中包含一个时间戳。
+
+使用以下命令添加时间戳：
+
+
+
+/sbin/iptables-save > /root/iptables-works-`date +%F`
+
+
+
+你得到一个名称如下的文件：
+
+
+
+/root/iptables-works-2018-09-11
+
+
+
+如果你做了阻止系统工作的事情，你可以快速恢复它：
+
+
+
+提示＃3：每次创建iptables策略的备份副本时，都要在名称中创建一个指向“latest”的文件的链接。
+
+
+
+ln –s /root/iptables-works-`date +%F` /root/iptables-works-latest
+
+
+
+提示＃4：将特定规则放在底部的策略和通用规则的顶部。
+
+避免在策略规则的顶部使用这样的通用规则：
+
+
+
+iptables -A INPUT -p tcp --dport 22 -j DROP
+
+
+
+在规则中指定的条件越多，锁定自己的机会就越少。而不是上面的非常通用的规则，使用这样的内容：
+
+
+
+iptables -A INPUT -p tcp --dport 22 –s 10.0.0.0/8 –d 192.168.100.101 -j DROP
+
+
+
+此规则将（-A）附加到INPUT链中，规则将DROP任何源自TCP（-p tcp）端口22（ - 端口22）上的CIDR块10.0.0.0/8的数据包发往IP地址192.168.100.101 （-d 192.168.100.101）。
+
+
+
+有很多方法可以更具体。例如，使用-i eth0会将处理限制为服务器中的单个NIC。这样，过滤操作将不会将规则应用于eth1。
+
+
+
+提示＃5：在策略规则顶部将你的IP地址列入白名单。
+
+这是一种不会锁定自己的非常有效的方法。
+
+
+iptables -I INPUT -s <your IP> -j ACCEPT
+
+
+
+需要将此作为其正常工作的第一条规则。 记住，-I将其作为第一条规则插入; -A将其附加到列表的末尾。
+
+
+
+提示＃6：了解并理解当前的所有规则。
+
+首先不犯错误就是成功的一半。如果了解iptables策略背后的内部工作原理，它将使你的生活更轻松。如果必须，绘制流程图。 还要记住：策略的作用和应该做的事情可能是两件不同的事情。
+
+
+
+设置工作站防火墙策略
+
+场景：你希望设置具有限制性防火墙策略的工作站。
+
+
+
+提示＃1：将默认策略设置为DROP。
+
+
+
+# Set a default policy of DROP
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+
+
+提示＃2：允许用户完成工作所需的最少量服务。
+
+iptables规则需要允许工作站通过DHCP获取IP地址，网络掩码和其他重要信息（-p udp --dport 67:68 --sport 67:68）。对于远程管理，规则需要允许入站SSH（--dport 22），出站邮件（--dport 25），DNS（ - export 53），出站ping（-p icmp），网络时间协议（--dport 123 --sport 123），以及出站HTTP（--dport 80）和HTTPS（--dport 443）。
+
+
+
+# Set a default policy of DROP
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+# Accept any related or established connections
+-I INPUT  1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-I OUTPUT 1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Allow all traffic on the loopback interface
+-A INPUT -i lo -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+
+# Allow outbound DHCP request
+-A OUTPUT –o eth0 -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+
+# Allow inbound SSH
+-A INPUT -i eth0 -p tcp -m tcp --dport 22 -m state --state NEW  -j ACCEPT
+
+# Allow outbound email
+-A OUTPUT -i eth0 -p tcp -m tcp --dport 25 -m state --state NEW  -j ACCEPT
+
+# Outbound DNS lookups
+-A OUTPUT -o eth0 -p udp -m udp --dport 53 -j ACCEPT
+
+# Outbound PING requests
+-A OUTPUT –o eth0 -p icmp -j ACCEPT
+
+# Outbound Network Time Protocol (NTP) requests
+-A OUTPUT –o eth0 -p udp --dport 123 --sport 123 -j ACCEPT
+
+# Outbound HTTP
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 80 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 443 -m state --state NEW -j ACCEPT
+
+COMMIT
+
+
+
+限制IP地址范围
+
+场景：贵公司的首席执行官认为员工在Facebook上花费了太多时间而没有完成任何工作。 首席执行官告诉CIO要对员工在Facebook上浪费时间做些什么。 首席信息官告诉CISO要对员工在Facebook上浪费时间做些什么。 最后，你被告知员工在Facebook上浪费了太多时间，你必须对此做些什么。 你决定阻止对Facebook的所有访问。首先，使用host和whois命令查找Facebook的IP地址。
+
+
+
+host -t a www.facebook.com
+www.facebook.com is an alias for star.c10r.facebook.com.
+star.c10r.facebook.com has address 31.13.65.17
+whois 31.13.65.17 | grep inetnum
+inetnum:        31.13.64.0 - 31.13.127.255
+
+
+
+然后使用CIDR到IPv4转换页面将该范围转换为CIDR表示法。 你得到31.13.64.0/18。 要阻止对www.facebook.com的传出访问，请输入：
+
+
+
+iptables -A OUTPUT -p tcp -i eth0 –o eth1 –d 31.13.64.0/18 -j DROP
+
+
+
+按时间设置规则
+
+场景：拒绝公司员工访问Facebook的强烈反对导致首席执行官放松一点（这和他的行政助理提醒他，她让HIS Facebook页面保持最新状态）。首席执行官决定仅在午餐时间（中午12点至下午1点）允许访问Facebook.com。 假设默认策略是DROP，请使用iptables的时间功能打开访问权限。
+
+
+iptables –A OUTPUT -p tcp -m multiport --dport http,https -i eth0 -o eth1 -m time --timestart 12:00 --timestart 12:00 –timestop 13:00 –d 
+31.13.64.0/18  -j ACCEPT
+
+
+
+此命令将策略设置为允许（-j ACCEPT）http和https（-m multiport --dport http，https）在中午（--timestart 12:00）和13PM（--timestop 13:00）之间到Facebook.com （-d 31.13.64.0/18）。
+
+
+
+按时间调整-Take 2
+
+场景：在计划的系统维护停机期间，需要在凌晨2点到凌晨3点之间拒绝所有TCP和UDP流量，这样维护任务就不会受到传入流量的干扰。 这将采取两个iptables规则：
+
+
+
+iptables -A INPUT -p tcp -m time --timestart 02:00 --timestop 03:00 -j DROP 
+iptables -A INPUT -p udp -m time --timestart 02:00 --timestop 03:00 -j DROP
+
+
+
+根据这些规则，TCP和UDP流量（-p tcp和-p udp）在输入的2AM（--timestart 02:00）和3AM（--timestop 03:00）之间被拒绝（-j DROP）（ - IUPUT）。
+
+
+
+限制与iptables的连接
+
+场景：你的互联网连接的Web服务器受到来自世界各地的不良攻击，他们试图使用DoS（拒绝服务）。要减轻这些攻击，你可以限制单个IP地址与Web服务器之间的连接数：
+
+
+
+iptables –A INPUT –p tcp –syn -m multiport -–dport http,https –m connlimit -–connlimit-above 20 –j REJECT -–reject-with-tcp-reset
+
+
+
+让我们来看看这条规则的作用。如果主机在一分钟内向Web服务器（-dport http，https）发出超过20个（--connlimit-大于20）个新连接（-p tcp -syn），则拒绝新连接（-j REJECT），并告诉连接主机你拒绝连接（--reject-with-tcp-reset）。
+
+
+
+监控iptables规则
+
+场景：由于iptables在链条中遍历规则，因此iptables在“首次匹配获胜”的基础上运行，因此经常匹配的规则应该接近策略的顶部，而不太频繁匹配的规则应该接近底部。 你怎么知道哪些规则最多或最少，所以可以在顶部或底部附近订购？
+
+
+
+提示＃1：查看每个规则被击中的次数。
+
+使用此命令：
+
+
+
+iptables -L -v -n –line-numbers
+
+
+
+该命令将列出链中的所有规则（-L）。由于没有指定链，所有链都将列出详细输出（-v），显示数字格式的数据包和字节计数器（-n），每个规则开头的行号对应于该规则在链中的位置。
+
+
+
+使用数据包和字节计数，您可以将最常访问的规则排序到顶部，将最不频繁遍历的规则排在最后。
+
+
+
+提示＃2：删除不必要的规则。
+
+哪些规则根本没有获得任何匹配？ 这些将是从政策中删除的良好候选人。你可以用这个命令找到它：
+
+
+
+iptables -nvL | grep -v "0     0"
+
+
+
+注意：这不是零之间的标签; 零之间有五个空格。
+
+
+
+提示＃3：监控正在发生的事情。
+
+不想要实时监控iptables的情况，例如top。 使用此命令动态监视iptables活动的活动，并仅显示正在遍历的规则：
+
+
+
+watch --interval=5 'iptables -nvL | grep -v "0     0"'
+
+
+
+看跑'iptables -nvL | grep -v“0 0”'每五秒钟显示一次输出的第一个屏幕。 这使可以观察数据包和字节数随时间的变化。
+
+
+
+关于iptables的报告
+
+场景：你的经理认为这个iptables防火墙的东西很棒，但每日活动报告会更好。有时写报告比做工作更重要。
+
+
+
+使用数据包过滤器/防火墙/ IDS日志分析器FWLogwatch根据iptables防火墙日志创建报告。 FWLogwatch支持许多日志格式并提供许多分析选项。 它生成日志文件的每日和每月摘要，使安全管理员可以节省大量时间，更好地控制网络安全，并减少未被注意的攻击。
+
+
+
+以下是FWLogwatch的示例输出：
+
+
+
+
+
+
+
+不仅仅是ACCEPT和DROP
+
+我们已经涵盖了iptables的许多方面，从确保在使用iptables监视iptables以可视化iptables防火墙的活动时确保你没有锁定自己。这些将让你开始实现更多的iptables提示和技巧。
+
+
+
+原文链接：
+
+https://opensource.com/article/18/10/iptables-tips-and-tricks
