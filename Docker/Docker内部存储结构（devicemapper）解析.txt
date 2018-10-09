@@ -1,0 +1,156 @@
+Docker内部存储结构（devicemapper）解析
+
+
+Docker在初始化过程中，会创建一个100G的用于存储数据，和一个2G的用于存储元数据的稀疏文件，然后分别附加到回环块设备/dev/loop0和/dev/loop1。然后基于回环块设备创建thin pool。
+
+[root@yy ~]# ls -lh /var/lib/docker/devicemapper/devicemapper/* -lh        
+-rw------- 1 root root 100G Oct 28 17:33 /var/lib/docker/devicemapper/devicemapper/data
+-rw------- 1 root root 2.0G Oct 30 17:44 /var/lib/docker/devicemapper/devicemapper/metadata
+查看thin pool信息
+
+[root@yy ~]#dmsetup info
+Name:              docker-8:1-701074-pool
+State:             ACTIVE
+Read Ahead:        256
+Tables present:    LIVE
+Open count:        2
+Event number:      0
+Major, minor:      253, 0
+Number of targets: 1
+701074为/var/lib/docker/devicemapper的inode number:
+
+[root@yy ~]# stat /var/lib/docker/devicemapper             
+  File: `/var/lib/docker/devicemapper'
+  Size: 4096            Blocks: 8          IO Block: 4096   directory
+Device: 801h/2049d      Inode: 701074      Links: 5
+8:1为设备分区的主、次设备号：
+
+[root@yy ~]# ls -l /dev/sda1
+brw-rw---- 1 root disk 8, 1 Sep 17 19:28 /dev/sda1
+回环块设备信息
+
+[root@yy ~]# losetup -a
+/dev/loop0: [0801]:701077 (/dev/loop0)
+/dev/loop1: [0801]:701078 (/dev/loop1)
+701077为/var/lib/docker/devicemapper/devicemapper/data的inode number： 701078为/var/lib/docker/devicemapper/devicemapper/metadata的inode number：
+
+[root@yy ~]# stat /var/lib/docker/devicemapper/devicemapper/data 
+  File: `/var/lib/docker/devicemapper/devicemapper/data'
+  Size: 107374182400    Blocks: 6199168    IO Block: 4096   regular file
+Device: 801h/2049d      Inode: 701077      Links: 1
+[root@yy ~]# stat /var/lib/docker/devicemapper/devicemapper/metadata
+  File: `/var/lib/docker/devicemapper/devicemapper/metadata'
+  Size: 2147483648      Blocks: 9776       IO Block: 4096   regular file
+Device: 801h/2049d      Inode: 701078      Links: 1
+docker在创建image，会将image的信息(struct DevInfo)写到文件/var/lib/docker/devicemapper/metadata/${container-id}，参考函数(devices *DeviceSet) registerDevice。
+
+[root@yy ~] # docker ps -q
+d2b11baafccc
+[root@yy ~] # dmsetup table docker-8:1-701074-d2b11baafcccb6785e5a28ce463447053c28bd81031b76c1247499e025ba5412
+0 20971520 thin 253:0 18
+[root@yy ~] # hexdump -C /var/lib/docker/devicemapper/metadata/d2b11baafcccb6785e5a28ce463447053c28bd81031b76c1247499e025ba5412     
+00000000  7b 22 64 65 76 69 63 65  5f 69 64 22 3a 31 38 2c  |{"device_id":18,|
+00000010  22 73 69 7a 65 22 3a 31  30 37 33 37 34 31 38 32  |"size":107374182|
+00000020  34 30 2c 22 74 72 61 6e  73 61 63 74 69 6f 6e 5f  |40,"transaction_|
+00000030  69 64 22 3a 36 30 39 2c  22 69 6e 69 74 69 61 6c  |id":609,"initial|
+00000040  69 7a 65 64 22 3a 66 61  6c 73 65 7d              |ized":false}|
+可以看到镜像的大小为10G，卷id为18
+
+我们可以调整回环设备文件和镜像的大小，例如，我们将回环境设备文件大小设置为200G，元数据文件大小为4G，基础镜像大小为20G：
+
+docker -d --storage-opt dm.basesize=20G --storage-opt dm.loopdatasize=200G --storage-opt dm.loopmetadatasize=4G
+另外，–storage-opt还有其它一些参数，比较dm.fs指定文件系统（默认为ext4）等。
+
+bash-4.2# df -h
+Filesystem                                                                                      Size  Used Avail Use% Mounted on
+/dev/mapper/docker-8:1-696417-751562f7368504d35ae19a1bfc47ea324470f3d624938303d664c1fd6086a34c   20G  429M   19G   3% /
+更多内容请参考 https://github.com/snitm/docker/tree/master/daemon/graphdriver/devmapper
+
+Docker 存储设置
+
+docker默认单个容器可以使用数据空间大小10GB，docker可用数据总空间100GB，元数据可用总空间2GB。用docker info信息可以查看Data Space Total、Metadata Space Total等信息：
+
+[root@docker-01 sysconfig]# docker info
+Containers: 23
+Images: 45
+Storage Driver: devicemapper
+ Pool Name: docker-8:36-13501344-pool
+ Pool Blocksize: 65.54 kB
+ Data file: /var/lib/docker/devicemapper/devicemapper/data
+ Metadata file: /var/lib/docker/devicemapper/devicemapper/metadata
+ Data Space Used: 1.684 GB
+ Data Space Total: 107.4 GB
+ Metadata Space Used: 2.699 MB
+ Metadata Space Total: 2.147 GB
+ Library Version: 1.02.89-RHEL6 (2014-09-01)
+Execution Driver: native-0.2
+Kernel Version: 2.6.32-504.el6.x86_64
+Operating System: <unknown>
+CPUs: 24
+Total Memory: 47.09 GiB
+Name: docker-01
+ID: S3F6:VR2L:WH7X:QLQO:RH6P:EVBT:QRUW:NNMV:4MQ7:YADK:Q6OV:Q2IQ
+[root@docker-01 sysconfig]#
+占用本地文件系统空间大小如下(data存放的是image和container数据，metadata存放的是tag、name、status等基本信息)：
+
+[root@docker-01 ~]# ll /var/lib/docker/devicemapper/devicemapper/ -h
+total 35G
+-rw------- 1 root root 100G Jun  5 13:43 data
+-rw------- 1 root root 2.0G Jun  5 13:43 metadata
+[root@docker-01 ~]#
+可以使用df -hT查看容器可以使用的空间大小，下面的大约是10GB（同一数据块，不同文件系统大小存在差异）
+
+[root@docker-01 ~]# docker exec zhijie df -hT
+Filesystem           Type    Size  Used Avail Use% Mounted on
+rootfs               rootfs  9.8G  1.8G  7.5G  20% /
+/dev/mapper/docker-8:3-61079671-9623cd0329b8e2a093cae0911ce6dabe515397391252ed410d6dd9b5c06da77f
+                     ext4    9.8G  1.8G  7.5G  20% /
+tmpfs                tmpfs    24G     0   24G   0% /dev
+shm                  tmpfs    64M     0   64M   0% /dev/shm
+/dev/sda3            ext4    1.1T  228G  800G  23% /etc/resolv.conf
+/dev/sda3            ext4    1.1T  228G  800G  23% /etc/hostname
+/dev/sda3            ext4    1.1T  228G  800G  23% /etc/hosts
+[root@docker-01 ~]#
+当一个容器的数据空间大于10GB后，那么这个容器将不能写入新的数据文件。如果容器需要很大的数据空间，可以使用数据卷挂在到宿主机或存储上。当容器太多使用数据卷挂载方式后，所有容器使用的数据空间已经大于100GB，这时将不能新建或运行容器。如何突破这种限制，这篇文章给出了解答：https://github.com/docker/docker/tree/master/daemon/graphdriver/devmapper
+分两种情况讨论：
+1、如果docker第一次启动，在启动docker前，可以使用参数–storage-opt分别指定dm.basesize、dm.loopdatasize、dm.loopmetadatasize等项，指定单个容器可用数据空间、docker可用数据空间、元数据可用数据空间。以centos6.6为例（修改配置文件/etc/sysconfig/docker）：
+
+[root@docker-02 ~]# cat /etc/sysconfig/docker
+# /etc/sysconfig/docker
+#
+# Other arguments to pass to the docker daemon process
+# These will be parsed by the sysv initscript and appended
+# to the arguments list passed to docker -d
+ 
+other_args="--storage-opt dm.basesize=20G --storage-opt dm.loopdatasize=200G --storage-opt dm.loopmetadatasize=4G -H tcp://127.0.0.1:2345 -H unix:///var/run/docker.sock"
+DOCKER_CERT_PATH=/etc/docker
+ 
+# Location used for temporary files, such as those created by
+# # docker load and build operations. Default is /var/lib/docker/tmp
+# # Can be overriden by setting the following environment variable.
+# # DOCKER_TMPDIR=/var/tmp
+[root@docker-02 ~]#
+分别指定单个容器可用数据空间20GB、docker可用数据空间200GB、元数据可用空间4GB。然后启动docker，用docker info可以查看配置已生效：
+
+[root@docker-02 ~]# docker info
+Containers: 0
+Images: 5
+Storage Driver: devicemapper
+ Pool Name: docker-8:36-13500724-pool
+ Pool Blocksize: 65.54 kB
+ Data file: /var/lib/docker/devicemapper/devicemapper/data
+ Metadata file: /var/lib/docker/devicemapper/devicemapper/metadata
+ Data Space Used: 475.5 MB
+ Data Space Total: 214.7 GB
+ Metadata Space Used: 1.364 MB
+ Metadata Space Total: 4.295 GB
+ Library Version: 1.02.89-RHEL6 (2014-09-01)
+Execution Driver: native-0.2
+Kernel Version: 2.6.32-504.el6.x86_64
+Operating System: <unknown>
+CPUs: 24
+Total Memory: 47.09 GiB
+Name: docker-02
+ID: Y6M7:AMXG:WQSI:JTPJ:SCNL:B76Z:6VHY:EMWH:56ND:LZBN:FTTY:3EIV
+[root@docker-02 ~]#
+2、如果是正在运行的docker，需要导出镜像docker commit、docker push、docker save等操作，然后停止docker服务，删除docker的数据文件（centos6.6是rm -rf /var/lib/docker/）。再修改docker的配置文件/etc/sysconfig/docker，重启docker服务生效。最后导入备份的镜像启动容器。
