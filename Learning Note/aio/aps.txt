@@ -1,0 +1,432 @@
+APScheduler 3.0.1浅析
+简介
+APScheduler是一个小巧而强大的Python类库，通过它你可以实现类似Unix系统cronjob类似的定时任务系统。使用之余，阅读一下源码，一方面有助于更好的使用它，另一方面，个人认为aps的架构设计质量很高，阅读它对于提升软件开发的sense很有帮助。
+
+组成
+APScheduler整个系统可以说由这五个概念组成：
+
+scheduler：控制器，可以看做整个系统的driver，外部世界通过它来实现任务（Job）的增删改查管理。根据IO模式的不同，aps提供了多种scheduler实现。
+job：描述一个任务本身。
+jobstore：任务持久化仓库。aps提供了内存、redis、mongodb、sqlalchemy几种store
+executor：执行任务的模块。根据不同的IO模型有多种executor选择。
+trigger：描述一个任务何时被触发，有按日期、按时间间隔、按cronjob描述式三种触发方式
+这样的划分充分发挥了软件设计中抽象的威力，我们下面对每个模块进行描述
+
+scheduler
+BaseScheduler类是所有scheduler的抽象基类，它的初始化代码是这样的：
+
+
+     def __init__(self, gconfig={}, **options):
+         super(BaseScheduler, self).__init__()
+         self._executors = {}
+         self._executors_lock = self._create_lock()
+         self._jobstores = {}
+         self._jobstores_lock = self._create_lock()
+         self._listeners = []
+         self._listeners_lock = self._create_lock()
+         self._pending_jobs = []
+         self.configure(gconfig, **options)
+
+可以看到一个scheduler维护了自己的executor和jobstore表，通过configure方法进行初始化。在configure中，scheduler读取传入的配置，对executors和jobstores进行初始化，一个典型的配置是这样的：
+
+
+ APS_SCHEDULER_CONFIG = {
+     'jobstores': {
+         'default': {'type': 'sqlalchemy', 'url': 'postgres://127.0.0.1:5432/optimus'},
+     },
+     'executors': {
+         'default': {'type': 'processpool', 'max_workers': 10}
+     },
+     'job_defaults': {
+         'coalesce': True,
+         'max_instances': 5,
+         'misfire_grace_time': 30
+     },
+     'timezone': 'Asia/Shanghai'
+ }
+
+如果我们把APS_SCHEDULER_CONFIG作为options传入给一个scheduler，会产生什么结果呢？首先，我们添加了一个默认(名叫default)的jobstore，它的具体实现类型是sqlalchemy，数据库连接url是指向一个本地postgresql数据库，也就是说添加到这个scheduler的job会默认使用这个jobstore进行存储。其次，我们添加了一个默认的executor，他是一个多进程实现，也就是说每个job在运行时，是通过一个进程池来作为worker实际执行的，这个进程池最大size是10。job_defaults参数定义了一些特殊行为：
+
+coalesce：当由于某种原因导致某个job积攒了好几次没有实际运行（比如说系统挂了5分钟后恢复，有一个任务是每分钟跑一次的，按道理说这5分钟内本来是“计划”运行5次的，但实际没有执行），如果coalesce为True，下次这个job被submit给executor时，只会执行1次，也就是最后这次，如果为False，那么会执行5次（不一定，因为还有其他条件，看后面misfire_grace_time的解释）
+max_instance: 就是说同一个job同一时间最多有几个实例再跑，比如一个耗时10分钟的job，被指定每分钟运行1次，如果我们max_instance值为5，那么在第6~10分钟上，新的运行实例不会被执行，因为已经有5个实例在跑了
+misfire_grace_time：设想和上述coalesce类似的场景，如果一个job本来14:00有一次执行，但是由于某种原因没有被调度上，现在14:01了，这个14:00的运行实例被提交时，会检查它预订运行的时间和当下时间的差值（这里是1分钟），大于我们设置的30秒限制，那么这个运行实例不会被执行。
+这里还需要指出的一点是，为什么scheduler的配置可以写成这种json形式，而scheduler会正确地找到对应的实现类进行初始化？这里运用了两个技巧：
+
+entry point
+用python egg的机制把各个组件注册了成了entry point，如下所示
+
+
+ [apscheduler.executors]
+ asyncio = apscheduler.executors.asyncio:AsyncIOExecutor
+ debug = apscheduler.executors.debug:DebugExecutor
+ gevent = apscheduler.executors.gevent:GeventExecutor
+ processpool = apscheduler.executors.pool:ProcessPoolExecutor
+ threadpool = apscheduler.executors.pool:ThreadPoolExecutor
+ twisted = apscheduler.executors.twisted:TwistedExecutor
+
+ [apscheduler.jobstores]
+ memory = apscheduler.jobstores.memory:MemoryJobStore
+ mongodb = apscheduler.jobstores.mongodb:MongoDBJobStore
+ redis = apscheduler.jobstores.redis:RedisJobStore
+ sqlalchemy = apscheduler.jobstores.sqlalchemy:SQLAlchemyJobStore
+
+ [apscheduler.triggers]
+ cron = apscheduler.triggers.cron:CronTrigger
+ date = apscheduler.triggers.date:DateTrigger
+ interval = apscheduler.triggers.interval:IntervalTrigger
+
+这样，在scheduler模块中就可以用entry point的名称反查出对应组件
+
+
+     _trigger_plugins = dict((ep.name, ep) for ep in iter_entry_points('apscheduler.triggers'))
+     _trigger_classes = {}
+     _executor_plugins = dict((ep.name, ep) for ep in iter_entry_points('apscheduler.executors'))
+     _executor_classes = {}
+     _jobstore_plugins = dict((ep.name, ep) for ep in iter_entry_points('apscheduler.jobstores'))
+     _jobstore_classes = {}
+     _stopped = True
+
+从而实现了一个便利的插件机制
+
+ref_to_obj
+另外通过一个加载函数完成"apscheduler.executors.pool:ThreadPoolExecutor"字符串到ThreadPoolExecutor类对象的查询
+
+
+ def ref_to_obj(ref):
+     """
+     Returns the object pointed to by ``ref``.
+
+     :type ref: str
+     """
+
+     if not isinstance(ref, six.string_types):
+         raise TypeError('References must be strings')
+     if ':' not in ref:
+         raise ValueError('Invalid reference')
+
+     modulename, rest = ref.split(':', 1)
+     try:
+         obj = __import__(modulename)
+     except ImportError:
+         raise LookupError('Error resolving reference %s: could not import module' % ref)
+
+     try:
+         for name in modulename.split('.')[1:] + rest.split('.'):
+             obj = getattr(obj, name)
+         return obj
+     except Exception:
+         raise LookupError('Error resolving reference %s: error looking up object' % ref)
+
+ 
+
+scheduler的主循环（main_loop），其实就是反复检查是不是有到时需要执行的任务，完成一次检查的函数是_process_jobs, 这个函数做这么几件事：
+
+询问自己的每一个jobstore，有没有到期需要执行的任务（jobstore.get_due_jobs()）
+如果有，计算这些job中每个job需要运行的时间点（run_times = job._get_run_times(now)）如果run_times有多个，这种情况我们上面讨论过，有coalesce检查
+提交给executor排期运行（executor.submit_job(job, run_times)）
+那么在这个_process_jobs的逻辑，什么时候调用合适呢？如果不间断地调用，而实际上没有要执行的job，是一种浪费。每次掉用_process_jobs后，其实可以预先判断一下，下一次要执行的job（离现在最近的）还要多长时间，作为返回值告诉main_loop, 这时主循环就可以去睡一觉，等大约这么长时间后再唤醒，执行下一次_process_jobs。这里唤醒的机制就会有IO模型的区别了
+
+scheduler由于IO模型的不同，可以有多种实现，如
+
+BlockingScheduler：main_loop就在当前进程的主线程内运行，所以调用start函数后会阻塞当前线程。通过一个threading.Event条件变量对象完成scheduler的定时唤醒。
+BackgroundScheduler：和BlockingScheduler基本一样，除了main_loop放在了单独线程里，所以调用start后主线程不会阻塞
+AsyncIOScheduler：使用asyncio作为IO模型的scheduler，和AsyncIOExecutor配合使用，用asynio中event_loop的call_later完成定时唤醒
+GeventScheduler：和BlockingScheduler基本一样，使用gevent作为IO模型，和GeventExecutor配合使用
+QtScheduler：使用QTimer完成定时唤醒
+TornadoScheduler：使用tornado的IO模型，用ioloop.add_timeout完成定时唤醒
+TwistedScheduler：配合TwistedExecutor，用reactor.callLater完成定时唤醒
+JobStore
+jobstore提供给scheduler一个序列化jobs的统一抽象，提供对scheduler中job的增删改查接口，根据存储backend的不同，分以下几种
+
+MemoryJobStore：没有序列化，jobs就存在内存里，增删改查也都是在内存中操作
+SQLAlchemyJobStore：所有sqlalchemy支持的数据库都可以做为backend，增删改查操作转化为对应backend的sql语句
+MongoDBJobStore：用mongodb作backend
+RedisJobStore: 用redis作backend
+除了MemoryJobStore外，其他几种都使用pickle做序列化工具，所以这里要指出一点，如果你不是在用内存做jobstore，那么必须确保你提供给job的可执行函数必须是可以被全局访问的，也就是可以通过ref_to_obj反查出来的，否则无法序列化。
+
+使用数据库做jobstore，就会发现，其实创建了一张有三个域的的jobs表，分别是id, next_run_time, job_state，其中job_state是job对象pickle序列化后的二进制，而id和next_run_time则是支持job的两类查询（按id和按最近运行时间）
+
+ 
+
+Executor
+aps把任务最终的执行机制也抽象了出来，可以根据IO模型选配，不需要讲太多，最常用的是threadpool和processpoll两种（来自concurrent.futures的线程/进程池）。
+
+不同类型的executor实现自己的_do_submit_job，完成一次实际的任务实例执行。以线程/进程池实现为例
+
+
+     def _do_submit_job(self, job, run_times):
+         def callback(f):
+             exc, tb = (f.exception_info() if hasattr(f, 'exception_info') else
+                        (f.exception(), getattr(f.exception(), '__traceback__', None)))
+             if exc:
+                 self._run_job_error(job.id, exc, tb)
+             else:
+                 self._run_job_success(job.id, f.result())
+
+         f = self._pool.submit(run_job, job, job._jobstore_alias, run_times, self._logger.name)
+         f.add_done_callback(callback)
+
+Trigger
+trigger是抽象出了“一个job是何时被触发”这个策略，每种trigger实现自己的get_next_fire_time函数
+
+
+     @abstractmethod
+     def get_next_fire_time(self, previous_fire_time, now):
+         """
+         Returns the next datetime to fire on, If no such datetime can be calculated, returns ``None``.
+
+         :param datetime.datetime previous_fire_time: the previous time the trigger was fired
+         :param datetime.datetime now: current datetime
+         """
+
+aps提供的trigger包括：
+
+date：一次性指定日期
+interval：在某个时间范围内间隔多长时间执行一次
+cron：和unix crontab格式兼容，最为强大
+总结
+简要介绍了apscheduler类库的组成，强调抽象概念的理解
+
+
+APScheduler代码流程简要分析
+
+    一，APScheduler简要介绍
+        APScheduler是一个简单的单节点定时任务框架。其支持定时任务，周期任务，以及支持类似cron的时间格式的任务。
+        它包括以下4种类型的组件：
+        1,trigger: trigger包含调度策略，每一个job都有自己的调度策略来决定其下次调度的时间。trigger支持指定周期，按指定的日期，按cron格式的任务。
+        2,job stores：任务的存储方式，默认是内存，可以支持数据库，redis，mongodb等。
+        3,executors:是最终执行任务的地方。executors将任务提交放到一个线程汇总线程池中执行。当任务结束的时候，会回调注册的回调监听器。
+        4,Schedulers:该组件的功能包括，配置用户使用的trigger,任务存储的方式(job stores)，以及使用什么方式执行任务。
+                     并且，调用trigger中计算的每个任务的下一次执行时间，调用executors进行任务的执行。
+    二，一个简单的例子
+        1,使用默认的配置
+        from apscheduler.schedulers.blocking import BlockingScheduler
+        import datetime
+        def aps_test():
+            print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        scheduler = BlockingScheduler()
+        scheduler.add_job(func=aps_test, trigger='cron', second='*/5')
+        scheduler.start()
+        2,使用用户自己配置的方式
+        import datetime
+        from pytz import utc
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+        from apscheduler.executors.pool import ProcessPoolExecutor
+        jobstores = {
+            'default': SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
+        }
+        executors = {
+            'default': {'type': 'threadpool', 'max_workers': 20},
+            'processpool': ProcessPoolExecutor(max_workers=5)
+        }
+        job_defaults = {
+            'coalesce': False,
+            'max_instances': 3
+        }
+        scheduler = BackgroundScheduler()
+        scheduler.configure(jobstores=jobstores, executors=executors, job_defaults=job_defaults, timezone=utc)
+        def aps_test():
+            print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        scheduler.add_job(func=aps_test, trigger='cron', second='*/5')
+        scheduler.start()
+
+
+    三，ASPScheduler源码浅析（基于3.3.0版本，SQLAlchemy后端存储）
+        1，scheduler.add_job
+        add_job(func, trigger=None, args=None, kwargs=None, id=None, \
+                name=None, misfire_grace_time=undefined, coalesce=undefined, \
+                max_instances=undefined, next_run_time=undefined, \
+                jobstore='default', executor='default', \
+                replace_existing=False, **trigger_args)
+                “”“
+                misfire_grace_time：超过用户设定的时间范围外，该任务依旧执行的时间(单位时间s)。
+                                    比如用户设置misfire_grace_time=60,于3:00触发任务。
+                                    由于某种原因在3:00没有触发，被延时了。如果时间在3:01内，该任务仍能触发，超过3:01任务不执行。
+                coalesce：累计的 任务是否执行。True不执行，False,执行。
+                          同上，由于某种原因，比如进场挂了，导致任务多次没有调用，则前几次的累计任务的任务是否执行的策略。
+                max_instances：同一个任务在线程池中最多跑的实例数。
+                ”“”
+            #转化该任务的一些执行参数
+            job_kwargs = {
+                'trigger': self._create_trigger(trigger, trigger_args),
+                'executor': executor,
+                'func': func,
+                'args': tuple(args) if args is not None else (),
+                'kwargs': dict(kwargs) if kwargs is not None else {},
+                'id': id,
+                'name': name,
+                'misfire_grace_time': misfire_grace_time,
+                'coalesce': coalesce,
+                'max_instances': max_instances,
+                'next_run_time': next_run_time
+            }
+            job_kwargs = dict((key, value) for key, value in six.iteritems(job_kwargs) if
+                              value is not undefined)
+            job = Job(self, **job_kwargs)
+            # Don't really add jobs to job stores before the scheduler is up and running
+            with self._jobstores_lock:
+                if self.state == STATE_STOPPED:
+                    self._pending_jobs.append((job, jobstore, replace_existing))
+                    self._logger.info('Adding job tentatively -- it will be properly scheduled when '
+                                      'the scheduler starts')
+                else:
+                    self._real_add_job(job, jobstore, replace_existing)
+            return job
+        def _real_add_job(self, job, jobstore_alias, replace_existing):
+            """
+             将任务加入到指定的存储后端中
+            """
+            # Fill in undefined values with defaults
+            replacements = {}
+            # self._job_defaults保存的数据如下
+            #self._job_defaults = {
+            #    'misfire_grace_time': asint(job_defaults.get('misfire_grace_time', 1)),
+            #    'coalesce': asbool(job_defaults.get('coalesce', True)),
+            #    'max_instances': asint(job_defaults.get('max_instances', 1))
+            #}
+            for key, value in six.iteritems(self._job_defaults):
+                if not hasattr(job, key):
+                    replacements[key] = value
+            # 用户如果没有定义self._job_defaults的属性，则用系统默认的属性
+            if not hasattr(job, 'next_run_time'):
+                now = datetime.now(self.timezone)
+                #初始任务是没有next_run_time的，这里是计算该任务下次执行的时间：get_next_fire_time
+                replacements['next_run_time'] = job.trigger.get_next_fire_time(None, now)
+            job._modify(**replacements)
+            #查询当前任务的后端存储方式， jobstore_alias包括 default,memory,sqlalchemy,mongodb,rethinkdb,redis,zookeeper
+            #这个可以在其源码中的setup.py中查询：
+            #'apscheduler.jobstores': [
+            #    'memory = apscheduler.jobstores.memory:MemoryJobStore',
+            #    'sqlalchemy = apscheduler.jobstores.sqlalchemy:SQLAlchemyJobStore [sqlalchemy]',
+            #    'mongodb = apscheduler.jobstores.mongodb:MongoDBJobStore [mongodb]',
+            #    'rethinkdb = apscheduler.jobstores.rethinkdb:RethinkDBJobStore [rethinkdb]',
+            #    'redis = apscheduler.jobstores.redis:RedisJobStore [redis]',
+            #    'zookeeper = apscheduler.jobstores.zookeeper:ZookeeperJobStore [zookeeper]'
+            #]
+            store = self._lookup_jobstore(jobstore_alias)
+            try:
+                #当前使用sqlalchemy的后端，会将该任务保存到数据库中。
+                #其数据库中jobs表的字段为为：id, next_run_time, job_state
+                #其中job_state是job对象pickle序列化后的二进制
+                #next_run_time是任务的下一次执行时间
+                store.add_job(job)
+            except ConflictingIdError:
+                if replace_existing:
+                    store.update_job(job)
+                else:
+                    raise
+            job._jobstore_alias = jobstore_alias
+            #如果用户注册了监听器，每个人的执行状态变更都会通知相关的监听器
+            #并且监听器可以设置自己关心任务执行的哪些状态，不指定则全部状态变更都会通知
+            event = JobEvent(EVENT_JOB_ADDED, job.id, jobstore_alias)
+            self._dispatch_event(event)
+            # Notify the scheduler about the new job
+            if self.state == STATE_RUNNING:
+                self.wakeup()
+        2，scheduler.start：_main_loop()
+        #start函数中进行任务调度的核心方法为 _main_loop()。
+        #使用线程锁，一个是wait()超市后唤醒，或者有人主动notify()
+        #防止频繁的计算任务的执行时间
+        def _main_loop(self):
+            wait_seconds = TIMEOUT_MAX
+            while self.state != STATE_STOPPED:
+                self._event.wait(wait_seconds)
+                self._event.clear()
+                #_process_jobs 返回的是下一个任务的执行时间
+                wait_seconds = self._process_jobs()
+        3，_process_jobs
+        def _process_jobs(self):
+            if self.state == STATE_PAUSED:
+                self._logger.debug('Scheduler is paused -- not processing jobs')
+                return None
+            self._logger.debug('Looking for jobs to run')
+            now = datetime.now(self.timezone)
+            next_wakeup_time = None
+            events = []
+            with self._jobstores_lock:
+                for jobstore_alias, jobstore in six.iteritems(self._jobstores):
+                    try:
+                        #获取当前时间点now需要执行的任务
+                        #sqlarmey中就是获取next_run_time小于now的所有任务
+                        due_jobs = jobstore.get_due_jobs(now)
+                    except Exception as e:
+                        # Schedule a wakeup at least in jobstore_retry_interval seconds
+                        self._logger.warning('Error getting due jobs from job store %r: %s',
+                                             jobstore_alias, e)
+                        retry_wakeup_time = now + timedelta(seconds=self.jobstore_retry_interval)
+                        if not next_wakeup_time or next_wakeup_time > retry_wakeup_time:
+                            next_wakeup_time = retry_wakeup_time
+                        continue
+                    for job in due_jobs:
+                        # Look up the job's executor
+                        try:
+                            #获取任务的执行器
+                            executor = self._lookup_executor(job.executor)
+                        except:
+                            self._logger.error(
+                                'Executor lookup ("%s") failed for job "%s" -- removing it from the '
+                                'job store', job.executor, job)
+                            self.remove_job(job.id, jobstore_alias)
+                            continue
+                        #计算当前任务需要执行时间点，_get_run_times获取到的是一个时间列表
+                        #主要是由于各种原因，比如进程故障重启，导致任务在执行点没有执行而遗留
+                        run_times = job._get_run_times(now)
+                        #coalesce=True 不执行历史堆积的任务，只执行最近的一次
+                        #coalesce=False 执行历史堆积，全都执行
+                        run_times = run_times[-1:] if run_times and job.coalesce else run_times
+                        if run_times:
+                            try:
+                                executor.submit_job(job, run_times)
+                            except MaxInstancesReachedError:
+                                self._logger.warning(
+                                    'Execution of job "%s" skipped: maximum number of running '
+                                    'instances reached (%d)', job, job.max_instances)
+                                event = JobSubmissionEvent(EVENT_JOB_MAX_INSTANCES, job.id,
+                                                           jobstore_alias, run_times)
+                                events.append(event)
+                            except:
+                                self._logger.exception('Error submitting job "%s" to executor "%s"',
+                                                       job, job.executor)
+                            else:
+                                event = JobSubmissionEvent(EVENT_JOB_SUBMITTED, job.id, jobstore_alias,
+                                                           run_times)
+                                events.append(event)
+
+
+                            #计算并跟新该任务的下一个执行时间
+                            job_next_run = job.trigger.get_next_fire_time(run_times[-1], now)
+                            if job_next_run:
+                                job._modify(next_run_time=job_next_run)
+                                jobstore.update_job(job)
+                            else:
+                                self.remove_job(job.id, jobstore_alias)
+                    # 计算数据库中数据的下一个执行时间
+                    # 就是获取数据库中next_run_time最小的那个值
+                    jobstore_next_run_time = jobstore.get_next_run_time()
+                    if jobstore_next_run_time and (next_wakeup_time is None or
+                                                   jobstore_next_run_time < next_wakeup_time):
+                        next_wakeup_time = jobstore_next_run_time.astimezone(self.timezone)
+            # Dispatch collected events
+            for event in events:
+                self._dispatch_event(event)
+            # Determine the delay until this method should be called again
+            if self.state == STATE_PAUSED:
+                wait_seconds = None
+                self._logger.debug('Scheduler is paused; waiting until resume() is called')
+            elif next_wakeup_time is None:
+                wait_seconds = None
+                self._logger.debug('No jobs; waiting until a job is added')
+            else:
+                wait_seconds = max(timedelta_seconds(next_wakeup_time - now), 0)
+                self._logger.debug('Next wakeup is due at %s (in %f seconds)', next_wakeup_time,
+                                   wait_seconds)
+            #返回下次任务的唤醒时间
+            return wait_seconds
+    四，参考文档：
+        http://apscheduler.readthedocs.io/en/3.0/userguide.html
+        http://www.cnblogs.com/quijote/p/4385774.html
+        APScheduler扩展：
+        http://blog.csdn.net/chosen0ne/article/details/7925979
+        源码：
+        https://github.com/agronholm/apscheduler/tree/v3.3.0
