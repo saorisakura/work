@@ -1,0 +1,215 @@
+
+Python Database Connection Pooling with MySQL
+Last Modified on September 16, 2018 Leave a Comment
+
+What is Connection pooling in Python? How to implement connection pooling in Python? what are the benefits of using connection pooling? if you have all these questions then don’t worry this article provides information intended to help developers to implement a connection pooling for Python applications that must handle MySQL connection pooling.
+
+Note: This article is part of our series Python MySQL
+
+First, this article provides an overview of MySQL Database connection pooling as specified by the MySQL.
+
+Next, it provides examples of how to use the mysql.connector.pooling module to implements connection pooling for your Python applications.
+
+Finally, This article provides an example showing performance benefit you can achieve by using connection pooling while developing a MySQL database application in Python.
+
+First, Understand what is connection pooling.
+
+Note: We are using MySQL connector Python module to implement connection pooling.
+
+Table of Contents	
+What is Connection Pooling in Python
+Configuring the connection pool in Python with MySQL
+How to use the connection pool in Python
+Create a Connection pool in Python using MySQL Connector Python
+Arguments required to create a connection pool
+Adds a new or existing MySQL Connection to the pool
+Get Connection object from a connection pool
+Get Connection pool name
+Change Configuration parameters for connections in the pool
+Manage pooled connection instance
+Get a pooled connection
+Close the pooled MySQL connection instance
+Python Example to Create, manage and use a Connection pool with MySQL
+Understand the connection pool example
+Related Posts
+What is Connection Pooling in Python
+Connection pooling means that connections are reused rather than created each time a connection is requested.
+
+Establishing MySQL connection through python is resource-expensive and also time-consuming, especially when the MySQL connector Python API is used in a middle-tier server environment. i.e. Middleware that maintains multiple connections to multiple MySQL servers and requires connections to be readily available.
+
+For Example, Your application uses database very frequently may be for data retrieving or data updations. To handle every new request application is creating a new MySQL database connection and after completion of a request, the connection is closed. again for a new request, the new connection is established and this process will repeat for every new request.
+
+If you analyze this situation you can easily find that application spends most of the time in creation and closing the database connection object.
+
+In this type of environment, we can improve application performance using connection pooling.
+
+python database connection pooling working with MySQL Connector Python
+python database connection pooling working
+To facilitate connection reuse, a memory cache of database connections, called a connection pool, is maintained by a connection pooling module as a layer on top of any Database driver product.
+
+Connection pooling is performed in the background and does not affect how an application is coded.
+
+Configuring the connection pool in Python with MySQL
+To configure connection pool you need to consider the following factors
+
+The maximum number of the connection objects is supported by Database module. for example, MySQL Connector Python supports a maximum of 32.
+The size and nature of your application and how database intensive your application is.
+The size of the connection pool is configurable. You need to provide connection pool size at the time of its creation. you cannot change size once created.
+The number of the connection object depends on the above factors.
+
+For many cases one connection per thread handling a single HTTP request is sufficient. Or you may need fewer if not every HTTP request needs to access the database.
+
+You can check the previous request history and analyze your application nature and then decide how to configure the connection pool.
+
+How to use the connection pool in Python
+I will show you how to use a connection pool in python in just four steps:
+
+Create a Connection Pool.
+Get Connection from a connection pool.
+Perform some database operation on it.
+Close the connection instance (return it to the connection pool).
+Create a Connection pool in Python using MySQL Connector Python
+Let see how to create a connection pool using MySQL Connector Python to handle MySQL database from python application.
+
+MySQL Connector Python’s  pooling.MySQLConnectionPool and pooling.PooledMySQLConnection class provides the instantiation and management of connection pools.
+
+pooling.MySQLConnectionPool class constructor instantiates an object that manages a connection pool.
+
+The syntax of creating a connection pool
+
+import mysql.connector
+from mysql.connector import Error
+from mysql.connector import pooling
+try:
+    connection_pool = mysql.connector.pooling.MySQLConnectionPool(pool_name="pynative_pool",
+                                                                  pool_size=1,
+                                                                  pool_reset_session=True,
+                                                                  host='localhost',
+                                                                  database='python_db',
+                                                                  user='pynative',
+                                                                  password='pynative@#29')
+As you can see using a MySQLConnectionPool class we can create a connection pool.   mysql.connector.pooling.MySQLConnectionPool  return a connection pool object. This class constructor takes pool_name, pool_size, database, username and password for creating a  connection pool.
+
+So let see how to configure a connection pool using these arguments.
+
+Arguments required to create a connection pool
+pool_name: The pool name. as you can see we have given a pynative_pool as a connection pool name.  If this argument is not given, MySQL connector python automatically set name on the basis of other parameters like the host, user, and database. If multiple pools are having the same name then it is not an error. the application must create each pool with a distinct name.
+pool_size: a pool size is a number of the connection objects that pool can support. If this argument is not given, the default is 5. i.e 5 connection object will be created. pool size cannot be 0 or less than 0.
+pool_reset_session: Whether to reset session variables when the connection is returned to the
+pool.
+a user, password, and database are additional connection arguments to connect MySQL.
+Now, Let’s see how to get a connection object from the connection pool and how to add new or existing connection object to the connection pool.
+
+Adds a new or existing MySQL Connection to the pool
+Using a MySQLConnectionPool.add_connection() method we can add a new or existing MySQL Connection to the pool.
+
+If the pool is full or exceeding its limit it will raise a PoolError.
+
+Example of adding MySQL Connection object to the pool.
+
+connection_pool.add_connection(connection_obj= None)
+Arguments:
+
+The connection_obj is the MySQL Connection object we want to add to the pool. If this argument is missing and the pool is not full, the pool creates a new connection and adds it.
+Get Connection object from a connection pool
+How to use connection object from the connection pool?
+
+To request a connection from the pool, use MySQLConnectionPool.get_connection() method. Using this method application can get the connection object from a connection pool.
+
+Example to get Get Connection object from a connection pool.
+
+connection_objt = connection_pool.get_connection()
+This method returns a connection from the pool. if all connections are in use or pool is empty it will raise a PoolError.
+
+Get Connection pool name
+Use a MySQLConnectionPool.pool_name property to get the connection name.
+
+Example to get connection pool name:
+
+pool_name  = connection_pool.pool_name
+Change Configuration parameters for connections in the pool
+Using MySQLConnectionPool.set_config() Method we can set the configuration parameters for connections in the pool. i.e. we can reconfigure the connection object.
+
+When this method is called pool configuration is overridden and any new connection requested from a connection pool will use the new parameters mentioned in MySQLConnectionPool.set_config()Method.
+
+already running connection will have no impact.
+
+Now, Let see how to use pooled connection instance.
+
+Manage pooled connection instance
+Using the pooling.PooledMySQLConnection class you can manage and work with pooled connection instances. MySQLConnectionPool uses this class to return a pooled connection instance.
+
+Get a pooled connection
+Using pooling.PooledMySQLConnection class constructor we can get a pooled connection.
+
+This constructor takes connection pool and connection arguments and returns a pooled connection instance.
+
+Example to get the pooled connection instance
+
+pooled_connection = mysql.connector.pooling.PooledMySQLConnection(connection_pool, connection_object)
+As you can see we have passed two arguments to get the pooled connection instance
+
+connection_pool: A MySQL Connection Pool instance. here in our case connection pool name is pynative_pool
+connection_object: A MySQL Connection instance.
+Close the pooled MySQL connection instance
+we can use a PooledMySQLConnection.close() method to close the pooled connection instance.
+
+This method doesn’t close the connection but returns connection to the connection Pool to serve the next request. i.e. it returns pooled connection to its connection pool.
+
+Example to close the pooled connection instance
+
+pooled_connection = mysql.connector.pooling.PooledMySQLConnection(connection_pool, connection_object)
+pooled_connection.close()
+Python Example to Create, manage and use a Connection pool with MySQL
+Let see how to use all the methods that I mentioned in this article.
+
+import mysql.connector
+from mysql.connector import Error
+from mysql.connector.connection import MySQLConnection
+from mysql.connector import pooling
+try:
+    connection_pool = mysql.connector.pooling.MySQLConnectionPool(pool_name="pynative_pool",
+                                                                  pool_size=5,
+                                                                  pool_reset_session=True,
+                                                                  host='localhost',
+                                                                  database='python_db',
+                                                                  user='pynative',
+                                                                  password='pynative@#29')
+    print ("Printing connection pool properties ")
+    print("Connection Pool Name - ", connection_pool.pool_name)
+    print("Connection Pool Size - ", connection_pool.pool_size)
+    # Get connection object from a pool
+    connection_object = connection_pool.get_connection()
+    if connection_object.is_connected():
+       db_Info = connection_object.get_server_info()
+       print("Connected to MySQL database using connection pool ... MySQL Server version on ",db_Info)
+       cursor = connection_object.cursor()
+       cursor.execute("select database();")
+       record = cursor.fetchone()
+       print ("Your connected to - ", record)
+except Error as e :
+    print ("Error while connecting to MySQL using Connection pool ", e)
+finally:
+    #closing database connection.
+    if(connection_object.is_connected()):
+        cursor.close()
+        connection_object.close()
+        print("MySQL connection is closed")
+Output:
+
+Printing connection pool properties 
+Connection Pool Name -  pynative_pool
+Connection Pool Size -  5
+Connected to MySQL database using connection pool ... MySQL Server version on  5.7.19
+Your connected to -  ('python_db',)
+MySQL connection is closed
+Understand the connection pool example
+As you can see in the very first statement we have imported 3 classes from MySQL Connector Python to create a and manage the connection pool.
+
+import mysql.connector: Using this module we can communicate with MySQL.
+from mysql.connector import Error: This module helps us to report any database exception that may occur during this process.
+from mysql.connector import pooling – Using this module we can create, manage and use the connection pool
+Also we set  connection pool name to “pynative_pool” and pool size=5, pool_reset_session=True. Next, we Printed connection pool properties.
+After this, we get a connection object from a pool and executed a MySQL query to fetch the database name from MySQL using cursor object.
+In the end, we closed the connection instance.
+Dear Readers, Let me know your feedback and comments in the section below. Please share this article.
