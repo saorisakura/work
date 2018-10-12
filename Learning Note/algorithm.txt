@@ -1,0 +1,5 @@
+
+C语言问题：假设N为2的乘幂，且N>2，，求下列算法的时间复杂度，及变量COUNT的值
+intTime(intn)count=0;x=2;While(x<n/2){x*=2;count++;}return(count)}//time
+
+每循环一次x值为原来2倍。x原值为2，循环count次后x值为2(count)*2。2(count)表示2的count次方。当x<n/2时停止循环，即2(count)*2>=n/2,解得count=log(2)n-2。因此时间复杂度为O(log(2)n)。 
