@@ -1,0 +1,67 @@
+{% if grains["id"] == "LIVE-CTC-RECORD1-SXHANZ" %}
+
+/usr/local/lm_proxy:
+  file.directory:
+    - source: salt://pkg/online/record/lm_proxy
+
+/usr/local/lm_proxy/config.xml:
+  file.managed:
+    - source: salt://record/lmproxyconfig.xml
+    - template: jinja
+    - defaults:
+      IP: {{ salt['cmd.run']("/sbin/ip -f inet -o addr show 2>/dev/null |grep -v ' lo ' |awk '{print $4}' |awk  -F/ '{print $1}' | grep -E -v '^(192|10|172)\.' | head -1") }}
+    - require:
+      - file: /usr/local/lm_proxy
+
+/usr/local/lm_proxy/reload.sh:
+  file.managed:
+    - source: salt://pkg/online/record/lm_proxy/lmreload.sh
+    - template: jinja
+    - defaults:
+      LST: "$Dir/lmproxylst.py  start"
+      CMD1: "cd ../lm_proxy_cmnet"
+      CMD2: "nohup ./$Process > /dev/null 2>&1 &"
+    - require:
+      - file: /usr/local/lm_proxy
+
+/usr/local/lm_proxy_cmnet:
+  file.directory:
+    - source: salt://pkg/online/record/lm_proxy
+
+/usr/local/lm_proxy_cmnet/config.xml:
+  file.managed:
+    - source: salt://record/lmproxyconfig.xml
+    - template: jinja
+    - defaults:
+      IP: {{ salt['cmd.run']("/sbin/ip -f inet -o addr show 2>/dev/null |grep -v ' lo ' |awk '{print $4}' |awk  -F/ '{print $1}' | grep -E -v '^(192|10|172|124)\.' | head -1") }}
+    - require:
+      - file: /usr/local/lm_proxy_cmnet
+
+{% else %}
+
+/usr/local/lm_proxy:
+  file.directory:
+    - source: salt://pkg/online/record/lm_proxy
+
+/usr/local/lm_proxy/config.xml:
+  file.managed:
+    - source: salt://record/lmproxyconfig.xml
+    - template: jinja
+    - defaults:
+      IP: {{ salt['cmd.run']("/sbin/ip -f inet -o addr show 2>/dev/null |grep -v ' lo ' |awk '{print $4}' |awk  -F/ '{print $1}' | grep -E -v '^(192|10|172)\.' | head -1") }}
+    - require:
+      - file: /usr/local/lm_proxy
+
+/usr/local/lm_proxy/reload.sh:
+  file.managed:
+    - source: salt://pkg/online/record/lm_proxy/lmreload.sh
+    - template: jinja
+    - defaults:
+      LST: "$Dir/lmproxylst.py  start"
+    - require:
+      - file: /usr/local/lm_proxy
+
+{% endif %}
+
+
+file.recurse 每次都是全部更新

@@ -1,0 +1,365 @@
+如何使用 Salt State?
+
+今天，深入点研究 SaltStack 中的精华部分：“Salt States”。
+
+「Salt States」 翻译成什么好呢？我想了半天，乳头都快想破了。老外整的这些玩意翻译成中文就不伦不类了，索性就按照字面意思 one by one 地译成「盐态」好了，蛤蛤～
+
+注：“乳”字，在汉语中除了指“分泌奶水的器官、乳汁”等含义，还有“初生的、幼小的、小”的意思，除了“乳头”，类似的例子还有：
+
+我的乳名（小名）叫小明。
+我家门前有条乳沟（小沟）。
+今天，我就来讲讲「盐态」到底是怎么回事。以下译自: HOW DO I USE SALT STATES?
+
+
+KISS
+简洁，简洁，简洁
+
+众多强大而有力的设计都建立在简单的原则之上。Salt State 系统也努力向 K.I.S.S(Keep It Stupidly Simple） 看齐。
+
+SLS（代表 SaLt State文件）是 Salt State 系统的核心。SLS描述了系统的目标状态，由格式简单的数据构成，经常被称作配置管理。
+
+只是数据而已
+深入学习之前，明白 SLS文件只是结构化的数据而已 是很有用的。看懂和编写SLS文件不需要理解这一点，但会让你体会到SLS系统的强大。
+
+SLS 文件本质上只是一些 dictionaries，lists，strings和numbers。这种设计让SLS文件非常灵活，可以满足开发者的各种需求，而且可读性很高。写得越多，就越清楚到底写得是什么。最终的结果是一个简单易懂的系统，它可以随着开发者或管理者的需求而变化。
+
+top 文件
+下面的 sls 示例文件可以通过一个叫 top.sls 的文件来分派给主机执行。这个文件的详细信息可参考 here
+
+默认的数据:YAML
+Salt 默认使用YAML 这种最简单的序列化数据格式来表达SLS数据。
+
+典型的SLS文件如下：
+
+apache/init.sls:
+
+apache:
+   pkg.installed:[]
+   service.running
+     - require:
+       - pkg: apache
+这些数据确保名为apache的软件包处于已安装状态，服务进程apache处于运行状态。
+
+这些数据简洁，易于理解。下面简单解释一下：
+
+第 1 行是这段数据的ID，被称作ID声明。这个ID是将要执行的这些命令的名字。
+第 2、3 行包含了要执行的State 模块方法，它的格式为<模块名>.<方法名>。pkg.installed 使用系统本地的软件包管理器管理将要安装的软件；service.running确保指定的服务必须运行。
+最后，是关键字require，它是必要语句 Requisite，确保了apache服务只有在成功安装软件包后才会启动。
+添加配置文件和用户
+部署像apache这样的web服务器时，还需要添加其他的内容。需要管理apache的配置文件，需要添加运行apache服务的用户和组。
+
+apache:
+  pkg.installed: []
+  service.running:
+    - watch:
+      - pkg: apache
+      - file: /etc/httpd/conf/httpd.conf
+      - user: apache
+  user.present:
+    - uid: 87
+    - gid: 87
+    - home: /var/www/html
+    - shell: /bin/nologin
+    - require:
+      - group: apache
+  group.present:
+    - gid: 87
+    - require:
+      - pkg: apache
+
+/etc/httpd/conf/httpd.conf:
+  file.managed:
+    - source: salt://apache/httpd.conf
+    - user: root
+    - group: root
+    - mode: 644
+这个SLS大大扩展了上面的例子，增加了配置、用户、组，还有一个新的必要语句：watch。
+
+添加 state 非常简单：user和group这两个state添加在apache这个ID下，所以增加的user和group名字都是apache。require语句确保了只有在apache这个group存在时才建立user，只有在apache这个package成功安装后才会建立group。
+
+接下来，service中的require语句换成了watch，从需要 1 个软件包改为监视 3 个state（分别是pkg、file和user）。watch语句和require很相似，都能保证被监视或需要的state在自己之前执行，但是watch还有其他作用。在被监视的state发生变化时，定义watch语句的state会执行自己的watcher函数。也就是说，更新软件包、修改配置文件、修改apache用户的uid都会触发service state的watcher函数。在这个例子中，service state的watcher会重启apache服务。
+
+多个SLS文件
+要想可扩展性地部署 Salt State 系统，将会用到不止一个 SLS 文件。上面的例子中只使用 1 个SLS文件，2 个或多个SLS文件可以结合形成State Tree。上面的例子还使用了一个奇怪的文件来源 salt://apache/httpd.conf，这个文件也必须要找的到。
+
+SLS文件以一定的目录结构分布在master上；SLS和要下发到minion上的文件都只是普通文件。
+
+上面例子中的文件在 Salt根目录(/etc/salt/)下：
+
+apache/init.sls
+apache/httpd.conf
+httpd.conf 只是apache目录下的一个普通文件，可以直接引用。
+
+使用多个SLS文件可以更加灵活方便，以SSH为例：
+
+ssh/init.sls:
+
+openssh-client:
+  pkg.installed
+
+/etc/ssh/ssh_config:
+  file.managed:
+    - user: root
+    - group: root
+    - mode: 644
+    - source: salt://ssh/ssh_config
+    - require:
+      - pkg: openssh-client
+ssh/server.sls:
+
+openssh-client:
+  pkg.installed
+
+/etc/ssh/ssh_config:
+  file.managed:
+    - user: root
+    - group: root
+    - mode: 644
+    - source: salt://ssh/ssh_config
+    - require:
+      - pkg: openssh-client
+ssh/server.sls:
+
+include:
+  - ssh
+
+openssh-server:
+  pkg.installed
+
+sshd:
+  service.running:
+    - require:
+      - pkg: openssh-client
+      - pkg: openssh-server
+      - file: /etc/ssh/banner
+      - file: /etc/ssh/sshd_config
+
+/etc/ssh/sshd_config:
+  file.managed:
+    - user: root
+    - group: root
+    - mode: 644
+    - source: salt://ssh/sshd_config
+    - require:
+      - pkg: openssh-server
+
+/etc/ssh/banner:
+  file:
+    - managed
+    - user: root
+    - group: root
+    - mode: 644
+    - source: salt://ssh/banner
+    - require:
+      - pkg: openssh-server
+注：在ssh/server.sls中，用了两种不同的方式来表示用Salt管理一个文件。在ID为/etc/ssh/sshd_config段中，直接使用file.managed作为state声明，而在ID为/etc/ssh/banner段中，使用file作为state声明，附加一个managed属性。两种表示方法的含义与结果完全一样，只是写法不同。
+
+现在 State Tree 如下:
+
+apache/init.sls
+apache/httpd.conf
+ssh/init.sls
+ssh/server.sls
+ssh/banner
+ssh/ssh_config
+ssh/sshd_config
+ssh/server.sls 中使用了include语句。include将别的SLS添加到当前文件中，所以可以require或watch或 extend（憋着急，下面马上会讲到）被引用的SLS中定义的内容。
+
+include语句使得state可以跨文件引用，使用include相当于把被引用的内容文件添加到自身。
+
+注：你可能注意到有些 SLS 文件叫 init.sls，有些又不是，关于它的约定规则可以参考 States Tutorial
+
+Extend:扩展被引用的SLS数据
+有的时候，SLS 文件需要扩展，也许是 apache 服务需要监听另外一个文件，或者在某种特殊条件下，某个文件需要添加进来。
+
+在下面的例子中，第一个将添加一个自定义的 banner 文件到 ssh，第二个多添加一个watcher到 apache 以便引入mod_python。
+
+ssh/custom-server.sls:
+
+include:
+  - ssh.server
+
+extend:
+  /etc/ssh/banner:
+    file:
+      - source: salt://ssh/custom-banner
+python/mod_python.sls:
+
+include:
+  - apache
+
+extend:
+  apache:
+    service:
+      - watch:
+        - pkg: mod_python
+
+mod_python:
+  pkg.installed
+custom-server.sls 文件使用 extend 语法来覆盖banner 的下载路径文件，相当于替换了banner的配置文件。
+
+在mod_python.sls 文件中, 添加了 mod_python，但是更关键的是 apache 服务扩展成为它还要额外监听这个 mod_python 包。
+
+Extend 使得 SLS更加灵活，在处理SLS时，会将其中的内容解析成Python中的dict（当然这个dict中会嵌套dict和list）。
+
+扩展 apache 的 watch，相当于往list里面 添加 一个元素。
+修改 banner 文件的下载路径相当于 修改 dict中的某个key对应的值。
+注：在使用 extend时，会添加 require/watch 的内容，而不是覆盖。
+
+Render System:理解渲染系统
+由于SLS仅仅是数据，所以它不是一定得用YAML来表达。Salt默认使用YAML，只是因为易学易用。只要有对应的渲染器，SLS文件可以用任何方式表达。
+
+注：Salt关心的是最终解析出来的数据结构，只要你的渲染器能够按要求返回这个数据结构，它不关心你是如何编写的。
+
+Salt默认使用yaml_jinja渲染器，yaml_jinja渲染器先用jinja2模板引擎处理SLS源文件，然后再调用YAML解析器。这种设计的好处是: 可以在SLS文件中使用所有的编程结构。
+
+jinja2能怎么用，这里就能怎么用。条件，循环，Python代码……神马都可以
+
+其他可用的渲染器还包括：yaml_mako，使用 Mako模板引擎；yaml_wempy，使用Wempy模板引擎；py，直接使用Python写SLS文件；pydsl，建立在Python语法基础上的描述语言。
+
+yaml_jinja: 默认的渲染器
+关于jinja模板引擎的使用请参考其 官方文档
+
+Salt在和渲染器工作时，已经往里面传进去了一些十分有用的数据。在基于模板引擎的渲染器里，可以从3个组件中获取需要的数据：salt，grains和pilla。在模板文件中，可以用salt对象执行任意的Salt function，使用grains访问Grains数据。示例如下：
+
+apache/init.sls:
+
+apache:
+  pkg.installed:
+    {% if grains['os'] == 'RedHat'%}
+    - name: httpd
+    {% endif %}
+  service.running:
+    {% if grains['os'] == 'RedHat'%}
+    - name: httpd
+    {% endif %}
+    - watch:
+      - pkg: apache
+      - file: /etc/httpd/conf/httpd.conf
+      - user: apache
+  user.present:
+    - uid: 87
+    - gid: 87
+    - home: /var/www/html
+    - shell: /bin/nologin
+    - require:
+      - group: apache
+  group.present:
+    - gid: 87
+    - require:
+      - pkg: apache
+
+/etc/httpd/conf/httpd.conf:
+  file.managed:
+    - source: salt://apache/httpd.conf
+    - user: root
+    - group: root
+    - mode: 644
+这个例子很容易理解，用到了jinja中的条件结构，如果grains中的os表明minion的操作系统是Red Hat，那么Apache的软件包名和服务名应当是httpd。
+
+再来一个更niubility的例子，用到了jinja的循环结构，在设置 MooseFs分布式chunkserver的模块中：
+
+moosefs/chunk.sls:
+
+include:
+  - moosefs
+
+{% for mnt in salt['cmd.run']('ls /dev/data/moose*').split() %}
+/mnt/moose{{ mnt[-1] }}:
+  mount.mounted:
+    - device: {{ mnt }}
+    - fstype: xfs
+    - mkmnt: True
+  file.directory:
+    - user: mfs
+    - group: mfs
+    - require:
+      - user: mfs
+      - group: mfs
+{% endfor %}
+
+/etc/mfshdd.cfg:
+  file.managed:
+    - source: salt://moosefs/mfshdd.cfg
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+    - require:
+      - pkg: mfs-chunkserver
+
+/etc/mfschunkserver.cfg:
+  file.managed:
+    - source: salt://moosefs/mfschunkserver.cfg
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+    - require:
+      - pkg: mfs-chunkserver
+
+mfs-chunkserver:
+  pkg.installed: []
+mfschunkserver:
+  service.running:
+    - require:
+{% for mnt in salt['cmd.run']('ls /dev/data/moose*') %}
+      - mount: /mnt/moose{{ mnt[-1] }}
+      - file: /mnt/moose{{ mnt[-1] }}
+{% endfor %}
+      - file: /etc/mfschunkserver.cfg
+      - file: /etc/mfshdd.cfg
+      - file: /var/lib/mfs
+这个例子展示了jinja的强大，多个for循环用来动态地检测并挂载磁盘，多次使用salt对象（这里使用了cmd.run这个执行模块）执行shell命令来收集数据。
+
+简单介绍Python和PyDSL渲染器
+在任务逻辑非常复杂时，默认的yaml_jinja渲染器不一定满足要求，这时可以使用Python渲染器。
+
+Normally a YAML renderer should be used for the majority of SLS files, but an SLS file set to use another renderer can be easily added to the tree.
+
+正常情况下，YAML的渲染器应该可以适用于绝大部分 SLS 文件，但是使用其他的渲染器的 SLS 文件同样可以轻易地适配到 sls tree 中。
+
+下面是一个非常简单的基本Python SLS文件：
+
+python/django.sls:
+
+#!py
+
+ def run():
+     '''
+     Install the django package
+     '''
+     return {'include': ['python'],
+             'django': {'pkg': ['installed']}}
+这个例子也很好理解，第 1 行告诉Salt不使用默认的渲染器，而是用py。接着定义了函数run，这个函数的返回值必须符合Salt的要求，即HighState数据结构。
+
+如果换用pydsl渲染器，上面的例子会更简洁：
+
+python/django.sls:
+
+#!pydsl
+
+include('python', delayed=True)
+state('django').pkg.installed()
+如果用YAML，会是下面这个样子：
+
+include:
+  - python
+
+django:
+  pkg.installed
+这也可以看出，正常情况下使用YAML是非常合适的，但如果有需要时，使用纯粹的Python SLS可以非常犀利地装逼哦。
+
+运行和调试 Salt States
+写好的SLS如何才能应用到minion呢？
+
+在SaltStack中，远程执行是一切的基础。执行命令salt '*' state.apply 会让所有的minion到master上来取走自己的SLS文件，然后在本地调用对应的state模块（user，pkg，service等，内置的 state 模块列表在 这里）来达到SLS描述的状态。
+
+如果这条命令只返回minion的主机名加一个':'，多半是哪一个SLS文件有错。如果minion是以服务进程启动，执行命令：
+
+salt-call state.aply -l debug
+可以看到错误信息，便于调试。minion还可以直接在前台以debug模式运行：
+
+salt-minion -l debug
+What's next？
+这篇文章只是对 Salt States 的初步介绍，下一步请继续阅读 Pillar 部分，官方文档 在此。
