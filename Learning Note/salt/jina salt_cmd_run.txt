@@ -1,7 +1,7 @@
 {% if grains["id"] == "LIVE-CTC-RECORD1-SXHANZ" %}
 
 /usr/local/lm_proxy:
-  file.directory:
+  file.recurse:
     - source: salt://pkg/online/record/lm_proxy
 
 /usr/local/lm_proxy/config.xml:
@@ -25,7 +25,7 @@
       - file: /usr/local/lm_proxy
 
 /usr/local/lm_proxy_cmnet:
-  file.directory:
+  file.recurse:
     - source: salt://pkg/online/record/lm_proxy
 
 /usr/local/lm_proxy_cmnet/config.xml:
@@ -40,7 +40,7 @@
 {% else %}
 
 /usr/local/lm_proxy:
-  file.directory:
+  file.recurse:
     - source: salt://pkg/online/record/lm_proxy
 
 /usr/local/lm_proxy/config.xml:
