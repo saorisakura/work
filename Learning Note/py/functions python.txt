@@ -1,0 +1,243 @@
+偏函数
+
+Python的functools模块提供了很多有用的功能，其中一个就是偏函数（Partial function）。要注意，这里的偏函数和数学意义上的偏函数不一样。
+
+在介绍函数参数的时候，我们讲到，通过设定参数的默认值，可以降低函数调用的难度。而偏函数也可以做到这一点。举例如下：
+
+int()函数可以把字符串转换为整数，当仅传入字符串时，int()函数默认按十进制转换：
+
+>>> int('12345')
+12345
+但int()函数还提供额外的base参数，默认值为10。如果传入base参数，就可以做N进制的转换：
+
+>>> int('12345', base=8)
+5349
+>>> int('12345', 16)
+74565
+假设要转换大量的二进制字符串，每次都传入int(x, base=2)非常麻烦，于是，我们想到，可以定义一个int2()的函数，默认把base=2传进去：
+
+def int2(x, base=2):
+    return int(x, base)
+这样，我们转换二进制就非常方便了：
+
+>>> int2('1000000')
+64
+>>> int2('1010101')
+85
+functools.partial就是帮助我们创建一个偏函数的，不需要我们自己定义int2()，可以直接使用下面的代码创建一个新的函数int2：
+
+>>> import functools
+>>> int2 = functools.partial(int, base=2)
+>>> int2('1000000')
+64
+>>> int2('1010101')
+85
+所以，简单总结functools.partial的作用就是，把一个函数的某些参数给固定住（也就是设置默认值），返回一个新的函数，调用这个新函数会更简单。
+
+注意到上面的新的int2函数，仅仅是把base参数重新设定默认值为2，但也可以在函数调用时传入其他值：
+
+>>> int2('1000000', base=10)
+1000000
+最后，创建偏函数时，实际上可以接收函数对象、*args和**kw这3个参数，当传入：
+
+int2 = functools.partial(int, base=2)
+实际上固定了int()函数的关键字参数base，也就是：
+
+int2('10010')
+相当于：
+
+kw = { 'base': 2 }
+int('10010', **kw)
+当传入：
+
+max2 = functools.partial(max, 10)
+实际上会把10作为*args的一部分自动加到左边，也就是：
+
+max2(5, 6, 7)
+相当于：
+
+args = (10, 5, 6, 7)
+max(*args)
+结果为10。
+
+小结
+当函数的参数个数太多，需要简化时，使用functools.partial可以创建一个新的函数，这个新函数可以固定住原函数的部分参数，从而在调用时更简单。
+
+ 
+PYTHON-进阶-FUNCTOOLS模块小结
+Python-进阶-functools模块小结
+functools.partial
+functool.update_wrapper
+functool.wraps
+functools.reduce
+functools.cmp_to_key
+functools.total_ordering
+
+functools.partial
+作用:
+
+functools.partial 通过包装手法，允许我们 "重新定义" 函数签名
+
+用一些默认参数包装一个可调用对象,返回结果是可调用对象，并且可以像原始对象一样对待
+
+冻结部分函数位置函数或关键字参数，简化函数,更少更灵活的函数参数调用
+
+#args/keywords 调用partial时参数
+def partial(func, *args, **keywords):
+    def newfunc(*fargs, **fkeywords):
+        newkeywords = keywords.copy()
+        newkeywords.update(fkeywords)
+        return func(*(args + fargs), **newkeywords) #合并，调用原始函数，此时用了partial的参数
+    newfunc.func = func
+    newfunc.args = args
+    newfunc.keywords = keywords
+    return newfunc
+声明：
+
+urlunquote = functools.partial(urlunquote, encoding='latin1')
+当调用 urlunquote(args, *kargs)
+
+相当于 urlunquote(args, *kargs, encoding='latin1')
+
+E.g:
+
+import functools
+
+def add(a, b):
+    return a + b
+
+add(4, 2)
+6
+
+plus3 = functools.partial(add, 3)
+plus5 = functools.partial(add, 5)
+
+plus3(4)
+7
+plus3(7)
+10
+
+plus5(10)
+15
+应用:
+
+典型的，函数在执行时，要带上所有必要的参数进行调用。
+
+然后，有时参数可以在函数被调用之前提前获知。
+
+这种情况下，一个函数有一个或多个参数预先就能用上，以便函数能用更少的参数进行调用。
+
+functool.update_wrapper
+默认partial对象没有__name__和__doc__, 这种情况下，对于装饰器函数非常难以debug.使用update_wrapper(),从原始对象拷贝或加入现有partial对象
+
+它可以把被封装函数的__name__、module、__doc__和 __dict__都复制到封装函数去(模块级别常量WRAPPER_ASSIGNMENTS, WRAPPER_UPDATES)
+
+>>> functools.WRAPPER_ASSIGNMENTS
+('__module__', '__name__', '__doc__')
+>>> functools.WRAPPER_UPDATES
+('__dict__',)
+这个函数主要用在装饰器函数中，装饰器返回函数反射得到的是包装函数的函数定义而不是原始函数定义
+
+#!/usr/bin/env python
+# encoding: utf-8
+
+def wrap(func):
+    def call_it(*args, **kwargs):
+        """wrap func: call_it"""
+        print 'before call'
+        return func(*args, **kwargs)
+    return call_it
+
+@wrap
+def hello():
+    """say hello"""
+    print 'hello world'
+
+from functools import update_wrapper
+def wrap2(func):
+    def call_it(*args, **kwargs):
+        """wrap func: call_it2"""
+        print 'before call'
+        return func(*args, **kwargs)
+    return update_wrapper(call_it, func)
+
+@wrap2
+def hello2():
+    """test hello"""
+    print 'hello world2'
+
+if __name__ == '__main__':
+    hello()
+    print hello.__name__
+    print hello.__doc__
+
+    print
+    hello2()
+    print hello2.__name__
+    print hello2.__doc__
+得到结果：
+
+before call
+hello world
+call_it
+wrap func: call_it
+
+before call
+hello world2
+hello2
+test hello
+functool.wraps
+调用函数装饰器partial(update_wrapper, wrapped=wrapped, assigned=assigned, updated=updated)的简写
+
+from functools import wraps
+def wrap3(func):
+    @wraps(func)
+    def call_it(*args, **kwargs):
+        """wrap func: call_it2"""
+        print 'before call'
+        return func(*args, **kwargs)
+    return call_it
+
+@wrap3
+def hello3():
+    """test hello 3"""
+    print 'hello world3'
+结果
+
+before call
+hello world3
+hello3
+test hello 3
+functools.reduce
+functools.reduce(function, iterable[, initializer])
+等同于内置函数reduce()
+
+用这个的原因是使代码更兼容(python3)
+
+functools.cmp_to_key
+functools.cmp_to_key(func)
+将老式鼻尖函数转换成key函数，用在接受key函数的方法中(such as sorted(), min(), max(), heapq.nlargest(), heapq.nsmallest(), itertools.groupby())
+
+一个比较函数，接收两个参数，小于，返回负数，等于，返回0，大于返回整数
+
+key函数，接收一个参数，返回一个表明该参数在期望序列中的位置
+
+例如:
+
+sorted(iterable, key=cmp_to_key(locale.strcoll))  # locale-aware sort order
+functools.total_ordering
+functools.total_ordering(cls)
+这个装饰器是在python2.7的时候加上的，它是针对某个类如果定义了__lt__、le、gt、__ge__这些方法中的至少一个，使用该装饰器，则会自动的把其他几个比较函数也实现在该类中
+
+@total_ordering
+class Student:
+    def __eq__(self, other):
+        return ((self.lastname.lower(), self.firstname.lower()) ==
+                (other.lastname.lower(), other.firstname.lower()))
+    def __lt__(self, other):
+        return ((self.lastname.lower(), self.firstname.lower()) <
+                (other.lastname.lower(), other.firstname.lower()))
+print dir(Student)
+得到
+
+['__doc__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__module__']
