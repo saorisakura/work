@@ -3369,3 +3369,573 @@ func main() {
 
 str (0xc42000e1d0) = oldboy
 str (0xc42000e1d0) = oldboy
+
+
+Go语言递归函数
+递归，就是在运行的过程中调用自己。
+一个函数调用自己，就叫做递归函数。
+
+构成递归需具备的条件：
+1、子问题须与原始问题为同样的事，且更为简单。
+2、不能无限制地调用本身，须有个出口，化简为非递归状况处理。
+
+Go编程语言支持递归，即函数调用函数本身。在使用递归时，需要谨慎确定函数的退出条件，否则会造成无限循环。
+
+递归函数可以解决许多数学问题，如计算给定数字阶乘、产生斐波系列等；
+
+数字阶乘
+
+一个正整数的阶乘（factorial）是所有小于及等于该数的正整数的积，并且0的阶乘为1。自然数n的阶乘写作n!。1808年，基斯顿·卡曼引进这个表示法。
+
+亦即n!=1×2×3×…×n。阶乘亦可以递归方式定义：0!=1，n!=(n-1)!×n。
+
+使用一个递归函数由给定数计算阶乘，实例如下：
+
+package main
+
+import "fmt"
+
+func factorial(i int) int {
+    if i <= 1 {
+        return 1
+    }
+    return i * factorial(i-1)
+}
+
+func main() {
+    var i int = 9
+    fmt.Printf("Factorial of %d is %d\n", i, factorial(i))
+}
+斐波那契数列（Fibonacci）
+
+斐波那契数列（Fibonacci sequence），又称黄金分割数列、因数学家列昂纳多·斐波那契（Leonardoda Fibonacci）以兔子繁殖为例子而引入，故又称为“兔子数列”，指的是这样一个数列：1、1、2、3、5、8、13、21、34、……
+
+这个数列从第3项开始，每一项都等于前两项之和。
+
+使用一个递归函数由给定的一个数产生斐波那契数列，实例如下：
+
+package main
+
+import "fmt"
+
+func fibonaci(i int) int {
+    if i == 0 {
+        return 0
+    }
+    if i == 1 {
+        return 1
+    }
+    return fibonaci(i-1) + fibonaci(i-2)
+}
+
+func main() {
+    var i int
+    for i = 0; i < 10; i++ {
+        fmt.Printf("%d\n", fibonaci(i))
+    }
+}
+
+
+Go语言延迟调用
+defer是Go语言提供的关键字用来调度一个函数（被延期的函数），使其在执行defer的函数即将返回之前才被运行被延期执行的函数，它的参数（包括接受者）在defer执行的时候被求值的，而不是在调用执行的时候。也就是说被延期执行的函数的参数是按正常顺序被求值的。
+
+defer常用来释放资源，如果有多个defer表达式，调用顺序类似于栈，越后面的defer表达式越先被调用。defer 函数调用的执行时机是外层函数设置返回值之后, 并且在即将返回之前。
+
+defer应用
+
+1、当defer被声明时，参数被实时解析
+
+package main
+
+import "fmt"
+
+func oldboy() (str string) {
+    str = "oldboy"
+    defer fmt.Printf("defer : %s\n", str)
+    str = "老男孩IT教育，只培养技术精英。"
+    return
+}
+
+func main() {
+    oldboy()
+}
+运行结果：
+
+defer : oldboy
+通过运行结果，可以看到 defer 输出的值，就是定义时的值。
+
+2、defer执行顺序为先进后出。
+
+package main
+
+import "fmt"
+
+func test() {
+    for i := 1; i < 4; i++ {
+        defer fmt.Printf("defer%d\n", i)
+    }
+}
+
+func main() {
+    test()
+}
+3、defer 可以读取有名返回值
+
+package main
+
+import (
+    "fmt"
+)
+
+func test() (i int) {
+    defer func() { i += 100 }()
+    return 1
+}
+
+func main() {
+    ret := test()
+    fmt.Println(ret)
+}
+运行结果：
+
+101
+需要明确的是 defer 代码块的作用域仍然在函数之内，结合上面的函数也就是说，defer 的作用域仍然在 test() 函数之内。因此defer仍然可以读取 test() 函数内的变量。
+
+当执行return 1 之后，i 的值是 1 。此时defer代码块开始执行 i += 100操作。 因此最后输出 101。
+
+defer陷阱
+
+1、defer 与 closure
+
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func test(x, y int) (z int, err error) {
+    defer fmt.Printf("first defer err %v\n", err)
+    defer func(err error) { fmt.Printf("second defer err %v\n", err) }(err)
+    defer func() { fmt.Printf("third defer err %v\n", err) }()
+    if y == 0 {
+        err = errors.New("divided by zero!")
+        return
+    }
+
+    z = x / y
+    return
+}
+
+func main() {
+    test(2, 0)
+}
+运行结果：
+
+third defer err divided by zero!
+second defer err <nil>
+first defer err <nil>
+解释：如果 defer 后面跟的不是一个 closure 最后执行的时候我们得到的并不是最新的值。
+
+2、defer 与 return
+
+package main
+
+import "fmt"
+
+func test() (i int) {
+
+    i = 0
+    defer func() {
+        fmt.Println(i)
+    }()
+
+    return 2
+}
+
+func main() {
+    test()
+}
+输出结果：
+
+2
+解释：在有具名返回值的函数中（这里具名返回值为 i），执行 return 2 的时候实际上已经将 i 的值重新赋值为 2。所以defer closure 输出结果为 2 而不是 1。
+
+3、defer nil 函数
+
+package main
+
+import (
+    "fmt"
+)
+
+func test() {
+    var run func() = nil
+    defer run()
+    fmt.Println("runs")
+}
+
+func main() {
+    defer func() {
+        if err := recover(); err != nil {
+            fmt.Println(err)
+        }
+    }()
+    test()
+}
+输出结果：
+
+runs
+runtime error: invalid memory address or nil pointer dereference
+解释：名为 test 的函数一直运行至结束，然后 defer 函数会被执行且会因为值为 nil 而产生 panic 异常。然而值得注意的是，run() 的声明是没有问题，因为在test函数运行完成后它才会被调用。
+
+
+Go语言方法定义
+方法介绍
+在 Go 语言中有一个概念和函数极其相似，叫做方法 。Go 语言的方法其实是作用在接收者（receiver）上的一个函数，接收者是某种非内置类型的变量。因此方法是一种特殊类型的函数。
+
+接收者类型可以是（几乎）任何类型，不仅仅是结构体类型：任何类型都可以有方法，甚至可以是函数类型，可以是 int、bool、string 或数组的别名类型。但是接收者不能是接口类型。
+
+方法的声明和普通函数的声明类似，只是在函数名称前面多了一个参数，这个参数把这个方法绑定到这个参数对应的类型上。
+
+方法定义
+首先声明一个自定义类型Test
+
+type Test struct{}
+方法参数 receiver 类型可以是 Test 或 *Test。类型 Test不能是接口或指针。
+
+第一种，定义一个无参数、无返回值的方法
+
+func (t Test) method() {
+}
+func (t *Test) method() {
+
+}
+第二种，定义一个单参数、无返回值的方法
+
+func (t Test) method(i int) {
+}
+func (t *Test) method(i int) {
+
+}
+第三种，定义一个多参数、无返回值的方法
+
+func (t Test) method(x, y int) {
+
+}
+func (t *Test) method(x, y int) {
+
+}
+第四种，定义一个无参数、单返回值的方法
+
+func (t Test) method() (i int) {
+    return
+}
+func (t *Test) method() (i int) {
+    return
+}
+第五种，定义一个多参数、多返回值的方法
+
+func (t Test) method(x, y int) (z int, err error) {
+    return
+}
+func (t *Test) method(x, y int) (z int, err error) {
+    return
+}
+方法和函数的关系
+
+方法是特殊的函数，定义在某一特定的类型上，通过类型的实例来进行调用，这个实例被叫接收者。
+
+接收者必须有一个显式的名字，这个名字必须在方法中被使用。 接收者类型必须在和方法同样的包中被声明。
+
+注意： Go语言不允许为简单的内置类型添加方法，下面定义的方法是非法的。
+
+package main
+
+import (
+    "fmt"
+)
+
+//方法不能是内置数据类型
+func (a int) Add(b int) {
+    fmt.Println(a + b)
+}
+编译错误：
+
+cannot define new methods on non-local type int
+我们可以用Go语言的type，来定义一个和int具有同样功能的类型。这个类型不能看成是int类型的别名，它们属于不同的类型，不能直接相互赋值。
+
+合法的方法定义如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+type myInt int
+
+func (a myInt) Add(b myInt) {
+    fmt.Println(a + b)
+}
+
+func main() {
+    var x, y myInt = 3, 6
+    x.Add(y)
+}
+函数与方法的区别
+
+1、对于普通函数，接收者为值类型时，不能将指针类型的数据直接传递，反之亦然。
+2、对于方法（如struct的方法），接收者为值类型时，可以直接用指针类型的变量调用方法，反过来同样也可以。
+
+
+Go语言方法规则
+根据调用者不同，方法分为两种表现形式：方法（method value）、方法表达式（method expression）。
+
+两者都可像普通函数那样赋值和传参，区别在于 方法 （method value）绑定了实例，而方法表达式（method expression）必须显式传参。
+
+直接调用
+
+直接调用，类型 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    int
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t1 := T{1}
+    fmt.Printf("t1 is : %v\n", t1)
+    t1.testT()
+    t1.testP()
+
+    t2 := &t1
+    fmt.Printf("t2 is : %v\n", t2)
+    t2.testT()
+    t2.testP()
+}
+直接调用，类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    int
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{1}}
+    st2 := &st1
+    fmt.Printf("st1 is : %v\n", st1)
+    st1.testT()
+    st1.testP()
+    fmt.Printf("st2 is : %v\n", st2)
+    st2.testT()
+    st2.testP()
+
+    sp1 := SP{&T{1}}
+    sp2 := &sp1
+    fmt.Printf("sp1 is : %v\n", sp1)
+    sp1.testT()
+    sp1.testP()
+    fmt.Printf("sp2 is : %v\n", sp2)
+    sp2.testT()
+    sp2.testP()
+}
+隐式传递调用
+
+接受者隐式传递，类型 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t := T{"oldboy"}
+    methodValue1 := t.testT
+    methodValue1()
+    methodValue2 := (&t).testT
+    methodValue2()
+    methodValue3 := t.testP
+    methodValue3()
+    methodValue4 := (&t).testP
+    methodValue4()
+}
+接受者隐式传递，类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{"oldboy"}}
+    methodValue1 := st1.testT
+    methodValue1()
+    methodValue2 := (&st1).testT
+    methodValue2()
+    methodValue3 := st1.testP
+    methodValue3()
+    methodValue4 := (&st1).testP
+    methodValue4()
+
+    sp1 := SP{&T{"oldboy"}}
+    methodValue5 := sp1.testT
+    methodValue5()
+    methodValue6 := (&sp1).testT
+    methodValue6()
+    methodValue7 := sp1.testP
+    methodValue7()
+    methodValue8 := (&sp1).testP
+    methodValue8()
+}
+显式传递调用
+
+接受者显示传值，类型 T 的可调用方法集包含接受者为 T 的所有方法，不包含接受者为 *T 的方法。类型 *T 的可调用方法集包含接受者为 *T 或 T 的所有方法集。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t := T{"oldboy"}
+    expression1 := T.testT
+    expression1(t)
+    expression2 := (*T).testT
+    expression2(&t)
+
+    // expression3 := T.testP
+    // expression3(t)
+    expression4 := (*T).testP
+    expression4(&t)
+
+}
+接受者显示传值，类型 S 包含匿名字段 *T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+类型 S 包含匿名字段 T ，类型 S 的可调用方法集包含接受者为 T 的所有方法，不包含接受者为 *T 的方法。类型 *S 的可调用方法集包含接受者为 *T 或 T 的所有方法集。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{"oldboy"}}
+    expression1 := ST.testT
+    expression1(st1)
+    expression2 := (*ST).testT
+    expression2(&st1)
+    // expression3 := ST.testP
+    // expression3(st1)
+    expression4 := (*ST).testP
+    expression4(&st1)
+
+    sp1 := SP{&T{"oldboy"}}
+    expression5 := SP.testT
+    expression5(sp1)
+    expression6 := (*SP).testT
+    expression6(&sp1)
+    expression7 := SP.testP
+    expression7(sp1)
+    expression8 := (*SP).testP
+    expression8(&sp1)
+}
+

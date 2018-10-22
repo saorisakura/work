@@ -91,3 +91,332 @@ int main()
 
 ---------------------
 
+C语言实现trim() ltrim() rtrim()函数
+
+void ltrim ( char *s )
+{
+    char *p;
+    p = s;
+    while ( *p == ' ' || *p == '\t' ) {*p++;}
+    strcpy ( s,p );
+}
+ 
+void rtrim ( char *s )
+{
+    int i;
+ 
+    i = strlen ( s )-1;
+    while ( ( s[i] == ' ' || s[i] == '\t' ) && i >= 0 ) {i--;};
+    s[i+1] = '\0';
+}
+ 
+void trim ( char *s )
+{
+    ltrim ( s );
+    rtrim ( s );
+}
+
+---------------------
+
+
+C语言字符串库函数的实现
+1.strlen（字符串的长度）
+
+
+size_t Strlen(const char* str)
+{
+    assert(str);
+    for (size_t i = 0;; ++i)
+    {
+        if (str[i] == '\0')
+            return i;
+    }
+}
+
+size_t StrlenByRecursion(const char* str)
+{
+    return *str == '\0' ? 0 : StrlenByRecursion(str + 1) + 1;
+}
+
+size_t __cdecl strlen (const char * str)  //函数库里面实现的代码
+{  
+    const char *eos = str;  
+      
+    while( *eos++ ) ;  
+      
+    return( (int)(eos - str - 1) );  
+}
+
+2.strcpy（字符串拷贝）
+
+
+char* Strcpy1(char* dst, const char* src)
+{
+    assert(dst && src);
+    int i = 0;
+    for (; src[i] != '\0'; ++i)
+    {
+        dst[i] = src[i];
+    }
+    dst[i] = '\0';
+    return dst;
+}
+
+char* Strcpy2(char* dst, const char* src)
+{
+    assert(dst && src);
+    char* tmp = dst;
+    while ((*tmp++ = *src++) != '\0');
+    *tmp = '\0';
+    return dst;
+}
+
+
+char *  strcpy (char * dest,const char* src)     //函数库中的实现
+{  
+    reg_char c;  
+    char *__unbounded s = (char *__unbounded) CHECK_BOUNDS_LOW (src);  
+    const ptrdiff_t off = CHECK_BOUNDS_LOW (dest) - s - 1;  
+    size_t n;  
+      
+    do  
+    {  
+        c = *s++;  
+        s[off] = c;  
+    }  
+    while (c != '\0');  
+      
+    n = s - src;  
+    (void) CHECK_BOUNDS_HIGH (src + n);  
+    (void) CHECK_BOUNDS_HIGH (dest + n);  
+      
+    return dest;  
+}
+
+
+3.strncpy
+
+
+char* Strncpy(char* dst,const char* src,int lenth)
+{
+    assert(dst && src);
+    char* tmp = dst;
+    while (lenth--)
+    {
+        if ((*tmp++ = *src) != '\0')
+            src++;
+    }
+    *tmp = '\0';
+    return dst;
+}
+
+char * __cdecl strncpy (char * dest,const char * source,size_t count)  
+{  
+    char *start = dest;  
+      
+    while (count && (*dest++ = *source++))    /* copy string */  
+        count--;  
+      
+    if (count)                              /* pad out with zeroes */  
+        while (--count)  
+            *dest++ = '\0';  
+          
+        return(start);  
+} 
+
+4.strcat（字符串连接）
+
+
+char* Strcat(char* dst, const char* src)
+{
+    assert(dst && src);
+    char* tmp = dst;
+    while (*tmp)
+        tmp++;
+    while ((*tmp++ = *src++) != '\0');
+    return dst;
+}
+
+char * __cdecl strcat (char * dst,const char * src)     //库中的实现方法
+{  
+    char * cp = dst;  
+
+    while( *cp )  
+        cp++;                   /* find end of dst */  
+
+    while( *cp++ = *src++ ) ;       /* Copy src to end of dst */  
+
+    return( dst );                  /* return dst */  
+} 
+
+5.strncat
+
+
+char* Strncat(char* dst,const char* src,size_t lenth)
+{
+    assert(dst && src);
+    char* tmp = dst;
+    while (*tmp)
+        ++tmp;
+    while (lenth-- && (*tmp++ = *src++));
+    *tmp = '\0';
+    return dst;
+}
+
+char * __cdecl strncat (char * front,const char * back,size_t count)     //库中实现的方法
+{  
+    char *start = front;  
+      
+    while (*front++)  
+        ;  
+    front--;  
+      
+    while (count--)  
+        if (!(*front++ = *back++))  
+            return(start);  
+          
+        *front = '\0';  
+        return(start);  
+}  
+
+6.strcmp
+
+int Strcmp(const char* str1, const char* str2)
+{
+    assert(str1 && str2);
+    while (*str1 == *str2 && *str2)
+    {
+        str1++;
+        str2++;
+    }
+    return *（unsigned char*）str1 - *（unsigend char*）str2;
+}
+
+int __cdecl strcmp (const char * src,const char * dst)      //库中的实现方式
+{  
+    int ret = 0 ;  
+    while( ! (ret = *(unsigned char *)src - *(unsigned char *)dst) && *dst)  
+        ++src, ++dst;  
+      
+    if ( ret < 0 )  
+        ret = -1 ;  
+    else if ( ret > 0 )  
+        ret = 1 ;  
+      
+    return( ret );  
+}  
+
+
+7.strncmp
+
+
+int Strncmp(const char* str1, const char* str2,size_t lenth)
+{
+    assert(str1 && str2);
+    while (lenth-- && *str2)
+    {
+        if (*str1 != *str2)
+            return *(unsigned char*)str1 - *(unsigned char*)str2;
+        str1++;
+        str2++;
+    }
+    return 0;
+}
+
+int __cdecl strncmp (const char * first,const char * last,size_t count)     //库里实现的方式
+{  
+    if (!count)  
+        return(0);  
+      
+    while (--count && *first && *first == *last)  
+    {  
+        first++;  
+        last++;  
+    }  
+      
+    return( *(unsigned char *)first - *(unsigned char *)last );  
+}  
+
+---------------------
+
+//编写函数实现库函数atof
+#include <stdio.h>
+#include <assert.h>
+#include <ctype.h>
+#include <math.h>
+double calculate(const char *src, int flag)
+{
+	double num = 0.0;
+	int n = 0;
+	int count = 0;
+	while (*src)
+	{
+		if ((*src >= '0') && (*src <= '9'))//推断输入是否为非数组字符
+		{
+			num = num * 10 + (*src - '0');
+			src++;
+			if (n)
+			{
+				count++;
+			}
+		}
+		else if (*src == '.')
+		{
+			n = 1;
+			src++;
+		}
+		else
+		{
+			num = 0;
+			break;
+		}
+	}
+	if (n)
+	{
+		num = num / powl(10,count);
+	}
+	return flag * num;
+}
+double str_to_int(const char *str)
+{
+	double num = 0.0;
+	int flag = 1;
+	if (str != NULL && *str != '\0')
+	{
+		while (isspace(*str))
+		{
+			str++;
+		}
+		if (*str == '+')
+			str++;
+		else if (*str == '-')
+		{
+			str++;
+			flag = -1;
+		}
+		 if (*str != '\0')
+		{
+			num = calculate(str, flag);
+		}
+	}
+	return num;
+}
+int main()
+{
+	printf("%f\n", str_to_int(" +23.45"));
+	printf("%f\n", str_to_int(" -2.345"));
+	printf("%f\n", str_to_int("+234.5"));
+	printf("%f\n", str_to_int("-2345.44"));
+	printf("%f\n", str_to_int("2345"));
+	printf("%f\n", str_to_int("-1111.11"));
+	printf("%f\n", str_to_int(""));
+	printf("%f\n", str_to_int("123ab"));
+	return 0;
+}
+
+---------------------
+---------------------
+---------------------
+---------------------
+
+

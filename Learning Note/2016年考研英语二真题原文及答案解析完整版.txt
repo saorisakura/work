@@ -1,0 +1,695 @@
+2016年考研英语二真题原文及答案解析完整版
+
+Section 1 Use of English
+
+Directions: Read the following text. Choose the best word(s) for each numbered blank and mark [A], [B], [C] or [D] on ANSWER SHEET 1. (10 points)
+
+Happy people work differently. They’re more productive, more creative, and willing to take greater risks. And new research suggests that happiness might influence__1__firm’s work, too.
+
+Companies located in places with happier people invest more, according to a recent research paper.__2__, firms in happy places spend more on R&D (research and development). That’s because happiness is linked to the kind of longer-term thinking__3__for making investments for the future.
+
+The researchers wanted to know if the__4__and inclination for risk-taking that come with happiness would__5__the way companies invested. So they compared U.S. cities’ average happiness__6__by Gallup polling with the investment activity of publicly traded firms in those areas.
+
+__7__enough, firms’ investment and R&D intensity were correlated with the happiness of the area in which they were__8__.But is it really happiness that’s linked to investment, or could something else about happier cities__9__why firms there spend more on R&D? To find out, the researchers controlled for various__10__that might make firms more likely to invest – like size, industry, and sales – and for indicators that a place was__11__to live in, like growth in wages or population. The link between happiness and investment generally__12__even after accounting for these things.
+
+The correlation between happiness and investment was particularly strong for younger firms, which the authors__13__to “less codified decision making process” and the possible presence of “younger and less__14__managers who are more likely to be influenced by sentiment.” The relationship was__15__stronger in places where happiness was spread more__16__.Firms seem to invest more in places where most people are relatively happy, rather than in places with happiness inequality.
+
+__17__ this doesn’t prove that happiness causes firms to invest more or to take a longer-term view, the authors believe it at least__18__at that possibility. It’s not hard to imagine that local culture and sentiment would help__19__how executives think about the future. “It surely seems plausible that happy people would be more forward-thinking and creative and__20__R&D more than the average,” said one researcher.
+
+1. [A] why [B] where [C] how [D] when
+
+2. [A] In return [B] In particular [C] In contrast [D] In conclusion
+
+1. [标准答案][C]how
+
+[考点分析]连词辨析
+
+[选项分析]? 根据语境，“新发现表明：快乐可能会影响工作__的稳定。”[A] 为什么 [B] 哪里 [C] 怎样，多么 [D] 当…时候。根据语义分析，C选项填入原文，译为“快乐可能会影响工作是有多么稳定”，C为正确选项。
+
+2. [标准答案][B]In particular
+
+[考点分析]上下文语义以及短语辨析
+
+[选项分析][A] 反过来 [B] 尤其是 [C] 相反 [D] 总的来说 根据前文语境，第二段第一句译为“根据近期的研究，拥有更多快乐的人的公司会投资更多”。而第二句“_______那些在快乐氛围中的公司会做更多的研发以及发展。“第二句是在第一句的基础上进一步强调说明，因此B选项更符合语境要求。
+
+3. [标准答案] [D]necessary
+
+[考点分析]上下文语义及形容词词义辨析
+
+[选项分析][A]充足的 [B] 著名的 [C] 完美的 [D] 必要的 首先，根据本句题干 “That’s?because happiness is linked to the kind of longer-term thinking 3 for making investments for the future.”译为“因为快乐与对未来投资有______长远考虑相联系。”要求填写形容词, 我们要考虑其搭配与其修饰成分。空格处搭配介词for, 并且修饰“长远考虑”。因此D选项最符合语境要求。
+
+4. [标准答案][C]optimism
+
+[考点分析]上下文语义及名词词义辨析
+
+[选项分析][A]个人主义 [B] 现代主义 [C] 乐观主义 [D] 现实主义 本题考查同后缀的名词辨析。根据原文主旨，探讨“happy people”与公司的关系。那么，衡量四个选项，只有C选项符合主旨要求。
+
+5. [标准答案][D]change
+
+[考点分析]上下文语义及动词词义辨析
+
+[选项分析] [A]发出回声 [B] 想念，错过 [C] 破坏 [D] 改变 根据原文语境，“would 5 the way companies invested.”本题考查动宾搭配，宾语为“公司投资的方式”只有D选项搭配最为合理。
+
+6．[标准答案][B]measured
+
+[考点分析]上下文语义及动词词义辨析
+
+[选项分析] [A]想象 [B] 衡量，测量 [C] 发明 [D] 假定，设想 “So they compared U.S. cities’average happiness 6 by Gallup polling with the investment activity of publicly traded firms in those areas.”译为“他们把盖洛普咨询公司所_____的美国城市平均幸福指数与该地区的上市公司投资活跃度进行对比。” 根据原文语境，盖洛普咨询公司所做的应该是一个“既定事实”所以排除ACD。因此，B选项为最佳选项。
+
+7.[标准答案][A]Sure
+
+[考点分析]上下文语义及固定搭配
+
+[选项分析] [A]确信的 [B] 奇怪的 [C] 不幸运的 [D] 经常的 本题为固定搭配“sure enough” 译为“足以肯定的是，”
+
+8．[标准答案][D]headquartered
+
+[考点分析]上下文语义及形容词词义辨析
+
+[选项分析] [A]广告的 [B] 划分的 [C] 课税过重的 [D]位于总部的 根据原文“ firms’ investment and R&D intensity were correlated with the happiness of the area in which they were 8 . ”译为“足以肯定的是，公司投资与研发力度与公司______的幸福指数相关。”in which 引导表示地点的定语从句，先行词为area.对比四个选项，ABC不足以说明此地点的真实含义。因此，D选项，搭配前文area,构成“总部所在地”最为合理。
+
+9．[标准答案][A]explain
+
+[考点分析]上下文语义及动词词义辨析
+
+[选项分析] [A]解释 [B] 夸大 [C] 概述[D]重点强调 根据原文“…or ould something else about happier cities 9 why firms there spend more on R&D?” A选项 “explain”常和后文 “why” 搭配使用。
+
+10．[标准答案][B]factors
+
+[考点分析]上下文语义及名词词义辨析
+
+[选项分析] [A]阶段 [B] 因素 [C] 等级[D]方法 根据原文语境“To find out, the researchers controlled for various 10 that might make firms more likely to invest – like size, industry, and sales…”本题中，破折号后面 “大小，产业，销售”这些都是 “让公司有更多投资的”因素。因此，B选项最符合原文语境。
+
+3. [A] sufficient [B] famous [C] perfect [D] necessary
+
+4. [A] individualism [B] modernism [C] optimism [D] realism
+
+5. [A] echo [B] miss [C] spoil [D] change
+
+6. [A] imagined [B] measured [C] invented [D] assumed
+
+7. [A] Sure [B] Odd [C] Unfortunate [D] Often
+
+8. [A] advertised [B] divided [C] overtaxed [D] headquartered
+
+9. [A] explain [B] overstate [C] summarize [D] emphasize
+
+10.[A] stages [B] factors [C] levels [D] methods
+
+11.[A] desirable [B] sociable [C] reputable [D] reliable
+
+12.[A] resumed [B] held [C]emerged [D] broke
+
+13.[A] attribute [B] assign [C] transfer [D]compare
+
+14.[A] serious [B] civilized [C] ambitious [D]experienced
+
+15.[A] thus [B] instead [C] also [D] never
+
+16.[A] rapidly [B] regularly [C] directly [D] equally
+
+17.[A] After [B] Until [C] While [D] Since
+
+18.[A] arrives [B] jumps [C] hints [D] strikes
+
+19.[A] shape [B] rediscover [C] simplify [D] share
+
+20.[A] pray for [B] lean towards [C] give away [D] send out
+
+11．[标准答案] [A] desirable
+
+[考点分析] 上下文语义和形容词
+
+[选项分析] 该空填的是形容词，用来修饰前面的名词place,并且在意义上也是对后面like growth in wages or population的解释，可以看出来应该是填褒义词，并且能修饰place.所以只有[A]desirable合适的 符合文章。[B]social 社交的 [C]reputable 受尊敬的 [D]reliable 可依靠的。
+
+12. [标准答案] [B]held
+
+[考点分析] 上下文语义及动词词义辨析
+
+[选项分析] 该句算是这一段的总结句，该段整体在描述幸福与投资之间的关系，而这一link就只能得出了，只有[B]held ”得出”符合语境。A resumed “重新开始”，C emerge “浮现”，D broke “破坏”。
+
+13．[标准答案] [A] attribute
+
+[考点分析] 上下文逻辑关系以及动词词组辨析
+
+[选项分析]该空是一个which引导的定语从句的谓语动词所在地，动词的宾语就是前面的主句，强调“幸福与投资之间的关系尤其适用于新公司”这一结论与后面“所做决定会偏草率”之间的关系，能看出是一个因果关系，因此答案选择[A]attribute 与to 搭配表示“归因于……”，而[B]assign to表示“指派”[C]transfer to“转移到”[D]compare to“与……比较”均不符合题意。
+
+14．[标准答案] [D] experienced
+
+[考点分析] 上下文语义及形容词词义辨析
+
+[选项分析] 此处很简单，前面有一个并列连词and, 与前面的young一致修饰managers,强调新公司的领导年轻并缺乏经验，只有[D]experienced最合适。
+
+15. [标准答案] [C] also
+
+[考点分析] 上下文逻辑关系以及副词词义辨析
+
+[选项分析]前面说到了“年轻的新经理决策时更容易受情绪影响。”与后面的“这种关系在员工幸福指数_____的公司尤为明显。公司似乎乐于投资那些相对快乐的员工所在的部门，而不是那些不快乐的部门。”之间很明显是一种递进关系，所以只有[C]also合适。
+
+16. [标准答案] [D]equally
+
+[考点分析] 上下文语义及副词词义辨析
+
+[选项分析] 这题是考察副词修饰spread, 但是更要注意的是该句“这种关系在员工幸福指数_____的公司尤为明显。公司似乎乐于投资那些相对快乐的员工所在的部门，而不是那些不快乐的部门。”中该空与后面的inequality形成复现关系，所以很容易判断出答案选择[D]equally。
+
+17. [标准答案] [C] while
+
+[考点分析] 上下文逻辑关系
+
+[选项分析] 该题是典型的考察上下文逻辑关系的题目，因此着力点应该放在上一段和这一段之间的关系。这一段第一句明确说出“这并不证明是幸福导致公司大量投资……”，所以两句话之间是一个转折关系，选择while.
+
+18. [标准答案] [C]hints
+
+[考点分析] 上下文语义及动词词义辨析
+
+[选项分析] 该题可以看出是考察动词与at的固定搭配，arrive at是“到达，抵达”，jump at是“扑向；欣然接受”hint at是“暗示” strike at是“袭击，攻击”，文章中的at least 和that possibility论证了这是一种可能，只有hint at有这层含义。
+
+19. [标准答案] [A]shape
+
+[考点分析] 上下文语义及动词词义辨析 reshape 重塑
+
+[选项分析] 根据上下文应该选一个“影响”未来看法含义的动词，[B]是“再发现”[C]是“使简化，使单纯”[D]是“分享”所以可以均可以排除，A 是“塑造，形成，影响”，所以A项是最佳答案。
+
+20. [标准答案] [B]lean towards
+
+[选项分析] 上下文语义及动词词组词义辨析
+
+[考点分析] 本空考察动词词组，且该词组词义应与and前面意思保持一致，且作用对象为研发。[A]pray for 祈祷 [B]lean towards 倾向 [C]give away 放弃，泄露 [D]send out 放出，给予。只有[B]选项能表达一种递进含义。
+
+【全文翻译】
+
+快乐的人工作起来会有不同。他们更多产，更有创造力，也更愿意去冒险。近期的一项研究表明快乐也可能会影响公司的工作。
+
+根据近期的研究报告，在各地的公司里，拥有更多快乐的员工会投入的更多。尤其是那些在快乐氛围中的公司会做更多的研发以及发展。因为快乐与对未来投资有必要的长远考虑相联系。这是因为对未来进行投资需要作出长远决策，而这种决策与快乐相关。
+
+研究者希望了解乐观精神和随快乐而来的冒险精神是否会改变公司投资的方式。因此，他们把盖洛普咨询公司所评估出的美国城市平均幸福指数与该地区的上市公司投资活跃度进行对比。
+
+足以肯定的是，公司投资和研发力度与公司总部所在地的幸福指数相关。但是幸福真的与投资相关吗？或者说幸福指数更高的城市的其他方面能够说明公司为何加大研发投入。为了弄清这一点，研究者掌握了多种可能促使公司投资的因素，例如规模，产业，销售，也掌握了各种指标，如适宜居住地，工资涨幅及人口变化。了解这些问题后，幸福与投资的关系就能够轻松得出了。
+
+幸福与投资之间的关系尤其适用于新公司，这是因为新公司所做决定会偏草率，而且年轻的新经理决策时更容易受情绪影响。同样，这种关系在员工幸福指数相同的公司尤为明显。公司似乎乐于投资那些相对快乐的员工所在的部门，而不是那些不快乐的部门。
+
+然而这并不证明是幸福导致公司大量投资，或者从长远的角度来讲，研究人员认为至少它预示着这种可能性。不难想象，本地文化以及情感有助于影响高管对于未来的看法。“快乐的人比普通人有预见性、创造力、更善于研发这种说法似乎更可信。”一位研究者说。
+
+Section Ⅱ Reading Comprehension
+
+Part A
+
+Directions：Read the following four texts. Answer the questions after each text by choosing A, B, C or D. Mark your answers on ANSWER SHEET 1. (40 points)
+
+Text 1
+
+It’s true that high-school coding classes aren’t essential for learning computer science in college. Students without experience can catch up after a few introductory courses, said Tom Cortina, the assistant dean at Carnegie Mellon’s School of Computer Science.
+
+However, Cortina said, early exposure is beneficial. When younger kids learn computer science, they learn that it’s not just a confusing, endless string of letters and numbers — but a tool to build apps, or create artwork, or test hypotheses. It’s not as hard for them to transform their thought processes as it is for older students. Breaking down problems into bite-sized chunks and using code to solve them becomes normal. Giving more children this training could increase the number of people interested in the field and help fill the jobs gap, Cortina said.
+
+Students also benefit from learning something about coding before they get to college, where introductory computer-science classes are packed to the brim, which can drive the less-experienced or-determined students away.
+
+The Flatiron School, where people pay to learn programming, started as one of the many coding bootcamps that’s become popular for adults looking for a career change. The high-schoolers get the same curriculum, but “we try to gear lessons toward things they’re interested in,” said Victoria Friedman, an instructor. For instance, one of the apps the students are developing suggests movies based on your mood.
+
+The students in the Flatiron class probably won’t drop out of high school and build the next Facebook. Programming languages have a quick turnover, so the “Ruby on Rails” language they learned may not even be relevant by the time they enter the job market. But the skills they learn — how to think logically through a problem and
+
+organize the results — apply to any coding language, said Deborah Seehorn, an education consultant for the state of North Carolina.
+
+Indeed, the Flatiron students might not go into IT at all. But creating a future army of coders is not the sole purpose of the classes. These kids are going to be surrounded by computers — in their pockets, in their offices, in their homes — for the rest of their lives. The younger they learn how computers think, how to coax the machine into producing what they want — the earlier they learn that they have the power to do that — the better.
+
+21. Cortina holds that early exposure to computer science makes it easier to____.
+
+A. complete future job training
+
+B. remodel the way of thinking
+
+C. formulate logical hypotheses
+
+D. perfect artwork production
+
+22. In delivering lessons for high-schoolers, Flatiron has considered their____.
+
+A. experience
+
+B. academic backgrounds
+
+C. career prospects
+
+D. interest
+
+23. Deborah Seehorn believes that the skills learned at Flatiron will____.
+
+A. help students learn other computer languages
+
+B. have to be upgraded when new technologies come
+
+C. need improving when students look for jobs
+
+D. enable students to make big quick money
+
+24. According to the last paragraph, Flatiron students are expected to____.
+
+A. compete with a future army of programmers
+
+B. stay longer in the information technology industry
+
+C. become better prepared for the digitalized world
+
+D. bring forth innovative computer technologies
+
+25. The word “coax” (Line4, Para.6) is closest in meaning to____.
+
+A. challenge
+
+B. persuade
+
+C. frighten
+
+D. misguide
+
+Text 1
+
+21 答案 B remodel the way of thinking.
+
+Reshape 重塑 remold 重塑
+
+Mold 名词-模型 模子 动词-形成塑造
+
+解析：此题是文中人物观点题。根据Cortina定位到第二段前三句。Cortina认为尽早接触计算机科学是有益的。第三句It’s not as hard for them to transform their thought processes as it is for older students. 译为在转变思维程序方面小孩不像年龄较大的学生一样困难，即B remodel the way of thinking 转变思维方式即为同义替换。
+
+22 答案 D interest
+
+解析：此题是细节题。根据关键词Friedman定位到第四段第二句but之后引号里面内容“我们试图让课程符合学生兴趣”，故而D interest为正确答案。
+
+23 答案 A help students learn other computer languages
+
+解析：文中人物观点题。题干问的是Deborah Seehorn认为在Flatiron这里所学到的技能将能怎么样，据此定位到第五段But处，和题干基本一致，该句指出“But the skills they learn…appl to any coding language”，意思是他们学到的技能可以应用于任何编码语言。对比答案选项，A选项的意思是“帮助学生学习其他的计算机语言”属于原文定位处的同义替换。
+
+24 答案 C become better prepared for the digitalized world
+
+解析：细节题。题干指出：根据最后一段，Flatiron的学生被期望去干什么。据此定位到最后一段的These kids are going to be处，是题干的同义复现。定位句“These kids are…be surrounded by computers for the rest of their lives. The younger they learn how computers think…….the better.”，意思是学生们越早学越好。C选项“为数字化的未来做更好的准备”是同义概述。
+
+25 答案 B persuade
+
+解析：词义句意题，结合上下文来解题。根据coax此单词，定位到最后一段最后一句“how to coax the machine into producing what they want”，考察固定搭配“persuade…into…”。A选项挑战，B选项劝服，C选项使恐慌，D选项误导。考生做题时一定要注意结合上下文来推测生词的词义，这是命题人的出题 规律。
+
+Text 2
+
+Biologists estimate that as many as 2 million lesser prairie chickens---a kind of bird living on stretching grasslands—once lent red to the often gray landscape of the midwestern and southwestern United States. But just some 22,000 birds remain today, occupying about 16% of the species’ historic range.
+
+The crash was a major reason the U.S Fish and Wildlife Service （USFWS）decided to formally list the bird as threatened. “The lesser prairie chicken is in a desperate situation,” said USFWS Director Daniel Ashe. Some environmentalists, however, were disappointed. They had pushed the agency to designate the bird as “endangered,” a status that gives federal officials greater regulatory power to crack down on threats. But Ashe and others argued that the“threatened” tag gave the federal government flexibility to try out new, potentially less confrontational conservations approaches. In particular, they called for forging closer collaborations with western state governments, which are often uneasy with federal action and with the private landowners who control an estimated 95% of the prairie chicken’s habitat.
+
+Under the plan, for example, the agency said it would not prosecute landowner or businesses that unintentionally kill, harm, or disturb the bird, as long as they had signed a range—wide management plan to restore prairie chicken habitat. Negotiated by USFWS and the states, the plan requires individuals and businesses that damage habitat as part of their operations to pay into a fund to replace every acre destroyed with 2 new acres of suitable habitat. The fund will also be used to compensate landowners who set aside habitat, USFWS also set an interim goal of restoring prairie chicken populations to an annual average of 67,000 birds over the next 10 years. And it gives the Western Association of Fish and Wildlife Agencies (WAFWA), a coalition of state agencies, the job of monitoring progress. Overall, the idea is to let “states” remain in the driver’s seat for managing the species，” Ashe said.
+
+Not everyone buys the win-win rhetoric Some Congress members are trying to block the plan, and at least a dozen industry groups, four states, and three environmental groups are challenging it in federal court Not surprisingly, doesn’t go far enough “The federal government is giving responsibility for managing the bird to the same industries that are pushing it to extinction,” says biologist Jay Lininger.
+
+26. The major reason for listing the lesser prairie as threatened is____
+
+[A]its drastically decreased population
+
+[B]the underestimate of the grassland acreage
+
+[C]a desperate appeal from some biologists
+
+[D]the insistence of private landowners
+
+27.The “threatened” tag disappointed some environmentalists in that it_____
+
+[A]was a give-in to governmental pressure
+
+[B]would involve fewer agencies in action
+
+[C]granted less federal regulatory power
+
+[D]went against conservation policies
+
+28.It can be learned from Paragraph3 that unintentional harm-doers will not be prosecuted if they_____
+
+[A]agree to pay a sum for compensation
+
+[B]volunteer to set up an equally big habitat
+
+[C]offer to support the WAFWA monitoring job
+
+[D]promise to raise funds for USFWS operations
+
+29.According to Ashe， the leading role in managing the species in______
+
+[A]the federal government
+
+[B]the wildlife agencies
+
+[C]the landowners
+
+[D]the states
+
+30.Jay Lininger would most likely support_______
+
+[A]industry groups
+
+[B]the win-win rhetoric
+
+[C]environmental groups
+
+[D]the plan under challenge
+
+26 答案 A its drastically decreased population
+
+解析：此题是原因细节题。根据关键词定位到第一段But前后关于lesser prairie chickens 数量2million和22,000的强烈对比。此外第二段第二句“the lesser prairie chicken is in a desperate situation”都可以得知A its drastically decreased population 数量的急剧下降为正确答案。
+
+27 答案 C granted less federal regulatory powers
+
+Grant 动词-同意允许；授予赋予
+
+名词-补贴
+
+解析：此题是原因细节题。根据关键词定位到第二段第四句，They had …, a state that gives federal officials greater regulatory power. 而But 之后是截然相反的事实，即政府授予了更少的管理权。故而C granted less federal regulatory powers为正确答案。
+
+28 答案 A agree to pay a sum for compensation赔偿补偿 薪酬
+
+解析：推断题。题干问的是从第三段推出来：无意伤害的那些人是不会被检举的如果怎么样。根据题干定位到第三段首句“it would not prosecute….as long as ….”，题干中问的if即原文的as long as的同意替换，原文as long as的意思是：只要他们签署了计划。下一句说道，该计划要求个体和企业去支付基金。对应选项A选项“赞同支付赔偿”属于同义替换。
+
+29 答案 D the states
+
+解析：此题是细节题。根据关键词定位到第三段最后一句the idea is to let the“states”remain in the driver’s seat for managing the species, Ashe said. 其中in the driver’s seat对应题干中的the leading role, 故而D states为正确答案。
+
+30 答案 C environmental groups群体团体
+
+解析：文中人物观点题。题干问的是Jay Lininger最可能支持谁，大写人名定位到末段最后一句。最后一句提到：生物学家Jay Lininger说道联邦政府要把责任推给导致鸟类灭绝的企业，显然是对政府和企业的反对。再往前看一句，指出：企业团体和政府部门观点一致，环境学家与其观点恰巧一致。因此，Jay Lininger最支持环境团体的观点了。
+
+Text 3
+
+That everyone’s too busy these days is a cliché. But one specific complaint is made especially mournfully： There’s never any time to read.
+
+What makes the problem thornier is that the usual time-management techniques don’t seem sufficient. The web’s full of articles offering tips on making time to read: “Give up TV” or “Carry a book with you at all times” But in my experience, using such methods to free up the odd 30 minutes doesn’t work. Sit down to read and the flywheel of work-related thoughts keeps spinning-or else you’re so exhausted that a challenging book’s the last thing you need. The modern mind, Tim Parks, a novelist and critic, writes, “is overwhelmingly inclined toward communication…It is not simply that one is interrupted; it is that one is actually inclined to interruption”. Deep reading requires not just time, but a special kind of time which can’t be obtained merely by becoming more efficient.
+
+In fact, “becoming more efficient” is part of the problem. Thinking of time as a resource to be maximised means you approach it instrumentally, judging any given moment as well spent only in so far as it advances progress toward some goal immersive reading, by contrast, depends on being willing to risk inefficiency, goallessness, even time-wasting. Try to slot it as a to-do list item and you’ll manage only goal-focused reading-useful, sometimes, but not the most fulfilling kind. “The future comes at us like empty bottles along an unstoppable and nearly infinite conveyor belt,” writes Gary Eberle in his book Sacred Time, and “we feel a pressure to fill these different-sized bottles (days, hours, minutes）as they pass, for if they get by without being filled, we will have wasted them”. No mind-set could be worse for losing yourself in a book.
+
+So what does work? Perhaps surprisingly, scheduling regular times for reading. You’d think this might fuel the efficiency mind-set, but in fact, Eberle notes, such ritualistic behaviour helps us “step outside time’s flow” into “soul time”. You could limit distractions by reading only physical books, or on single-purpose e-readers. “Carry a book with you at all times” can actually work, too-providing you dip in often enough, so that reading becomes the default state from which you temporarily surface to take care of business, before dropping back down. On a really good day, it no longer feels as if you’re “making time to read,” but just reading, and making time for everything else.
+
+31. The usual time-management techniques don’t work because?????
+
+[A] what they can offer does not ease the modern mind
+
+[B] what challenging books demand is repetitive reading
+
+[C] what people often forget is carrying a book with them
+
+[D] what deep reading requires cannot be guaranteed
+
+32. The “empty bottles” metaphor illustrates that people feel a pressure to?????
+
+[A] update their to-do lists
+
+[B] make passing time fulfilling
+
+[C] carry their plans through
+
+[D] pursue carefree reading
+
+33. Eberle would agree that scheduling regular times for reading helps?????
+
+[A] encourage the efficiency mind-set
+
+[B] develop online reading habits
+
+[C] promote ritualistic reading
+
+[D] achieve immersive reading
+
+34. “Carry a book with you at all times” can work if?????
+
+[A] reading becomes your primary business of the day
+
+[B] all the daily business has been promptly dealt with
+
+[C] you are able to drop back to business after reading
+
+[D] time can be evenly split for reading and business
+
+35. The best title for this text could be?????
+
+[A] How to Enjoy Easy Reading
+
+[B] How to Find Time to Read
+
+[C] How to Set Reading Goals
+
+[D] How to Read Extensively
+
+31 答案 D what deep reading requires cannot be guaranteed.
+
+解析：因果细节题。题干指出：传统的时间管理方法不起作用的原因是什么。根据题干定位到第二段首句指出the usual time-management techniques don’t seem sufficient，是题干的同义替换，但要找原因。整段都在分析过程环节，最终原因必然在该段末句提到。直接定位到该段末句，指出深入阅读不仅需要时间，而且是一种仅仅通过有效无法获得的一种时间。结合选项D，深入阅读所需的无法得到确保，是原文末句的同义替换。
+
+32 答案 B make passing time fulfilling
+
+解析：题干问的是“empty bottles”暗喻证明了人们在做什么方面有压力，empty bottles直接可以在文中Gary Eberle所说的话中找到：“The future comes at us like empty bottles…”。其所说的话证明的目的必然是为了说明前一句的观点。因此，该题定位到三段“try to slot…but not the most fulfilling kind”，该句就指出：只会处理目标集中的阅读，这是有用的，但不是最有满足感的。结合选项B使流逝的时间更有满足感，是原文的同义替换。
+
+33 答案 D achieve immersive reading
+
+解析：文中人物观点题，注意区分文中人物观点和作者观点。题干问的是Eberle赞同为阅读设定规定性时间帮助什么。根据题干精确定位到第四段第二句：“You’d think this might fuel the efficiency mind-set, but in fact, E…..into soul time”，意思是你会认为这可以提升效率性思维设定，但实际上这些行为帮助我们跨入到灵魂阅读时间。对应选项D，获得深入阅读，属于同义替换。
+
+34 答案 A reading becomes your primary business of the day
+
+解析：细节题。题干指出：总是带一本书会起作用如果怎么样。根据题干定位到末段中间部分“carry a book with you at all times can actually work, too … so that reading becomes the default state from which you temporarily surface to take care of business.”，意思是这样的话阅读就成为默认状态，偶尔会出来管理工作（注意business并非默认状态，非主要事情）。对应选项A 阅读成为每天的主要任务，是该句的同义替换。
+
+35 答案 B How to Find Time to Read
+
+解析：标题题，即全文中心主旨。通过题干，可发现题干关键词中time复现多次，因此可确定time为全文的主题词。整篇文章都围绕阅读时间来展开，因此正确答案为A如何寻找阅读时间。
+
+Text 4
+
+Against a backdrop of drastic changes in economy and population structure, younger Americans are drawing a new 21st-century road map to success, a latest poll has found.
+
+Across generational lines, Americans continue to prize many of the same traditional milestones of a successful life, including getting married, having children, owning a home, and retiring in their sixties. But while young and old mostly agree on what constitutes the finish line of a fulfilling life, they offer strikingly different paths for reaching it.
+
+Young people who are still getting started in life were more likely than older adults to prioritize personal fulfillment in their work, to believe they will advance their careers most by regularly changing jobs, to favor communities with more public services and a faster pace of life, to agree that couples should be financially secure before getting married or having children, and to maintain that children are best served by two parents working outside the home, the survey found.
+
+From career to community and family, these contrasts suggest that in the aftermath of the searing Great Recession, those just starting out in life are defining priorities and expectations that will increasingly spread through virtually all aspects of American life, from consumer preferences to housing patterns to politics.
+
+Young and old converge on one key point: Overwhelming majorities of both groups said they believe it is harder for young people today to get started in life than it was for earlier generations. While younger people are somewhat more optimistic than their elders about the prospects for those starting out today, big majorities in both groups believe those “just getting started in life” face a tougher a good-paying job, starting a family, managing debt, and finding affordable housing.
+
+Pete Schneider considers the climb tougher today. Schneider, a 27-yaear-old auto technician from the Chicago suburbs says he struggled to find a job after graduating from college. Even now that he is working steadily, he said.” I can’t afford to pay ma monthly mortgage payments on my own, so I have to rent rooms out to people to mark that happen.” Looking back, he is struck that his parents could provide a comfortable life for their?children even though neither had completed college when he was young. “I still grew up in an upper middle-class home with parents who didn’t have college degrees,” Schneider said. “I don’t think people are capable of that anymore.”
+
+36. One cross-generation mark of a successful life is_____.????
+
+[A] trying out different lifestyles
+
+[B] having a family with children
+
+[C] working beyond retirement age
+
+[D] setting up a profitable business
+
+37. It can be learned from Paragraph 3 that young people tend to?____.???
+
+[A] favor a slower life pace
+
+[B] hold an occupation longer
+
+[C] attach importance to pre-marital finance
+
+[D] give priority to childcare outside the home
+
+38. The priorities and expectations defined by the young will?____.???
+
+[A] become increasingly clear
+
+[B] focus on materialistic issues
+
+[C] depend largely on political preferences
+
+[D] reach almost all aspects of American life
+
+39. Both young and old agree that?____.
+
+[A] good-paying jobs are less available
+
+[B] the old made more life achievements
+
+[C] housing loans today are easy to obtain
+
+[D] getting established is harder for the young
+
+40. Which of the following is true about Schneider？
+
+[A] He found a dream job after graduating from college.
+
+[B] His parents believe working steadily is a must for success.
+
+[C] His parents’ good life has little to do with a college degree.
+
+[D] He thinks his job as a technician quite challenging.
+
+36 答案 B having a family with children
+
+解析：此题是细节题。根据关键词定位到第二段第一句Across generational lines,…including getting married, having children…即成功的标志包括结婚生子，故而正确选项是B having a family with children.
+
+37 答案 C attach importance to pre-marital finance
+
+解析：此题是细节题。根据关键词定位到第三段第一句Young people…to agree that couples should be financially secure before getting married or having children…即年轻人认为夫妻在结婚前或者生小孩前应该在经济上是稳定的，故而C attach importance to pre-marital finance为正确答案。
+
+38 答案 D reach almost all aspect=respect 方面s of American life
+
+解析：此题是细节题。根据关键词定位到第四段第一句…those just starting…will increasingly spread through virtually all aspects …即这些期待即将渗透到美国生活的各个方面，故而D reach almost all aspects of American life为正确答案。
+
+39 答案 D getting established is harder for the young
+
+解析：此题是文中人物观点题。根据关键词定位到第五段第一句…it is harder for young people today to get started in life than it was for earlier generations. 即与年长者相比，现如今的年轻人维持生计更加困难，故而D getting established is harder for the young为正确答案。
+
+40 答案 C His parents’ good life has little to do with a college degree.
+
+解析：此题是正误判断题。根据关键词定位到第六段第五句Looking back…his parents could provide a comfortable life for the children even though neither had completed college when he was young.即父母即便没有上过大学但仍旧可以为孩子提供舒适的生活，故而His parents’ good life has little to do with a college degree.为正确答案。
+
+Part B
+
+Directions:
+
+Read the following text and answer the questions by choosing the most suitable subheading from the list A-G for each of the numbered paragraphs(41-45).There are two extra subheadings which you do not need to use.Mark your answers on the ANSWER SHEET.
+
+[A]Be silly
+
+[B]Have fun
+
+[C]Express your emotions
+
+[D]Don't overthink it
+
+[E]Be easily pleased
+
+[F]Notice things
+
+[G]Ask for help
+
+As adults,it seems that we are constantly pursuing happiness,often with mixed results.Yet children appear to have it down to an art-and for the most part they don't need self-help books or therapy.instead,they look after their wellbeing instinctively,and usually more effectively than we do as grownups.Perhaps it's time to learn a few lessons from them.
+
+41.______________
+
+What does a child do when he's sad? He cries.When he's angry?He shouts.Scared?Probably a bit of both.As we grow up,we learn to control our emotions so they are manageable and don't dictate our behaviours,which is in many ways a good thing.But too often we take this process too far and end up suppressing emotions,especially negative ones.that's about as effective as brushing dirt under a carpet and can even make us ill.What we need to do is find a way to acknowledge and express what we feel appropriately, and then-again like children-move.
+
+42.____________
+
+A couple of Christmases ago, my youngest stepdaughter, who was nine years old at the time, got a Superman T-shirt for Christmas. It cost less than a fiver but she was overjoyed, and couldn't stop talking about it.Too often we believe that a new job,bigger house or better car will be the magic silver bullet that will allow us to finally be content,but the reality is these things have very little lasting impact on our happiness levels. Instead, being grateful for small things every day is a much better way to improve wellbeing.
+
+43.______________________
+
+Have you ever noticed how much children laugh? If we adults could indulge in a bit of silliness and giggling, we would reduce the stress hormones in our bodies , increase good hormones like endorphins, improve blood flow to our hearts and even have a greater chance of fighting off enfection. All of which, of course, have a positive effect on happiness levels.
+
+44.__________________
+
+The problem with being a grown up is that there's an awful lot of serious stuff to deal with---work,mortgage payments,figuring out what to cook for dinner. But as adults we also have the luxury of being able to control our own diaries and it's important that we schedule in time to enjoy the things we love.Those things might be social,sporting,creative or completely random(dancing aroud the living room,anyone?)--it doesn't matter,so long as they're enjoyable, and not likely to have negative side effects,such as drinking too much alcohol or going on a wild spending spree if you're on a tight budget.
+
+45.___________________
+
+Having said all of the above, it's important to add that we shouldn't try too hard to be happy.Scientists tell us this can backfire and actually have a negative impact on our wellbeing. As the Chinese philosopher Chuang Tzu is reported to have said:"Happiness is the absence of striving for happiness."And in that,once more,we need to look to the example of our children,to whom happiness is not a goal but a natural by product of the way they live.
+
+意料之中的小标题。首先明确7个选项的意思。
+
+首先应当把握本文的出发点，也就是41题目之前的关键句：我们应该从孩子身上学习一些东西。“捉住本中心，每个标题都是提醒成人可以从孩子身上得到一些启示。
+
+41. C 表达情感。开头以问句的方式：“孩子悲伤时会怎样？孩子生气时会如何？他们的表达方式与大人不同，成人更多会选择压抑情感，并且会有不好的后果，比如致病。紧接着最后一句算是总结句：我们要找到一种合适的方式表达，像孩子那样。重点在哪里？整段不离的中心意思，重复的出现那就是情感的表达喽。选项为 C
+
+42.E举例子的目的无非是为了证明观点。但是从例子也是可以总结出想要表达的意思的。讲到一个小女孩因为一个廉价的圣诞礼物就可以高兴，并且很快乐，就旨在讲小小的幸福。再来看看例子后面的观点。提到成人的世界里所谓的车啊，房啊之类的貌似会让我们 幸福的东西其实不然。所以一个instead 直接把本段的中心意思表达了出来，那就是幸福来自于小小的事情。对应选项E
+
+43. A 一句话出现在第二句。问句之后，如果我们能够“愚蠢“那么一点点，我们将会有各种好处，对不对。那么这一段几乎大段的篇幅都花在这一句上了，主旨更加明显那就是：去这样做吧。Be silly.
+
+44.B 这一段讲到成人的世界里的确有太多让人烦恼的东西，But as adults we also have the luxury of being able to control our own diaries and it's important that we schedule in time to enjoy the things we love 享受自己喜欢的东西也是很重要的。接下来举例子，各种具体事例说明那些我们可以做的可以享受的事情，并且最后说出了他们的好处。从前往后一直再说我们应该放松，享受。所以啊，在剩下的可选择的选项中只有have funs比较合适了。
+
+45.D 不要可以去想怎样才幸福，应用了哲人的一句话来说明这个道理，旨在告诉大家当让是过程就是幸福的了。最后可以用排除法。G寻求帮助根本未提及。F 选项可以直接排除。那么对应关系，来看看D 不要想太多。“无欲无求，本就是幸福啦。“最终选定D。
+
+Section III Translation
+
+Directions:
+
+Translate the following text from English into Chinese. Write your translation on ANSWER SHEET 2. (15 points)
+
+46. Directions:
+
+Translate the following text into Chinese. Your translation should be written on the ANSWER SHEET. (15 points)
+
+The supermarket is designed to lure customers into spending as much time as possible within its doors. The reason for this is simple:The longer you stay in the store, the more stuff you'll see, and the more stuff you see, the more you'll buy. And supermarkets contain a lot of stuff. The average supermarket, according to the Food Marketing Institute, carries some 44,00 different items, and many carry tens of thousands more. The sheer volume of available choice is enough to send shoppers into a state of information overload. According to brain-scan experiments, the demands of so much decision-making quickly become too much for us. After about 40 minutes of shopping, most people stop struggling to be rationally selective, and instead begin shopping emotionally - which is the point at which we accumulate the 50 percent of stuff in our cart that we never intended buying.
+
+超市旨在吸引顾客尽可能长时间的停留在店中。其原因很简单：顾客在店里停留的时间越长，看到的商品越多；而看到的商品越多，买的就会越多。超市中出售大量的商品。根据食品推广协会的调查，普通的超市大概有44000种不同的商品；还有很多超市出售的商品高达上万种。如此多的选择足以使顾客面对超负荷的信息。根据脑部扫描实验，需要快速的做这么多决定就会让我们难以承受。大约在购物40分钟之后，大多人就不会再努力做出理性的选择了，取而代之的就是冲动购物——而这时，我们的购物车中已经装了一半根本就没想买的东西了。
+
+Section IV Writing
+
+Part A
+
+Suppose you won a translation contest and your friend Jack wrote an email to congratulate you, and ask advice on translation. Write him a reply to
+
+1)thank him;
+
+2)give your advice.
+
+You should write neatly on the ANWSER SHEET. Do not sign you own name at the end of the letter, use “Li Ming ” instead. Do not write the address .(10 point)
+
+参考译文
+
+Dear Jack,
+
+I’m writing to express my gratitude for your congratulation on my success in the translation contest.
+
+As regard to my experience, I would like to offer you some proposals in this part. First and foremost, I strongly suggest you that you need to practice with painstaking effort in this field. What’s more, you had better have more communication with foreigners, which guarantees that you have a deep understanding of foreign culture. Last but not least, you are supposed to participate in some international events to accumulate a wealth of practical experience.
+
+Thanks again and I do hope you could take my suggestions into consideration. I wish you have good luck and make a great success in your future study.
+
+Yours sincerely,
+
+Li Ming
+
+如大家所见，这是2016年英语二小作文题目。英语（二）考纲的写作部分，其实主要考查学生的应用能力，考查范围包括私人和公务信函、备忘录、报告等，还应能写一般描述性、叙述性和说明或议论性的文章；而要求考生根据所给情景写出一篇约100词（标点符号不计算在内）的应用性短文。
+
+作为写作B部分的小作文总分10分，大家要抓住得分点。小作文在评分时有如下评分要点：1.信息点——覆盖全面；2.内容——组织连贯；3.语言——准确性；4.格式——符合要求；5.语域——恰当。
+
+预料之中，今年英语二的小作文再次考查了书信体，并且考查的信件可以说是杂糅型的。这在2011年英语二中出现了同样的考查方式：
+
+Suppose your cousin LI MING has just been admitted to a university write him/her a letter to：
+
+（1）Congratulate him/her，and
+
+（2）give him/her suggestions on how to get prepared for university life
+
+You should write about 100 words on ANSWER SHEET 2. DO not sign your own name at the end of the letter，Use zhangwei.
+
+同样的考查方式，足以说明一件事情——绝对要重视考研真题。老师们总在强调真题的重要性，好多同学不与重视，希望大家以后一定要强化这种认识。
+
+下面我们来详细解读下今年的小作文，首先看一下题目要求：
+
+称呼： Dear Jack注意称呼中，后面的逗号不可丢，也不能写成冒号。
+
+正文
+
+建议大家三步走策略——简洁、直接、明了：写作目的、写作是由、重申目的
+
+第一段：写作内容需涵盖两点：写信目的，表明感谢来自朋友的祝贺；可以采用这样的表达方式：I’m writing to express my gratitude for your congratulation on my success in the translation contest.
+
+第二段： 写作内容应以建议为主体。在这个过程中可以把日常我们如何提高的方式写进正文，比如多加练习、多与外国人交流，多多接触国际事务等。本篇老师主要从这些方面进行论述，表达如下As regard to my experience, I would like to offer you some proposals in this part. First and foremost, I strongly suggest you that you need to practice with painstaking effort in this field. What’s more, you had better have more communication with foreigners, which guarantees that you have a deep understanding of foreign culture. Last but not least, you are supposed to participate in some international events to accumulate a wealth of practical experience.
+
+第三段：再次强调重申写信目的，如Thanks again and I do hope you could take my suggestions into consideration. I wish you have good luck and make a great success in your future study.
+
+落款： Yours sincerely, 特别提醒sincerely后面逗号不能丢；签名： Li Ming特别注意 Ming 后面一定不能出现句点。
+
+Part B
+
+48.Directions:
+
+Write an essay based on the following chart. you should
+
+1） interpret the chart and
+
+2） give your comments.
+
+You should write about 150 words on the ANSWER SHEET.(15 points).
+
+某高校学生旅游目的调查
+
+参考例文：
+
+As is clearly reflected in the above pie chart, the purpose of students travelling abroad demonstrates obvious differences in one college of China. According to the data given, the purpose of enjoying the beautiful landscape takes a comparatively large share, accounting for 37%, while that of relieving pressure also takes away 20% of the whole proportion.
+
+What triggers this phenomenon? It is not difficult to put forward several factors responsible for this phenomenon. To start with, with the rapid economic development of economy, people, including college students, are becoming increasingly wealthy, which enables them to afford the once-deemed- expensive oversea traveling. In order to enjoy the charming landscape all around the world, a large proportion of students choose to travel abroad. What’s more, along with the ever-accelerating improvement of economy and society is also the ever-increasing work and life pressure. Consequently, the purpose of relieving pressure ranks the second among all the purposes for folks to travel around the world.
+
+In view of the arguments above, we can conclude that the current phenomenon is of no surprise. And therefore, it can be predicted that admiring the scenery and alleviating pressure will still be the main purpose for people to arrange a traveling to other countries.
+
+作文解析
+
+今年英语二作文的题目比较好写，因为标题和图示非常清晰明白。图表显示了某高校学生旅游目的调查, 考生分析原因的话也会很简单。下面分三段简要地说一下这三段应该怎么写。
+
+第一段主要是描述图表。图表一目了然，数量词百分比也是大家熟悉的词汇，表述数据时，图中有四五组数据，由于字数的限制以及为了写作的便利可以突出较大比例的“欣赏风景”和“缓解压力”，注意引入百分比的表达方式。
+
+第二段给出你的评论，主要写这种情况的原因。主要要结合图表描述的内容从两个方面写起。一方面为什么为了欣赏风景而旅行的目的占37%， 另一方面为什么缓解压力会占到33%比例。
