@@ -1,0 +1,27 @@
+strpbrk函数，C语言strpbrk函数用法详解
+ 
+如果要查找多个字符，需要使用 strpbrk 函数。该函数在源字符串（s1）中按从前到后顺序找出最先含有搜索字符串（s2）中任一字符的位置并返回，空字符 null('\0') 不包括在内，若找不到则返回空指针。其函数原型的一般格式如下：
+char *strpbrk(const char *s1,const char *s2);
+
+例如，在 strpbrk 函数的定义如下：
+char *strpbrk (const char *s, const char *accept)
+{
+    while (*s != '\0')
+    {
+        const char *a = accept;
+        while (*a != '\0')
+            if (*a++ == *s)
+                return (char *) s;
+        ++s;
+    }
+    return NULL;
+}
+如上面的代码所示，strpbrk 数首先依次循环检查字符串 s 中的字符，当被检验的字符在字符串 accept 中也包含时（即“if(*a++==*s)”），则停止检验，并返回“(char*)s”。如果没有匹配字符，则返回空指针 NULL。这里需要注意的是，空字符 null('\0') 不包括在内。函数的调用示例如下面的代码所示：
+int main(void)
+{
+    char str[] = "I welcome any ideas from readers， of course.";
+    char *rc=strpbrk(str,"come");
+    printf("%s\n",rc);
+    return 0;
+}
+很显然，示例代码的运行结果为“elcome any ideas from readers，of course.”。

@@ -1,0 +1,53 @@
+字符数组和字符串的区别，C语言字符数组和字符串区别详解
+
+C 语言中并不存在字符串这个数据类型，而是使用字符数组来保存字符串。那么，字符数组就一定是字符串吗？
+
+对于这个问题，大多教科书中的回答是“是”。其实不然，字符数组和字符串是完全不相同的两个概念，千万不要混淆。分析如下所示的示例代码。
+#include <stdio.h>
+#include <string.h>
+int main(void)
+{
+    /*字符数组赋初值*/
+    char cArr[] = {'I','L','O','V','E','C'};
+    /*字符串赋初值*/
+    char sArr[] = "ILOVEC";
+    /*用sizeof（）求长度*/
+    printf("cArr的长度=%d\n", sizeof(cArr));
+    printf("sArr的长度=%d\n", sizeof(sArr));
+    /*用strlen（）求长度*/
+    printf("cArr的长度=%d\n", strlen(cArr));
+    printf("sArr的长度=%d\n", strlen(sArr));
+    /*用printf的%s打印内容*/
+    printf("cArr的内容=%s\n", cArr);
+    printf("sArr的内容=%s\n", sArr);
+    return 0;
+}
+运行结果为：
+cArr的长度=6
+sArr的长度=7
+cArr的长度=7
+sArr的长度=6
+cArr的内容=ILOVEC'
+sArr的内容=ILOVEC
+
+从代码及其运行结果中可以看出如下几点。
+
+首先，从概念上讲，cArr 是一个字符数组，而 sArr 是一个字符串。因此，对于 sArr，编译时会自动在末尾增加一个 null 字符（也就是'\0'，用十六进制表示为 0x00）；而对于 cArr，则不会自动增加任何东西。
+
+记住，这里的 sArr 必须是“char sArr[7]="ILOVEC"”，而不能够是“char sArr[6]="ILOVEC"”。
+
+其次，“sizeof()”运算符求的是字符数组的长度，而不是字符串长度。因此，对于“sizeof(cArr)”，其运行结果为 6；而对于 sizeof(sArr)，其运行结果为 7（之所以为 7，是因为 sArr 是一个字符串，编译时会自动在末尾增加一个 null 字符）。因此，对于以下代码：
+/*字符数组赋初值*/
+char cArr[] = {'I'，'L'，'O'，'V'，'E'，'C'};
+/*字符串赋初值*/
+char sArr[] = "ILOVEC";
+也可以写成如下等价形式：
+/*字符数组赋初值*/
+char cArr[6] = {'I'，'L'，'O'，'V'，'E'，'C'};
+/*字符串赋初值*/
+char sArr[7] = "ILOVEC";
+最后，对于字符串 sArr，可以直接使用 printf 的 %s 打印其内容；而对字符数组，很显然使用 printf 的 %s 打印其内容是不合适的。
+
+通过对以上代码的分析，现在我们可以很简单地得出字符数组和字符串二者之间的区别：
+对于字符数组，其长度是固定的，其中任何一个数组元素都可以为 null 字符。因此，字符数组不一定是字符串。
+对于字符串，它必须以 null 结尾，其后的字符不属于该字符串。字符串一定是字符数组，它是最后一个字符为 null 字符的字符数组。

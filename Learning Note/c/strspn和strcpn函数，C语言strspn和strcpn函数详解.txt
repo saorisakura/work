@@ -1,0 +1,74 @@
+strspn和strcpn函数，C语言strspn和strcpn函数详解
+
+strspn 函数表示从字符串 s 的第一个字符开始，逐个检查字符与字符串 accept 中的字符是否不相同，如果不相同，则停止检查，并返回以字符串 s 开头连续包含字符串 accept 内的字符数目。其函数原型的一般格式如下：
+size_t strspn(const char *s, const char *accept);
+
+例如，该函数的定义如下：
+size_t strspn (const char *s,const char *accept)
+{
+    const char *p;
+    const char *a;
+    size_t count = 0;
+    for (p = s; *p != '\0'; ++p)
+    {
+        for (a = accept; *a != '\0'; ++a)
+            if (*p == *a)
+                break;
+            if (*a == '\0')
+                return count;
+            else
+                ++count;
+    }
+    return count;
+}
+从上面的示例代码中可以看出，strspn 函数从字符串参数 s 的开头计算连续的字符，而这些字符完全是 accept 所指字符串中的字符。简单地说，如果 strspn 函数返回的数值为 n，则代表字符串 s 开头连续有 n 个字符都属于字符串 accept 内的字符。
+
+函数的调用示例如下面的代码所示：
+int main(void)
+{
+    char str[] = "I welcome any ideas from readers， of course.";
+    printf("I wel：%d\n",strspn(str,"I wel"));
+    printf("Iwel：%d\n",strspn(str,"Iwel"));
+    printf("welcome：%d\n",strspn(str,"welcome"));
+    printf("5：%d\n",strspn(str,"5"));
+    return 0;
+}
+在上面的示例代码中，因为 strspn 函数返回的是以字符串 s 开头连续包含字符串 accept 内的字符数目。而源字符串 str 中的“I”与“welcome”之间有一个空格（即“I welcome”），所以，语句“strspn（str，"Iwel"）”将返回 1，而语句“strspn（str，"I wel"）”将返回 5。因此，输出结果为：
+I wel：5
+Iwel：1
+welcome：0
+5：0
+
+相对于 strspn 函数，strcspn 函数与之相反，它表示从字符串 s 第一个字符开始，逐个检查字符与 reject 中的字符是否相同，如果相同，则停止检查，并返回以字符串 s 开头连续不含字符串 reject 内的字符数目。其函数原型的一般格式如下：
+size_t strcspn(const char *s, const char *reject);
+
+该函数的定义如下：
+size_t strcspn (const char *s,const char *reject)
+{
+    size_t count = 0;
+    while (*s != '\0')
+        if (strchr (reject, *s++) == NULL)
+            ++count;
+        else
+            return count;
+    return count;
+}
+从上面的代码中不难发现，strcspn 函数正好与 strspn 函数相反。strcspn 函数从字符串参数 s 的开头计算连续的字符，而这些字符都完全不在参数 reject 所指的字符串中。简单地说，如果 strcspn 函数返回的数值为 n，则代表字符串 s 开头连续有 n 个字符都不包含字符串 reject 内的字符。
+
+函数的调用示例如下面的代码所示：
+int main(void)
+{
+    char str[] = "I welcome any ideas from readers， of course.";
+    printf("I wel：%d\n",strcspn(str,"I wel"));
+    printf("Iwel：%d\n",strcspn(str,"Iwel"));
+    printf("welcome：%d\n",strcspn(str,"welcome"));
+    printf("5：%d\n",strcspn(str,"5"));
+    return 0;
+}
+在上面的示例代码中，因为 strcspn 函数返回的是以字符串 s 开头连续不包含字符串 accept 内的字符数目。因此，其运行结果为：
+I wel：0
+Iwel：0
+welcome：2
+5：45
+
+由此可见，对于 strspn 函数，如果找到了 reject 与 s 不相同元素时，指针停止移动，并返回以字符串 s 开头连续包含字符串 accept 内的字符数目；而 strncspn 函数则是找到了 reject 与 s 相同元素时，指针停止移动，并返回以字符串 s 开头连续不包含字符串 accept 内的字符数目。这一点一定要注意，千万不要混淆了。

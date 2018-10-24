@@ -788,127 +788,174 @@ int feof(FILE *fp)
 　　返回为非0值：已到文件尾。
 　　返回为0值：表示还未到文件尾。
 
-分类: c
-好文要顶 关注我 收藏该文    
-扫驴
-关注 - 3
-粉丝 - 6
-+加关注
-2 0
-« 上一篇：printf 函数的实现原理
-» 下一篇：复习python
-posted @ 2017-11-06 15:27 扫驴 阅读(28832) 评论(0) 编辑 收藏
-刷新评论刷新页面返回顶部
-注册用户登录后才能发表评论，请 登录 或 注册，访问网站首页。
-【推荐】超50万VC++源码: 大型组态工控、电力仿真CAD与GIS源码库！
-【推荐】华为云11.11普惠季 血拼风暴 一促即发
-【拼团】腾讯云服务器拼团活动又双叒叕来了！
-【推荐】腾讯云新注册用户域名抢购1元起
-腾讯云1008
-最新IT新闻:
-· 特斯拉上海工厂能让新车便宜近20万 但它可能来晚了
-· Uber筹划在2021年前建立无人机队递送食品业务
-· 假内容捅了马蜂窝 业内人士：爬虫刷评行为很常见
-· 流行jQuery插件0day漏洞被利用至少三年
-· 微软在江西设立首个VR/MR工业基地
-» 更多新闻...
 
-最新知识库文章:
-· 阿里云的这群疯子
-· 为什么说 Java 程序员必须掌握 Spring Boot ？
-· 在学习中，有一个比掌握知识更重要的能力
-· 如何招到一个靠谱的程序员
-· 一个故事看懂“区块链”
-» 更多知识库文章...
-公告
-昵称：扫驴
-园龄：3年1个月
-粉丝：6
-关注：3
-+加关注
-<	2018年10月	>
-日	一	二	三	四	五	六
-30	1	2	3	4	5	6
-7	8	9	10	11	12	13
-14	15	16	17	18	19	20
-21	22	23	24	25	26	27
-28	29	30	31	1	2	3
-4	5	6	7	8	9	10
-搜索
+gets和fgets函数及其区别，C语言gets和fgets函数详解
 
- 
+每当讨论 gets 函数时，大家不由自主地就会想起 1988 年的“互联网蠕虫”，它在 UNIX 操作系统的 finger 后台程序中使用一个 gets 调用作为它的攻击方式之一。很显然，对蠕虫病毒的实现来说， gets 函数的功劳不可小视。不仅如此，GCC 也不推荐使用gets和puts函数。
 
- 
-常用链接
-我的随笔
-我的评论
-我的参与
-最新评论
-我的标签
-我的标签
-numerate(1)
-range(1)
-随笔分类
-c(45)
-http协议(4)
-linux(35)
-mysql(11)
-python(89)
-别说对不起(9)
-汉语教学(3)
-路由交换(1)
-认识大神(4)
-算法(1)
-网络原理(1)
-英语学习(1)
-随笔档案
-2018年10月 (16)
-2018年9月 (36)
-2018年8月 (9)
-2018年7月 (16)
-2018年6月 (5)
-2018年5月 (6)
-2018年4月 (5)
-2018年3月 (1)
-2018年2月 (15)
-2018年1月 (8)
-2017年12月 (4)
-2017年11月 (17)
-2017年10月 (16)
-2017年9月 (7)
-2017年8月 (10)
-2017年7月 (6)
-2017年6月 (20)
-2017年5月 (12)
-文章分类
-收藏夹
-最新评论
-1. Re:yum2
---扫驴
-2. Re:yum2
---扫驴
-3. Re:yum2
---扫驴
-4. Re:yum2
-参考：
---扫驴
-5. Re:自制rpm包
---扫驴
-阅读排行榜
-1. C语言文件操作详解(28828)
-2. centos下使用yum 安装pip(25759)
-3. Python sys.path详细介绍(12568)
-4. Python2和Python3中print的不同点(7682)
-5. Python 3.5安装 pymysql 模块(4167)
-评论排行榜
-1. 堆与栈，静态变量和全局变量的区别(8)
-2. kan(6)
-3. Python eval 函数妙用(6)
-4. split('\r\n')(4)
-5. Python--Virtualenv简明教程(4)
-推荐排行榜
-1. C语言文件操作详解(2)
-2. centos下使用yum 安装pip(1)
-3. centos6 python 安装 sqlite 解决 No module named ‘_sqlite3′(1)
-4. Python sys.path详细介绍(1)
-Copyright ©2018 扫驴
+那么，究竟是什么原因导致 gets 函数这么不招人待见呢？
+
+我们知道，对于 gets 函数，它的任务是从 stdin 流中读取字符串，直至接收到换行符或 EOF 时停止，并将读取的结果存放在 buffer 指针所指向的字符数组中。这里需要注意的是，换行符不作为读取串的内容，读取的换行符被转换为 null('\0') 值，并由此来结束字符串。即换行符会被丢弃，然后在末尾添加 null('\0') 字符。其函数的原型如下：
+char* gets(char* buffer);
+如果读入成功，则返回与参数 buffer 相同的指针；如果读入过程中遇到 EOF 或发生错误，返回 NULL 指针。因此，在遇到返回值为 NULL 的情况，要用 ferror 或 feof 函数检查是发生错误还是遇到 EOF。
+
+函数 gets 可以无限读取，不会判断上限，所以程序员应该确保 buffer 的空间足够大，以便在执行读操作时不发生溢出。也就是说，gets 函数并不检查缓冲区 buffer 的空间大小，事实上它也无法检查缓冲区的空间。
+
+如果函数的调用者提供了一个指向堆栈的指针，并且 gets 函数读入的字符数量超过了缓冲区的空间（即发生溢出），gets 函数会将多出来的字符继续写入堆栈中，这样就覆盖了堆栈中原来的内容，破坏一个或多个不相关变量的值。如下面的示例代码所示：
+int main(void)
+{
+    char buffer[11];
+    gets(buffer);
+    printf("输出： %s\n",buffer);
+    return 0;
+}
+示例代码的运行结果为：
+aaa
+输出： aaa
+
+根据运行结果，当用户在键盘上输入的字符个数大于缓冲区 buffer 的最大界限时，gets 函数也不会对其进行任何检查，因此我们可以将恶意代码多出来的数据写入堆栈。由此可见，gets 函数是极其不安全的，可能成为病毒的入口，因为 gets 函数没有限制输入的字符串长度。所以我们应该使用 fgets 函数来替换 gets 函数，实际上这也是大多程序员所推荐的做法。
+
+相对于 gets 函数，fgets 函数最大的改进就是能够读取指定大小的数据，从而避免 gets 函数从 stdin 接收字符串而不检查它所复制的缓冲区空间大小导致的缓存溢出问题。当然，fgets 函数主要是为文件 I/O 而设计的（注意，不能用 fgets 函数读取二进制文件，因为 fgets 函数会把二进制文件当成文本文件来处理，这势必会产生乱码等不必要的麻烦）。其中，fgets 函数的原型如下：
+char *fgets(char *buf, int bufsize, FILE *stream);
+该函数的第二个参数 bufsize 用来指示最大读入字符数。如果这个参数值为 n，那么 fgets 函数就会读取最多 n-1 个字符或者读完一个换行符为止，在这两者之中，最先满足的那个条件用于结束输入。
+
+与 gets 函数不同的是，如果 fgets 函数读到换行符，就会把它存储到字符串中，而不是像 gets 函数那样丢弃它。即给定参数 n，fgets 函数只能读取 n-1 个字符（包括换行符）。如果有一行超过 n-1 个字符，那么 fgets 函数将返回一个不完整的行（只读取该行的前 n-1 个字符）。但是，缓冲区总是以 null('\0') 字符结尾，对 fgets 函数的下一次调用会继续读取该行。
+
+也就是说，每次调用时，fgets 函数都会把缓冲区的最后一个字符设为 null('\0')，这意味着最后一个字符不能用来存放需要的数据。所以如果某一行含有 size 个字符（包括换行符），要想把这行读入缓冲区，要把参数 n 设为 size+1，即多留一个位置存储 null('\0')。
+
+最后，它还需要第 3 个参数来说明读取哪个文件。如果是从键盘上读入数据，可以使用 stdin 作为该参数，如下面的代码所示：
+int main(void)
+{
+    char buffer[11];
+    fgets(buffer,11,stdin);
+    printf("输出： %s\n",buffer);
+    return 0;
+}
+对于上面的示例代码，如果输入的字符串小于或等于 10 个字符，那么程序将完整地输出结果；如果输入的字符串大于 10 个字符，那么程序将截断输入的字符串，最后只输出前 10 个字符。示例代码运行结果为：
+
+aaaaaaaaaaaaaaaa
+输出： aaaaaaaaaa
+
+除此之外，C99 还提供了 fgets 函数的宽字符版本 fgetws 函数，其函数的一般原型如下面的代码所示：
+wchar_t *fgetws(wchar_t * restrict s, int n, FILE * restrict stream);
+该函数的功能与 fgets 函数一样。
+
+
+puts和fputs函数及其区别，C语言puts和fputs函数详解
+
+与 gets 函数一样，对于 puts 函数，同样建议使用 fputs 函数来代替 puts 函数。如下面的示例代码所示：
+int main(void)
+{
+    char buffer[11];
+    fgets(buffer,11,stdin);
+    fputs(buffer,stdout);
+    return 0;
+}
+其中，puts 函数的原型如下所示：
+int puts(const char *str);
+
+我们知道，puts 函数主要用于向标准输出设备（屏幕）写入字符串并换行，即自动写一个换行符（'\n'）到标准输出。理论上，该函数的作用与“printf("%s\n",str);”语句相同。但是，puts 函数只能输出字符串，不能进行相关的格式变换。与此同时，它需要遇到 null('\0') 字符才停止输出。因此，非字符串或无 null('\0') 字符的字符数组最好不要使用该函数打印，否则无法正常结束。如下面的代码所示：
+int main(void)
+{
+    char str[] = {'H','E','L','L','O'};
+    puts(str);
+    return 0;
+}
+在上面的示例代码中，因为字符数组 str 在结尾处缺少一个 null('\0') 字符（也就是说它不是一个严格意义上的字符串）。因此，在调用 puts 函数的时候，程序将不知道什么时候停止输出，从而导致输出结果未定义。运行结果如下图所示：
+
+
+图 1 示例代码的运行结果（Microsoft Visual Studio 2010）
+
+正确的做法是应该在字符数组 str 的结尾处添加一个 null('\0') 字符，如下面的示例代码所示：
+char str[] = {'H','E','L','L','O','\0'};
+fputs 函数的函数原型如下所示：
+int fputs(const char *str, FILE *stream);
+
+相对于 puts 函数，fputs 函数用来向指定的文件写入一个字符串（不换行）。当然，也可以使用 stdout 作为参数进行输出显示（它同样需要遇到 null('\0') 字符才停止输出），如下面的代码所示：
+int main(void)
+{
+    char str[] = {'H','E','L','L','O','\0'};
+    fputs(str,stdout);
+    return 0;
+}
+其运行结果如下图所示：
+
+、
+图 2 示例代码的运行结果（Microsoft Visual Studio 2010）
+
+当然，fputs 函数主要用于对指定文件进行写入操作，如下面的示例代码所示：
+int main(void)
+{
+    FILE *fp=NULL;
+    fp=fopen("myfile.txt","wb");
+    if(fp == NULL)
+    {
+        printf("不能够访问该文件.\n");
+        exit(1);
+    }
+    fputs("this is a test", fp);
+    fclose(fp);
+    fp=NULL;
+    return 0;
+}
+运行上面的示例代码，文件“myfile.txt”会被写入一行“this is a test”字符串。
+
+与 fgetws 一样，C99 同样也提供了 fputs 函数的宽字符版本 fputws，其函数的一般原型如下面的代码所示：
+int fputws(const wchar_t * restrict s, FILE * restrict stream);
+
+
+fread和fwrite函数，C语言fread和fwrite函数详解
+ fseek、ftell和rewind函数文本流和二进制流 
+对文件格式化读写函数 fprintf 与 fscanf 而言，尽管它可以从磁盘文件中读写任何类型的文件，即读写的文件类型可以是文本文件、二进制文件，也可以是其他形式的文件。但是，对二进制文件的读写来说，考虑到文件的读写效率等原因，还是建议尽量使用 fread 和 fwrite 函数进行读写操作。
+
+fread 与 fwrite 函数的原型如下面的代码所示：
+size_t fread(void *buf, size_t size, size_t count, FILE *fp);
+size_t fwrite(const void * buf, size_t size, size_t count, FILE *fp);
+
+在上面的 fread 和 fwrite 函数原型中：
+参数 size 是指单个元素的大小（其单位是字节而不是位，例如，读取一个 int 型数据就是 4 字节）；
+参数 count 指出要读或写的元素个数，这些元素在 buf 所指的内存空间中连续存放，共占“size*count”个字节。
+
+即 fread 函数从文件 fp 中读出“size*count”个字节保存到 buf 中，而 fwrite 把 buf 中的“size*count”个字节写到文件 fp 中。最后，函数 fread 和 fwrite 的返回值为读或写的记录数，成功时返回的记录数等于 count 参数，出错或读到文件末尾时返回的记录数小于 count，也可能返回 0。
+
+需要注意的是，尽管 fread 和 fwrite 函数可以对数据进行成块读写，但并不是说一次想读写多少数据就能全部读写多少数据，毕竟缓存有限，而且不同的操作系统的缓存大小也可能不一样。同时，许多程序员还认为函数的参数 (size、count) 与位置对齐有关，甚至认为语句“fwrite(ptr,1,1024,fp)”的执行效率会比“fwrite(ptr,1024,1,fp)”高。实际情况并非如此，如在 glibc-2.17 库中对 fwrite 函数的实现如下：
+_IO_size_t _IO_fwrite (const void *buf, _IO_size_t size, _IO_size_t count, _IO_FILE *fp)
+{
+    _IO_size_t request = size * count;
+    _IO_size_t written = 0;
+    CHECK_FILE (fp, 0);
+    if (request == 0)
+        return 0;
+    _IO_acquire_lock (fp);
+    if (_IO_vtable_offset (fp) != 0 || _IO_fwide (fp, -1) == -1)
+        written = _IO_sputn (fp, (const char *0 buf, request);
+    _IO_release_lock (fp);
+    if (written == request)
+        return count;
+    else if (written == EOF)
+        return 0;
+    else
+        return written / size;
+}
+从上面的 fwrite 函数源码实现中可以清楚地看到：
+
+首先，在把参数 size 与 count 传进函数之后，第一步就是通过语句“_IO_size_t request=size*count;”来计算“size*count”，所以这两个参数与什么位置对齐根本没有半点关系。
+
+其次，在函数返回时，如果整个写入成功（“written==request”），就返回 count；如果遇到 EOF(“written==EOF”)，就返回 0；否则返回“written/size”。由此可见，函数返回的是成功写入的块数，而不是字节数（除非 size 为 1），这样做有许多好处。例如，在写入多个结构体时，返回值能告诉你成功写入的结构体的个数。当然，这样看来，前面的“fwrite(ptr,1,1024,fp)”与“fwrite(ptr,1024,1,fp)”语句还是有所差别的。但是，如果调用者只关心是否全部写入成功，那么就完全没必要纠结于语句“fwrite(ptr,1,1024,fp)”与“fwrite(ptr,1024,1,fp)”之间的差别了。
+
+对于 fread 函数，其道理与 fwrite 函数完全一样，如下面的函数源代码所示：
+_IO_size_t _IO_fread (void *buf,_IO_size_t size,_IO_size_t count,_IO_FILE *fp)
+{
+    _IO_size_t bytes_requested = size * count;
+    _IO_size_t bytes_read;
+    CHECK_FILE (fp, 0);
+    if (bytes_requested == 0)
+        return 0;
+    _IO_acquire_lock (fp);
+    bytes_read = _IO_sgetn (fp, (char *) buf, bytes_requested);
+    _IO_release_lock (fp);
+    return bytes_requested == bytes_read ？ count : bytes_read / size;
+}
+除此之外，函数 fwrite 还与文件的打开模式有关。例如，如果文件的打开模式是“w+”，则是从文件指针指向的地址开始写，替换掉之后的内容，文件的长度可以不变，fp 的位置移动 count 个数；如果文件的打开模式为“a+”，则从文件的末尾开始添加，文件的长度会不断增加。
+
+
