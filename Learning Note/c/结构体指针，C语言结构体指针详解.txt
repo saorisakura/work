@@ -1,0 +1,186 @@
+结构体指针，C语言结构体指针详解
+
+结构体指针，可细分为指向结构体变量的指针和指向结构体数组的指针。
+指向结构体变量的指针
+前面我们通过“结构体变量名.成员名”的方式引用结构体变量中的成员，除了这种方法之外还可以使用指针。
+
+前面讲过，&student1 表示结构体变量 student1 的首地址，即 student1 第一个项的地址。如果定义一个指针变量 p 指向这个地址的话，p 就可以指向结构体变量 student1 中的任意一个成员。
+
+那么，这个指针变量定义成什么类型呢？只能定义成结构体类型，且指向什么结构体类型的结构体变量，就要定义成什么样的结构体类型。比如指向 struct STUDENT 类型的结构体变量，那么指针变量就一定要定义成 struct STUDENT* 类型。
+
+下面将前面的程序用指针的方式修改一下：
+# include <stdio.h>
+# include <string.h>
+struct AGE
+{
+    int year;
+    int month;
+    int day;
+};
+struct STUDENT
+{
+    char name[20];  //姓名
+    int num;  //学号
+    struct AGE birthday;  //生日
+    float score;  //分数
+};
+int main(void)
+{
+    struct STUDENT student1; /*用struct STUDENT结构体类型定义结构体变量student1*/
+    struct STUDENT *p = NULL;  /*定义一个指向struct STUDENT结构体类型的指针变量p*/
+    p = &student1;  /*p指向结构体变量student1的首地址, 即第一个成员的地址*/
+    strcpy((*p).name, "小明");  //(*p).name等价于student1.name
+    (*p).birthday.year = 1989;
+    (*p).birthday.month = 3;
+    (*p).birthday.day = 29;
+    (*p).num = 1207041;
+    (*p).score = 100;
+    printf("name : %s\n", (*p).name);  //(*p).name不能写成p
+    printf("birthday : %d-%d-%d\n", (*p).birthday.year, (*p).birthday.month, (*p).birthday.day);
+    printf("num : %d\n", (*p).num);
+    printf("score : %.1f\n", (*p).score);
+    return 0;
+}
+输出结果是：
+name : 小明
+birthday : 1989-3-29
+num : 1207041
+score : 100.0
+
+我们看到，用指针引用结构体变量成员的方式是：
+(*指针变量名).成员名
+
+注意，*p 两边的括号不可省略，因为成员运算符“.”的优先级高于指针运算符“*”，所以如果 *p 两边的括号省略的话，那么 *p.num 就等价于 *(p.num) 了。
+
+从该程序也可以看出：因为指针变量 p 指向的是结构体变量 student1 第一个成员的地址，即字符数组 name 的首地址，所以 p 和 (*p).name 是等价的。
+
+但是，“等价”仅仅是说它们表示的是同一个内存单元的地址，但它们的类型是不同的。指针变量 p 是 struct STUDENT* 型的，而 (*p).name 是 char* 型的。所以在 strcpy 中不能将 (*p).name 改成 p。用 %s 进行输入或输出时，输入参数或输出参数也只能写成 (*p).name 而不能写成 p。
+
+同样，虽然 &student1 和 student1.name 表示的是同一个内存单元的地址，但它们的类型是不同的。&student1 是 struct STUDENT* 型的，而 student1.name 是 char* 型的，所以在对 p 进行初始化时，“p=&student1；”不能写成“p=student1.name”。因为 p 是 struct STUDENT* 型的，所以不能将 char* 型的 student1.name 赋给 p。
+
+此外为了使用的方便和直观，用指针引用结构体变量成员的方式：
+(*指针变量名).成员名
+
+可以直接用：
+指针变量名->成员名
+
+来代替，它们是等价的。“->”是“指向结构体成员运算符”，它的优先级同结构体成员运算符“.”一样高。p->num 的含义是：指针变量 p 所指向的结构体变量中的 num 成员。p->num 最终代表的就是 num 这个成员中的内容。
+
+下面再将程序用“->”修改一下：
+# include <stdio.h>
+# include <string.h>
+struct AGE
+{
+    int year;
+    int month;
+    int day;
+};
+struct STUDENT
+{
+    char name[20];  //姓名
+    int num;  //学号
+    struct AGE birthday;  /*用struct AGE结构体类型定义结构体变量birthday, 生日*/
+    float score;  //分数
+};
+int main(void)
+{
+    struct STUDENT student1; /*用struct STUDENT结构体类型定义结构体变量student1*/
+    struct STUDENT *p = NULL;  /*定义struct STUDENT结构体类型的指针变量p*/
+    p = &student1;  /*p指向结构体变量student1的首地址, 即第一项的地址*/
+    strcpy(p->name, "小明");
+    p->birthday.year = 1989;
+    p->birthday.month = 3;
+    p->birthday.day = 29;
+    p->num = 1207041;
+    p->score = 100;
+    printf("name : %s\n", p->name);  //p->name不能写成p
+    printf("birthday : %d-%d-%d\n", p->birthday.year, p->birthday.month, p->birthday.day);
+    printf("num : %d\n", p->num);
+    printf("score : %.1f\n", p->score);
+    return 0;
+}
+输出结果是：
+name : 小明
+birthday : 1989-3-29
+num : 1207041
+score : 100.0
+
+但是要注意的是，只有“指针变量名”后面才能加“->”，千万不要在成员名如 birthday 后面加“->”。
+综上所述，以下 3 种形式是等价的：
+结构体变量.成员名。
+(*指针变量).成员名。
+指针变量->成员名。
+
+其中第 3 种方式很重要，通常都是使用这种方式，另外两种方式用得不多。后面讲链表的时候用的也都是第 3 种方式。
+指向结构体数组的指针
+在前面讲数值型数组的时候可以将数组名赋给一个指针变量，从而使该指针变量指向数组的首地址，然后用指针访问数组的元素。结构体数组也是数组，所以同样可以这么做。
+
+我们知道，结构体数组的每一个元素都是一个结构体变量。如果定义一个结构体指针变量并把结构体数组的数组名赋给这个指针变量的话，就意味着将结构体数组的第一个元素，即第一个结构体变量的地址，也即第一个结构变量中的第一个成员的地址赋给了这个指针变量。比如：
+# include <stdio.h>
+struct STU
+{
+    char name[20];
+    int age;
+    char sex;
+    char num[20];
+};
+int main(void)
+{
+    struct STU stu[5] = {{"小红", 22, 'F', "Z1207031"}, {"小明", 21, 'M', "Z1207035"}, {"小七", 23, 'F', "Z1207022"}};
+    struct STU *p = stu;
+    return 0;
+}
+此时指针变量 p 就指向了结构体数组的第一个元素，即指向 stu[0]。我们知道，当一个指针指向一个数组后，指针就可以通过移动的方式指向数组的其他元素。
+
+这个原则对结构体数组和结构体指针同样适用，所以 p+1 就指向 stu[1] 的首地址；p+2 就指向 stu[2] 的首地址……所以只要利用 for 循环，指针就能一个个地指向结构体数组元素。
+
+同样需要注意的是，要将一个结构体数组名赋给一个结构体指针变量，那么它们的结构体类型必须相同。
+
+下面编写一个程序：
+# include <stdio.h>
+struct STU
+{
+    char name[20];
+    int age;
+    char sex;
+    char num[20];
+};
+int main(void)
+{
+    struct STU stu[3] = {{"小红", 22, 'F', "Z1207031"}, {"小明", 21, 'M', "Z1207035"}, {"小七", 23, 'F', "Z1207022"}};
+    struct STU *p = stu;
+    for (; p<stu+3; ++p)
+    {
+        printf("name:%s; age:%d; sex:%c; num:%s\n", p->name, p->age, p->sex, p->num);
+    }
+    return 0;
+}
+输出结果是：
+name:小红; age:22; sex:F; num:Z1207031
+name:小明; age:21; sex:M; num:Z1207035
+name:小七; age:23; sex:F; num:Z1207022
+
+此外同前面“普通数组和指针的关系”一样，当指针变量 p 指向 stu[0] 时，p[0] 就等价于 stu[0]；p[1] 就等价于 stu[1]；p[2] 就等价于 stu[2]……所以 stu[0].num 就可以写成 p[0].num，其他同理。下面将上面的程序用 p[i] 的方式修改一下：
+# include <stdio.h>
+struct STU
+{
+    char name[20];
+    int age;
+    char sex;
+    char num[20];
+};
+int main(void)
+{
+    struct STU stu[3] = {{"小红", 22, 'F', "Z1207031"}, {"小明", 21, 'M', "Z1207035"}, {"小七", 23, 'F', "Z1207022"}};
+    struct STU *p = stu;
+    int i = 0;
+    for (; i<3; ++i)
+    {
+        printf("name:%s; age:%d; sex:%c; num:%s\n", p[i].name, p[i].age, p[i].sex, p[i].num);
+    }
+    return 0;
+}
+输出结果是：
+name:小红; age:22; sex:F; num:Z1207031
+name:小明; age:21; sex:M; num:Z1207035
+name:小七; age:23; sex:F; num:Z1207022

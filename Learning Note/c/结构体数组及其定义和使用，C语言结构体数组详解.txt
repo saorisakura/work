@@ -1,0 +1,90 @@
+结构体数组及其定义和使用，C语言结构体数组详解
+
+一个结构体变量可以存放一个学生的一组信息，可是如果有 10 个学生呢？难道要定义 10 个结构体变量吗？难道上面的程序要复制和粘贴 10 次吗？
+
+很明显不可能，这时就要使用数组。结构体中也有数组，称为结构体数组。它与前面讲的数值型数组几乎是一模一样的，只不过需要注意的是，结构体数组的每一个元素都是一个结构体类型的变量，都包含结构体中所有的成员项。
+
+定义结构体数组的方法很简单，同定义结构体变量是一样的，只不过将变量改成数组。或者说同前面介绍的普通数组的定义是一模一样的，如：
+struct STUDENT stu[10];
+这就定义了一个结构体数组，共有 10 个元素，每个元素都是一个结构体变量，都包含所有的结构体成员。
+
+结构体数组的引用与引用一个结构体变量在原理上是一样的。只不过结构体数组中有多个结构体变量，我们只需利用 for 循 环一个一个地使用结构体数组中的元素。
+
+下面编写一个程序，编程要求：从键盘输入 5 个学生的基本信息，如姓名、年龄、性别、学号，然后将学号最大的学生的基本信息输出到屏幕。
+# include <stdio.h>
+# include <string.h>
+struct STU
+{
+    char name[20];
+    int age;
+    char sex;
+    char num[20];
+};
+void OutputSTU(struct STU stu[5]);  //函数声明, 该函数的功能是输出学号最大的学生信息
+int main(void)
+{
+    int i;
+    struct STU stu[5];
+    for (i=0; i<5; ++i)
+    {
+        printf("请输入第%d个学生的信息:", i+1);
+        scanf ("%s%d %c%s", stu[i].name, &stu[i].age, &stu[i].sex, stu[i].num);/*%c前面要加空格, 不然输入时会将空格赋给%c*/
+    }
+    OutputSTU(stu);
+    return 0;
+}
+void OutputSTU(struct STU stu[5])
+{
+    struct STU stumax = stu[0];
+    int j;
+    for (j=1; j<5; ++j)
+    {
+        if (strcmp(stumax.num, stu[j].num) < 0)  //strcmp函数的使用
+        {
+            stumax = stu[j];
+        }
+    }
+    printf("学生姓名：%s 学生年龄：%d 学生性别：%c 学生学号：%s\n", stumax.name, stumax.age, stumax.sex, stumax.num);
+}
+输出结果是：
+请输入第1个学生的信息:小红 22 F Z1207031
+请输入第2个学生的信息:小明 21 M Z1207035
+请输入第3个学生的信息:小七 23 F Z1207022
+请输入第4个学生的信息:小欣 20 F Z1207015
+请输入第5个学生的信息:小天 19 M Z1207024
+学生姓名：小明 学生年龄：21 学生性别：M 学生学号：Z1207035
+结构体数组定义时初始化
+结构体数组的初始化与前面讲的数值型数组的初始化是一模一样的，数值型数组初始化的方法和需要注意的问题在结构体数组的初始化中同样适用，因为不管是数值型数组还是结构体数组都是数组。下面就将前面的一个程序修改一下。
+# include <stdio.h>
+# include <string.h>
+struct STU
+{
+    char name[20];
+    int age;
+    char sex;
+    char num[20];
+};
+void OutputSTU(struct STU stu[5]);  //函数声明
+int main(void)
+{
+    struct STU stu[5] = {{"小红", 22, 'F', "Z1207031"}, {"小明", 21, 'M', "Z1207035"}, {"小七", 23, 'F', "Z1207022"}, {"小欣", 20, 'F', "Z1207015"}, {"小天", 19, 'M', "Z1207024"}};
+    OutputSTU(stu);
+    return 0;
+}
+void OutputSTU(struct STU stu[5])
+{
+    struct STU stumax = stu[0];
+    int j;
+    for (j=1; j<5; ++j)
+    {
+        if (strcmp(stumax.num, stu[j].num) < 0)
+        {
+            stumax = stu[j];
+        }
+    }
+    printf("学生姓名：%s 学生年龄：%d 学生性别：%c 学生学号：%s\n", stumax.name, stumax.age, stumax.sex, stumax.num);
+}
+输出结果是：
+学生姓名：小明 学生年龄：21 学生性别：M 学生学号：Z1207035
+
+注意，字符要用单引号括起来，字符串要用双引号括起来。
