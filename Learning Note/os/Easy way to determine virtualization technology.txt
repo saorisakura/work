@@ -1,0 +1,489 @@
+Easy way to determine virtualization technology
+
+I have command line access to a Linux machine which may or may not be virtualized. I want to determine what kind of virtualization technology it runs on, if any (VMWare, VirtualBox, KVM, OpenVZ, Xen, ). This isn't a hostile environment: I'm not trying to work against a VM that is trying to disguise itself, I'm diagnosing a flaky server that I know little about.
+
+More precisely, I'm helping someone diagnose the issue, I'm not sitting at the helm. So I have to convey instructions like “copy-paste this command” and not “poke around /proc somewhere”. Ideally, it would be something like lshw: an easily-installable (if not preinstalled) command that does the poking around and prints out relevant information.
+
+What's the easiest way of determining what virtualization technology this system may be a guest of? I'd appreciate if proposals mentioned which technologies (including bare hardware) can be conclusively detected and which can be conclusively eliminated. I'm mostly interested in Linux, but if it also works for other unices that's nice.
+
+linux command-line virtual-machine virtualization
+shareimprove this question
+asked Sep 6 '13 at 20:56
+
+Gilles
+517k12210311559
+related: superuser.com/questions/425878/… | serverfault.com/questions/179105/… – Ciro Santilli 新疆改造中心 六四事件 法轮功 Oct 4 at 14:50
+add a comment
+12 Answers
+active oldest votes
+up vote
+124
+down vote
+accepted
+dmidecode -s system-product-name
+I have tested on Vmware Workstation, VirtualBox, QEMU with KVM, standalone QEMU with Ubuntu as the guest OS. Others have added additional platforms that they're familiar with as well.
+
+Virtualization technologies
+VMware Workstation
+
+root@router:~# dmidecode -s system-product-name
+VMware Virtual Platform
+VirtualBox
+
+root@router:~# dmidecode -s system-product-name
+VirtualBox
+Qemu with KVM
+
+root@router:~# dmidecode -s system-product-name
+KVM
+Qemu (emulated)
+
+root@router:~# dmidecode -s system-product-name
+Bochs
+Microsoft VirtualPC
+
+root@router:~# dmidecode | egrep -i 'manufacturer|product'
+Manufacturer: Microsoft Corporation
+Product Name: Virtual Machine
+Virtuozzo
+
+root@router:~# dmidecode
+/dev/mem: Permission denied
+Xen
+
+root@router:~# dmidecode | grep -i domU
+Product Name: HVM domU
+On bare metal, this returns an identification of the computer or motherboard model.
+
+/dev/disk/by-id
+If you don't have the rights to run dmidecode then you can use:
+
+Virtualization Technology: QEMU
+
+ls -1 /dev/disk/by-id/
+Output
+
+[root@host-7-129 ~]# ls -1 /dev/disk/by-id/
+ata-QEMU_DVD-ROM_QM00003
+ata-QEMU_HARDDISK_QM00001
+ata-QEMU_HARDDISK_QM00001-part1
+ata-QEMU_HARDDISK_QM00002
+ata-QEMU_HARDDISK_QM00002-part1
+scsi-SATA_QEMU_HARDDISK_QM00001
+scsi-SATA_QEMU_HARDDISK_QM00001-part1
+scsi-SATA_QEMU_HARDDISK_QM00002
+scsi-SATA_QEMU_HARDDISK_QM00002-part1
+References
+How to detect virtualization at dmo.ca
+shareimprove this answer
+edited Jun 1 '17 at 20:20
+
+kenorb
+7,866365105
+answered Sep 6 '13 at 21:18
+
+Rahul Patil
+14.4k185882
+5
+Hyper-V returns a nearly worthless Virtual Machine for dmidecode -s system-product-name. There is nothing obvious under /dev/disk/by-id either. facter appears to detect hyperv by looking at the lspci output. – Zoredache Sep 6 '13 at 23:39
+1
+Open VZ check for /proc/user_beancounters – exussum Sep 7 '13 at 12:45 
++1 for /proc/user_beancounters over OpenVZ wich is likely on cheap VPS's as example. – erm3nda Jan 21 '15 at 2:37
+Both dmidecode and /dev/disk/by-id solutions fail in a Docker container. See unix.stackexchange.com/a/257207/106572 – Martin Bramwell Jan 23 '16 at 17:35
+3
+with qemu 2.5.0 (at least), dmidecode -s system-product-name returns a generic hardware description instead of the "KVM" or "Bochs" shown above. For me, this string is Standard PC (i440FX + PIIX, 1996). dmidecode -s system-manufacturer returns the far less generic string QEMU. Since qemu allows DMI data to be provided, I suspect dmidecode is relatively easy to fool - no matter the field being read. – Mark Feb 26 '16 at 22:46
+show 3 more comments
+
+up vote
+30
+down vote
+If the container is running systemd:
+
+$ systemd-detect-virt
+lxc
+On KVM for example it returns:
+
+kvm
+and on a non-virtualized host:
+
+none
+See also:
+
+systemd-detect-virt(1)
+Detecting Virtualization
+shareimprove this answer
+edited Oct 4 at 14:54
+
+Ciro Santilli 新疆改造中心 六四事件 法轮功
+4,55323938
+answered Sep 20 '14 at 15:49
+
+starfry
+3,02312647
+This works for openvz as well. – lepe Jun 8 '16 at 3:23
+It output kvm for Google Compute Engine, which is what I was trying to figure out. Thanks! – snetch Oct 19 '16 at 20:00
+add a comment
+up vote
+25
+down vote
+Desirable method
+lshw
+This command produces the following output on vairous VM technology guests.
+
+$ sudo lshw -class system
+Output
+KVM
+
+mungr                     
+    description: Computer
+    product: KVM
+    vendor: Red Hat
+    width: 64 bits
+    capabilities: smbios-2.4 dmi-2.4 vsyscall64 vsyscall32
+Virtual Box
+
+fedora17                  
+    description: Computer
+    product: VirtualBox ()
+    vendor: innotek GmbH
+    version: 1.2
+    serial: 0
+    width: 64 bits
+    capabilities: smbios-2.5 dmi-2.5 vsyscall32
+VMWare
+
+partedmagic
+    description: Computer
+    product: VMware Virtual Platform ()
+    vendor: VMware, Inc.
+    version: None
+    serial: VMware-56 4d 94 a0 53 e3 f3 c6-f9 a6 eb 1a 89 70 04 57
+    width: 32 bits
+    capabilities: smbios-2.4 dmi-2.4 smp-1.4 smp
+Scripting
+If you're on Ubuntu/Debian there's the package open-vm-tools can be installed. It provides vmware-checkvm. It returns only a a digit. A 0 means it's a VM, a 1 means it's a physical system.
+
+Less desirable methods
+If it's KVM the /proc/scsi/scsi and ethtool options show up as follows:
+
+SCSI
+$ cat /proc/scsi/scsi 
+Attached devices:
+Host: scsi1 Channel: 00 Id: 00 Lun: 00
+  Vendor: QEMU     Model: QEMU DVD-ROM     Rev: 0.9.
+  Type:   CD-ROM                           ANSI  SCSI revision: 05
+ethtool
+$ ethtool -i eth0
+driver: virtio_net
+version: 
+firmware-version: 
+bus-info: virtio0
+supports-statistics: no
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
+The virtio_net is part of KVM. The /proc/scsi/scsi tells you that you're in a VM, and that you're most likely KVM.
+
+dmesg
+Using the following commands grep'ing through dmesg log.
+
+$ sudo dmesg | grep -i virtual
+VMWare
+
+VMware vmxnet virtual NIC driver
+ Vendor: VMware    Model: Virtual disk      Rev: 1.0 
+hda: VMware Virtual IDE CDROM Drive, ATAPI CD/DVD-ROM drive
+QEmu or KVM
+
+If the "-cpu host" option has not been used, QEmu and KVM will identify themselves as:
+
+CPU: AMD QEMU Virtual CPU version 0.9.1 stepping 03
+otherwise, the host's CPU information will be used both in dmesg, or in /proc/cpuinfo. However, you should see something like:
+
+[    0.000000] Booting paravirtualized kernel on KVM
+In newer kernels that understand that they're running under paravirtualization.
+
+Microsoft VirtualPC
+
+hda: Virtual HD, ATA DISK drive
+hdc: Virtual CD, ATAPI CD/DVD-ROM drive
+Xen
+
+$ sudo dmesg | grep -i xen
+Xen virtual console successfully installed as tty1
+Virtuozzo
+
+# method #1
+$ sudo dmesg
+(returns no output)
+
+# method #2
+$ sudo cat /var/log/dmesg
+(returns no output)
+
+# method #3
+$ sudo ls -al /proc/vz
+veinfo  veinfo_redir  veredir  vestat  vzaquota  vzdata
+References
+dmo.ca/ blog/ How to detect virtualization
+shareimprove this answer
+edited Sep 7 '13 at 1:58
+answered Sep 6 '13 at 22:51
+
+slm♦
+242k66501669
+That kind of poking around drivers is what I hoped to avoid: it'll be different for every VM technology and dependent on the settings. The product name reported by lshw -class system and dmidecode is exactly what I was hoping to find. – Gilles Sep 6 '13 at 22:58
+@Gilles - yeah I didn't mean for you to actual use them, only to capture the methods. I'm bringing up a Virtual Box and VMWare instances now to confirm the lshw output as well for those platforms. Give me a couple of minutes and I'll update the A. – slm♦ Sep 6 '13 at 23:08 
+@Gilles - looks like lshw can do the job as well for all the technologies. I've moved the answers to the bottom of the answer that weren't what you were looking so that others won't have to skip past them. – slm♦ Sep 7 '13 at 1:22 
+dmesg fills a fixed size ring buffer with all kinds of stuff. It is completely inappropriate for this task. See unix.stackexchange.com/a/257207/106572 – Martin Bramwell Jan 23 '16 at 17:43
+@Martin - and that's why it's in the less desirable section of my answer. I typically write answers that are all inclusive, showing a variety of methods. – slm♦ Jan 23 '16 at 17:55 
+show 1 more comment
+up vote
+14
+down vote
+The virt-what script seems to cover most cases well...
+
+I do like the disclaimer from the authors:
+
+Most of the time, using this program is the wrong thing to do. Instead you should detect the specific features you actually want to use.
+
+It's appeared on my EL5 and EL6 systems for the past few years as part of default installations. Ubuntu has it, and the source is available as well.
+
+The facts detected by the script are listed here, but can easily be extended for edge cases.
+
+shareimprove this answer
+edited Mar 23 '14 at 14:35
+answered Mar 23 '14 at 8:32
+
+ewwhite
+1,288814
+Link? Which systems does it recognize? – Gilles Mar 23 '14 at 13:50
+1
+@Gilles Edited: But the script generally detects KVM, Xen, QEMU, VirtualBox, Parallels, OpenVZ, IBM System Z, LPAR, z/VM, Hitachi Virtage, VMWare, Microsoft Hyper-V. Hmm... should LXC be included? – ewwhite Mar 23 '14 at 14:34
+LXC is included now. – ewwhite May 4 '15 at 13:24
+As of January 2016, it fails with Docker. See unix.stackexchange.com/a/257207/106572 – Martin Bramwell Jan 23 '16 at 17:26
+add a comment
+up vote
+12
+down vote
+isVMware() { [[ $(dmidecode -s system-manufacturer) = 'VMware, Inc.' ]]; }
+isXen   () { [[ $(dmidecode -s system-manufacturer) = 'Xen'          ]]; }
+isKVM   () { [[ $(dmidecode -s system-product-name) = 'KVM'          ]]; }
+isVBox  () { [[ $(dmidecode -s system-product-name) = 'VirtualBox'   ]]; }
+isVM    () { isVMware || isXen || isKVM || isVBox; }
+Those are the tests we use at my company.
+
+shareimprove this answer
+answered Sep 6 '13 at 23:00
+
+John Kugelman
+1,60411017
+add a comment
+up vote
+7
+down vote
+If you get the person you're helping to install facter, you can do
+
+facter virtual
+No root access needed.
+
+Debian Guest on Debian host:
+
+[user@guest]$ facter virtual
+virtualbox
+I can't vouch for how well this would work with Xen/KVM/Qemu...
+
+shareimprove this answer
+answered Sep 6 '13 at 21:31
+
+Joseph R.
+27.5k369113
+add a comment
+up vote
+7
+down vote
+In "recent" linux kernels, the kernel detects the hypervisor for you and prints a message that is easily available with dmesg. This will tell you simply:
+
+dmesg | grep "Hypervisor detected"
+For example:
+
+$ dmesg | grep "Hypervisor detected"
+Hypervisor detected: VMware
+As for what "recent" means, I am unclear which kernel version it was officially released in, but the commit that introduced this feature in the code base was on May 7, 2010. See here.
+
+shareimprove this answer
+answered Jan 22 '15 at 18:37
+
+Russ
+40859
+dmesg fills a fixed size ring buffer with all kinds of stuff. It is completely inappropriate for this task. See unix.stackexchange.com/a/257207/106572 – Martin Bramwell Jan 23 '16 at 17:44
+add a comment
+up vote
+5
+down vote
+hostnamectl is your friend (requires systemd).
+
+A few examples:
+
+Laptop without any virtualization
+
+$ hostnamectl status
+   Static hostname: earth.gangs.net
+         Icon name: computer-laptop
+           Chassis: laptop
+        Machine ID: 18a0752e1ccbeef09da51ad17fab1f1b
+           Boot ID: beefdc99969e4a4a8525ff842b383c62
+  Operating System: Ubuntu 16.04.2 LTS
+            Kernel: Linux 4.4.0-66-generic
+      Architecture: x86-64
+Xen
+
+$ hostnamectl status
+   Static hostname: pluto.gangs.net
+         Icon name: computer-vm
+           Chassis: vm
+        Machine ID: beef39aebbf8ba220ed0438b54497609
+           Boot ID: beefc71e97ed48dbb436a470fe1920e1
+    Virtualization: xen
+  Operating System: Ubuntu 16.04.2 LTS
+            Kernel: Linux 3.13.0-37-generic
+      Architecture: x86-64
+OpenVZ
+
+$ hostnamectl status
+   Static hostname: mars.gangs.net
+         Icon name: computer-container
+           Chassis: container
+        Machine ID: 55296cb0566a4aaca10b8e3a4b28beef
+           Boot ID: 1bb259b0eb064d9eb8a22d112211beef
+    Virtualization: openvz
+  Operating System: CentOS Linux 7 (Core)
+       CPE OS Name: cpe:/o:centos:centos:7
+            Kernel: Linux 2.6.32-042stab120.16
+      Architecture: x86-64
+KVM
+
+$ hostnamectl status
+   Static hostname: mercury.gangs.net
+         Icon name: computer-vm
+           Chassis: vm
+        Machine ID: beeffefc50ae499881b024c25895ec86
+           Boot ID: beef9c7662a240b3b3b04cef3d1518f0
+    Virtualization: kvm
+  Operating System: CentOS Linux 7 (Core)
+       CPE OS Name: cpe:/o:centos:centos:7
+            Kernel: Linux 3.10.0-514.10.2.el7.x86_64
+      Architecture: x86-64
+shareimprove this answer
+answered Mar 15 '17 at 6:34
+
+Derick
+5111
+how does the OS determine if it is running inside a virtual machine? it shouldn't, I have installed a very basic debian from command line and hostnamectl shows Virtualization: oracle regardless I have not installed any paravirtualization | Virtualbox guest additions – Ivanzinho Oct 23 at 3:51
+add a comment
+up vote
+3
+down vote
+For VirtualBox, you could lspci | grep -i virtualbox, that gives:
+
+$ lspci | grep -i virtualbox
+00:02.0 VGA compatible controller: InnoTek Systemberatung GmbH VirtualBox Graphics Adapter
+00:04.0 System peripheral: InnoTek Systemberatung GmbH VirtualBox Guest Service
+Alternatively, dmidecode -s system-product-name (as @Rahul Patil suggests) is even more direct to the point (but needs root):
+
+$ sudo dmidecode -s system-product-name
+VirtualBox
+For non-KVM QEMU, dmidecode -s system-product-name confusingly returns Bochs, but dmesg | grep -i qemu works (the storage devices that QEMU emulates usually have the name QEMU HARDDISK, QEMU DVD-ROM etc...).
+
+shareimprove this answer
+edited Sep 6 '13 at 23:10
+answered Sep 6 '13 at 21:23
+
+Renan
+14.2k65274
+add a comment
+up vote
+3
+down vote
+Sometimes it's tricky :)
+
+root@server:~# dmidecode -s system-product-name
+Bochs
+
+root@server:~# dmidecode | egrep -i 'manufacturer|product|vendor'
+        Vendor: Bochs
+        Manufacturer: Bochs
+        Product Name: Bochs
+        Manufacturer: Bochs
+        Manufacturer: Bochs
+        Manufacturer: Bochs
+        Manufacturer: Bochs
+        Manufacturer: Bochs
+
+root@server:~# virt-what
+root@server:~# dpkg -l |grep virt-what
+ii  virt-what                           1.2-1                        detect if we are running in a virtual machine
+
+root@server:~# egrep -i 'virtual|vbox' /var/log/dmesg
+[    0.000000] Booting paravirtualized kernel on KVM
+[    0.385701] input: Macintosh mouse button emulation as /devices/virtual/input/input0
+shareimprove this answer
+answered Oct 10 '13 at 10:47
+
+jan.polnicky
+311
+add a comment
+up vote
+1
+down vote
+Apparently virtualization comes in several parts - in my case QEMU, Bochs and KVM (then Ubuntu 14.04). I found the easiest way to discover the hypervisor in use was:
+
+sudo apt-get install virt-what
+sudo virt-what
+which in my case returned simply kvm which was the basic information I was looking for (also the OP I think), because it tells me what I am allowed to do (e.g. run ipset to block a DDoS attack) and how resources are shared between VMs.
+
+In addition I tried
+
+sudo dmidecode -s system-product-name
+and
+
+sudo lshw -class system
+neither of which mention KVM but they did both inform me that my hardware emulation was provided by Bochs which I confess I hadn't even heard of, but a quick search turned up interesting information (http://en.wikipedia.org/wiki/Bochs). The lshw command is slightly more informative than dmidecode (e.g. telling me it's 64-bit).
+
+The other answers didn't really tell me anything useful - facter virtual just returned physical and ls -1 /dev/disk/by-id/ returned ata-QEMU_DVD-ROM_QM00003 which shows QEMU is involved but I don't have access to the emulated DVD-ROM anyway.
+
+shareimprove this answer
+answered Jan 16 '15 at 17:36
+
+Phil McKerracher
+1112
+add a comment
+up vote
+1
+down vote
+Debian comes with this small package for detecting virtualisation type:
+
+$ sudo apt-get install virt-what
+$ virt-what
+and little bigger because of Perl dependencies:
+
+$ sudo apt-get install imvirt
+$ imvirt
+As usual run:
+
+free
+cat /proc/meminfo
+cat /proc/cpuinfo
+dmesg
+htop
+lshw
+dmidecode
+lsmod
+hwinfo
+shareimprove this answer
+answered Aug 2 '15 at 21:01
+
+gavenkoa
+25939
+You beat me to imvirt, and I did not known virt-what. would you detail the output of both as previous answers to improve your post? – Rui F Ribeiro Mar 15 '17 at 7:04

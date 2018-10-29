@@ -1,0 +1,330 @@
+dmidecode命令详解(获取硬件信息)及7个技巧
+
+一、dmidecode简介
+
+      dmidecode允许你在Linux系统下获取有关硬件方面的信息。dmidecode遵循SMBIOS/DMI标准，其输出的信息包括BIOS、系统、主板、处理器、内存、缓存等等。
+
+      DMI（Desktop Management Interface,DMI）就是帮助收集电脑系统信息的管理系统，DMI信息的收集必须在严格遵照SMBIOS规范的前提下进行。SMBIOS（System Management BIOS）是主板或系统制造者以标准格式显示产品管理信息所需遵循的统一规范。SMBIOS和DMI是由行业指导机构Desktop Management Task Force(DMTF)起草的开放性的技术标准，其中DMI设计适用于任何的平台和操作系统。
+
+DMI充当了管理工具和系统层之间接口的角色。它建立了标准的可管理系统更加方便了电脑厂商和用户对系统的了解。DMI的主要组成部分是Management Information Format(MIF)数据库。这个数据库包括了所有有关电脑系统和配件的信息。通过DMI，用户可以获取序列号、电脑厂商、串口信息以及其它系统配件信息。
+
+ 
+
+二、dmidecode的作用
+
+      dmidecode的作用是将DMI数据库中的信息解码，以可读的文本方式显示。由于DMI信息可以人为修改，因此里面的信息不一定是系统准确的信息。
+
+ 
+
+三、dmidecode命令用法
+
+    不带选项执行dmidecode通常会输出所有的硬件信息。dmidecode有个很有用的选项-t，可以指定类型输出相关信息。假如要获得处理器方面的信息，则可以执行：dmidecode -t processor
+
+Usage: dmidecode [OPTIONS]
+
+Options are:
+
+-d：(default:/dev/mem)从设备文件读取信息，输出内容与不加参数标准输出相同。
+
+-h：显示帮助信息。
+
+-s：只显示指定DMI字符串的信息。(string)
+
+-t：只显示指定条目的信息。(type)
+
+-u：显示未解码的原始条目内容。
+
+-- dump-bin FILE: Dump the DMI data to a binary file.
+
+-- from-dump FILE: Read the DMI data from a binary file.
+
+-V：显示版本信息
+
+dmidecode的输出格式一般如下：
+
+Handle 0x0002, DMI type 2, 95 bytes.
+
+Base Board Information
+
+    Manufacturer: IBM
+
+    Product Name: Node1 Processor Card
+
+    Version: Not Specified
+
+    Serial Number: Not Specified
+
+其中记录头（recode header）包括了：
+
+recode id(Handle)：DMI表中的记录标识符，这是唯一的，比如上例中的Handle 0x0002.
+
+DMI type id：记录的类型，譬如说：BIOS，Memory，上例是type 2，即“Base Board Information”.
+
+recode size：DMI表中对应记录的大小，上例为95 bytes。（不包括文本信息，所有实际输出的内容比这个size要更大）。记录头之后就是记录的值。
+
+recoded values：记录值可以是多行的，比如上例显示了主板的制造商（Manufacturer）、Product Name、Version以及Serial Number。
+
+1. 最简单的的显示全部dmi信息：
+
+[root@BAIYU_180 ~]# dmidecode
+[root@BAIYU_180 ~]# dmidecode|wc -l
+6042
+
+这样将输出所有的dmi信息，你可能会被一大堆的信息吓坏，通常可以使用下面的方法。
+2.显示指定类型的信息：
+通常我只想查看某类型，比如CPU，内存或者磁盘的信息而不是全部的。这可以使用-t(–type TYPE)来指定信息类型：
+
+# dmidecode -t bios
+# dmidecode -t bios, processor (这种方式好像不可以用，必须用下面的数字的方式)
+# dmidecode -t 0,4 (显示bios和processor)
+
+dmidecode到底支持哪些type?
+这些可以在man dmidecode里面看到：
+文本参数支持：
+bios, system, baseboard, chassis, processor, memory, cache, connector, slot
+数字参数支持很多：（见附录）
+4.通过关键字查看信息：
+比如只想查看序列号，可以使用:
+
+# dmidecode -s system-serial-number
+
+-s (–string keyword)支持的keyword包括：
+
+bios-vendor,bios-version,bios-release-date,
+
+system-manufacturer,system-product-name,system-version,system-serial-number,
+
+baseboard-manu-facturer,baseboard-product-name,baseboard-version,baseboard-serial-number,baseboard-asset-tag,
+
+chassis-manufacturer,chas-sis-version,chassis-serial-number,chassis-asset-tag,
+
+processor-manufacturer,processor-version.
+
+ 
+
+四、实例
+
+查看当前内存和支持的最大内存
+Linux下，可以使用free或者查看meminfo来获得当前的物理内存：
+
+[root@SC4304 ~]# free
+            total      used      free    shared    buffers    cached
+Mem:    132091660    5649612  126442048          0    224492    4052384
+-/+ buffers/cache:    1372736  130718924
+Swap:    209715192          0  209715192
+[root@SC4305 ~]# free -m
+            total      used      free    shared    buffers    cached
+Mem:        128995      6230    122765          0        259      4615
+-/+ buffers/cache:      1354    127640
+Swap:      204799          0    204799
+
+这里显示了当前服务器的物理内存是128GB。
+服务器到底能扩展到多大的内存？
+
+[root@SC4304 ~]# dmidecode -t 16
+# dmidecode 2.11
+# SMBIOS entry point at 0xb89a5000
+SMBIOS 2.7 present.
+ 
+Handle 0x1000, DMI type 16, 23 bytes
+Physical Memory Array
+    Location: System Board Or Motherboard
+    Use: System Memory
+    Error Correction Type: Multi-bit ECC
+    Maximum Capacity: 1536 GB
+    Error Information Handle: Not Provided
+    Number Of Devices: 24
+
+从上面的信息我们可以看出：
+
+内存插槽数：24个
+
+最大扩展内存：1536G
+
+单跟内存条最大：64G
+
+现在内存为：128G
+
+但是，我们还必须查清这里的128G到底是16*8GB, 2*64GB还是其他？就是查看已使用的插槽数
+如果是2*64GB，那么可以扩展到1536GB，但是如果插槽已经插满，无法扩展了：
+
+1、查看内存槽数、哪个槽位插了内存，大小是多少
+
+ [root@SC4305 ~]# dmidecode|grep -A5 'Memory Device'|grep Size
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+    Size: No Module Installed
+
+2、查看最大支持内存数
+
+ [root@SC4305 ~]# dmidecode|grep 'Maximum Capacity'
+    Maximum Capacity: 1536 GB
+
+3、查看槽位上内存的速率，没插就是unknown。
+
+ [root@SC4305 ~]# dmidecode|grep -A16 'Memory Device'|grep 'Speed'
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: 1600 MHz
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+    Speed: Unknown
+
+ 
+
+五、一个查看基本硬件信息的shell脚本
+
+[root@SC4306 test]# cat test.sh 
+#!/bin/bash  
+echo "IP:"  
+ifconfig |grep "inet addr"|grep -v 127.0.0.1|awk '{print $2}'|awk -F ':' '{print $2}'  
+echo "Product Name:"  
+dmidecode |grep Name  
+echo "CPU Info:"  
+dmidecode |grep -i cpu|grep -i version|awk -F ':' '{print $2}'  
+echo "Disk Info:"  
+parted -l|grep 'Disk /dev/sd'|awk -F ',' '{print "  ",$1}'  
+echo "Network Info:"  
+lspci |grep Ethernet  
+echo "Memory Info:"  
+dmidecode|grep -A5 "Memory Device"|grep Size|grep -v No  
+echo "Memory number:"`dmidecode|grep -A5 "Memory Device"|grep Size|grep -v No|wc -l`
+
+输出结果：
+
+[root@SC4306 test]# bash test.sh
+IP:
+10.0.17.6
+10.0.250.6
+Product Name:
+    Product Name: PowerEdge R720
+    SKU Number: SKU=NotProvided;ModelName=PowerEdge R720
+    Product Name: 0DCWD1
+CPU Info:
+      Intel(R) Xeon(R) CPU E5-2620 v2 @ 2.10GHz
+      Intel(R) Xeon(R) CPU E5-2620 v2 @ 2.10GHz
+Disk Info:
+    Disk /dev/sda: 1074GB
+    Disk /dev/sdb: 18.9TB
+Network Info:
+01:00.0 Ethernet controller: Broadcom Corporation NetXtreme BCM5720 Gigabit Ethernet PCIe
+01:00.1 Ethernet controller: Broadcom Corporation NetXtreme BCM5720 Gigabit Ethernet PCIe
+02:00.0 Ethernet controller: Broadcom Corporation NetXtreme BCM5720 Gigabit Ethernet PCIe
+02:00.1 Ethernet controller: Broadcom Corporation NetXtreme BCM5720 Gigabit Ethernet PCIe
+Memory Info:
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+    Size: 16384 MB
+Memory number:8
+
+本文永久更新链接地址：http://www.linuxidc.com/Linux/2015-12/126814.htm
+
+ 
+
+六、dmidecode命令查看Linux服务器7个技巧
+
+（1）dmidecode查看主板信息
+
+dmidecode -t 2
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+ 
+
+（2）dmidecode查询内存信息
+
+dmidecode -t 16
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+这里可以查看到当前服务器允许扩容的最大内存大小。
+
+ 
+
+（3）查看当前内存和插槽数
+
+dmidecode|grep -P -A5 "Memory Device" |grep Size
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+ 
+
+（4）查看内存条数
+
+dmidecode -t 17
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+我们可以看到当前服务器是4GB内存，然后看到上面数据，可以知道是一根内存条。
+
+ 
+
+（5）查看CPU信息
+
+dmidecode -t 4
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+我们也可以用cat /proc/cpuinfo命令查看CPU信息。
+
+ 
+
+（6）查看服务器硬盘信息
+
+cat /proc/scsi/scsi
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+ 
+
+（7）dmidecode查看内存速率
+
+dmidecode|grep -A16 "Memory Device"|grep 'Speed'
+
+ dmidecode命令详解(获取硬件信息)及7个技巧
+
+总结，今天老左也是第一次接触dmidecode命令，所以简单的查阅相关资料把需要查看的服务器硬件信息命令记录下来，以后有需要的话可以直接复制使用。如果有朋友比较精通的，看看是否还需要补充相关参数。
