@@ -1,0 +1,439 @@
+C:\Users\liyan\PycharmProjects\work-python3\venv\Scripts\python.exe C:/Users/liyan/PycharmProjects/TApp/main.py
+Tornado server is ready for running.
+> c:\users\liyan\pycharmprojects\tapp\main.py(97)<module>()
+-> tornado.options.parse_command_line()
+(Pdb) a
+(Pdb) dir(__main__)
+*** NameError: name '__main__' is not defined
+(Pdb) dir()
+['Application', '__annotations__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'define', 'include', 'options', 'os', 'pdb', 'tornado', 'url_wrapper']
+(Pdb) dir(tornado)
+['__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__path__', '__spec__', '_locale_data', 'absolute_import', 'concurrent', 'division', 'escape', 'gen', 'http1connection', 'httpserver', 'httputil', 'ioloop', 'iostream', 'locale', 'log', 'netutil', 'options', 'platform', 'print_function', 'process', 'routing', 'speedups', 'stack_context', 'tcpserver', 'template', 'util', 'version', 'version_info', 'web']
+(Pdb) p tornado.ioloop
+<module 'tornado.ioloop' from 'C:\\Users\\liyan\\PycharmProjects\\work-python3\\venv\\lib\\site-packages\\tornado\\ioloop.py'>
+(Pdb) dir(tornado.ioloop)
+['Configurable', 'Future', 'IOLoop', 'PY3', 'PeriodicCallback', 'PollIOLoop', 'ThreadPoolExecutor', 'TimeoutError', 'Waker', '_POLL_TIMEOUT', '_Timeout', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'absolute_import', 'app_log', 'asyncio', 'chain_future', 'collections', 'datetime', 'division', 'errno', 'errno_from_exception', 'functools', 'future_add_done_callback', 'future_set_exc_info', 'gen_log', 'heapq', 'import_object', 'is_future', 'itertools', 'logging', 'math', 'numbers', 'os', 'print_function', 'random', 'select', 'set_close_exec', 'signal', 'stack_context', 'sys', 'thread', 'threading', 'time', 'timedelta_to_seconds', 'traceback', 'unicode_type']
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(98)<module>()
+-> Application().listen(8000, xheaders=True)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\tapp\main.py(79)__init__()
+-> def __init__(self):
+(Pdb) r
+--Return--
+> c:\users\liyan\pycharmprojects\tapp\main.py(90)__init__()->None
+-> tornado.web.Application.__init__(self, handlers, **settings)
+(Pdb) n
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2019)listen()
+-> def listen(self, port, address="", **kwargs):
+(Pdb) s
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2040)listen()
+-> from tornado.httpserver import HTTPServer
+(Pdb) l
+2035 	        .. versionchanged:: 4.3
+2036 	           Now returns the `.HTTPServer` object.
+2037 	        """
+2038 	        # import is here rather than top level because HTTPServer
+2039 	        # is not importable on appengine
+2040 ->	        from tornado.httpserver import HTTPServer
+2041 	        server = HTTPServer(self, **kwargs)
+2042 	        server.listen(port, address)
+2043 	        return server
+2044 	
+2045 	    def add_handlers(self, host_pattern, host_handlers):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2041)listen()
+-> server = HTTPServer(self, **kwargs)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2042)listen()
+-> server.listen(port, address)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(135)listen()
+-> def listen(self, port, address=""):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(143)listen()
+-> sockets = bind_sockets(port, address=address)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(144)listen()
+-> self.add_sockets(sockets)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(146)add_sockets()
+-> def add_sockets(self, sockets):
+(Pdb) l
+141  	        the `.IOLoop`.
+142  	        """
+143  	        sockets = bind_sockets(port, address=address)
+144  	        self.add_sockets(sockets)
+145  	
+146  ->	    def add_sockets(self, sockets):
+147  	        """Makes this server start accepting connections on the given sockets.
+148  	
+149  	        The ``sockets`` parameter is a list of socket objects such as
+150  	        those returned by `~tornado.netutil.bind_sockets`.
+151  	        `add_sockets` is typically used in combination with that
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(155)add_sockets()
+-> for sock in sockets:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(156)add_sockets()
+-> self._sockets[sock.fileno()] = sock
+(Pdb) l
+151  	        `add_sockets` is typically used in combination with that
+152  	        method and `tornado.process.fork_processes` to provide greater
+153  	        control over the initialization of a multi-process server.
+154  	        """
+155  	        for sock in sockets:
+156  ->	            self._sockets[sock.fileno()] = sock
+157  	            self._handlers[sock.fileno()] = add_accept_handler(
+158  	                sock, self._handle_connection)
+159  	
+160  	    def add_socket(self, socket):
+161  	        """Singular version of `add_sockets`.  Takes a single socket object."""
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(157)add_sockets()
+-> self._handlers[sock.fileno()] = add_accept_handler(
+(Pdb) s
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(158)add_sockets()
+-> sock, self._handle_connection)
+(Pdb) l
+153  	        control over the initialization of a multi-process server.
+154  	        """
+155  	        for sock in sockets:
+156  	            self._sockets[sock.fileno()] = sock
+157  	            self._handlers[sock.fileno()] = add_accept_handler(
+158  ->	                sock, self._handle_connection)
+159  	
+160  	    def add_socket(self, socket):
+161  	        """Singular version of `add_sockets`.  Takes a single socket object."""
+162  	        self.add_sockets([socket])
+163  	
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(211)add_accept_handler()
+-> def add_accept_handler(sock, callback):
+(Pdb) l
+206  	        os.chmod(file, mode)
+207  	        sock.listen(backlog)
+208  	        return sock
+209  	
+210  	
+211  ->	def add_accept_handler(sock, callback):
+212  	    """Adds an `.IOLoop` event handler to accept new connections on ``sock``.
+213  	
+214  	    When a connection is accepted, ``callback(connection, address)`` will
+215  	    be run (``connection`` is a socket object, and ``address`` is the
+216  	    address of the other end of the connection).  Note that this signature
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(229)add_accept_handler()
+-> io_loop = IOLoop.current()
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(230)add_accept_handler()
+-> removed = [False]
+(Pdb) a
+sock = <socket.socket fd=768, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>
+callback = <bound method TCPServer._handle_connection of <tornado.httpserver.HTTPServer object at 0x0000024026DB9240>>
+(Pdb) p io_loop
+<tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000024026D669E8>
+(Pdb) l
+225  	
+226  	    .. versionchanged:: 5.0
+227  	       A callable is returned (``None`` was returned before).
+228  	    """
+229  	    io_loop = IOLoop.current()
+230  ->	    removed = [False]
+231  	
+232  	    def accept_handler(fd, events):
+233  	        # More connections may come in while we're handling callbacks;
+234  	        # to prevent starvation of other tasks we must limit the number
+235  	        # of connections we accept at a time.  Ideally we would accept
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(232)add_accept_handler()
+-> def accept_handler(fd, events):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(264)add_accept_handler()
+-> def remove_handler():
+(Pdb) l
+259  	                    continue
+260  	                raise
+261  	            set_close_exec(connection.fileno())
+262  	            callback(connection, address)
+263  	
+264  ->	    def remove_handler():
+265  	        io_loop.remove_handler(sock)
+266  	        removed[0] = True
+267  	
+268  	    io_loop.add_handler(sock, accept_handler, IOLoop.READ)
+269  	    return remove_handler
+(Pdb) a
+sock = <socket.socket fd=768, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>
+callback = <bound method TCPServer._handle_connection of <tornado.httpserver.HTTPServer object at 0x0000024026DB9240>>
+(Pdb) dir(callback)
+['__call__', '__class__', '__delattr__', '__dir__', '__doc__', '__eq__', '__format__', '__func__', '__ge__', '__get__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__self__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__']
+(Pdb) p IOLoop.READ
+1
+(Pdb) p IOLoop.WRITE
+4
+(Pdb) p IOLoop.ERROR
+24
+(Pdb) l
+270  	
+271  	
+272  	def is_valid_ip(ip):
+273  	    """Returns true if the given string is a well-formed IP address.
+274  	
+275  	    Supports IPv4 and IPv6.
+276  	    """
+277  	    if not ip or '\x00' in ip:
+278  	        # getaddrinfo resolves empty strings to localhost, and truncates
+279  	        # on zero bytes.
+280  	        return False
+(Pdb) l
+281  	    try:
+282  	        res = socket.getaddrinfo(ip, 0, socket.AF_UNSPEC,
+283  	                                 socket.SOCK_STREAM,
+284  	                                 0, socket.AI_NUMERICHOST)
+285  	        return bool(res)
+286  	    except socket.gaierror as e:
+287  	        if e.args[0] == socket.EAI_NONAME:
+288  	            return False
+289  	        raise
+290  	    return True
+291  	
+(Pdb) l
+292  	
+293  	class Resolver(Configurable):
+294  	    """Configurable asynchronous DNS resolver interface.
+295  	
+296  	    By default, a blocking implementation is used (which simply calls
+297  	    `socket.getaddrinfo`).  An alternative implementation can be
+298  	    chosen with the `Resolver.configure <.Configurable.configure>`
+299  	    class method::
+300  	
+301  	        Resolver.configure('tornado.netutil.ThreadedResolver')
+302  	
+(Pdb) 
+303  	    The implementations of this interface included with Tornado are
+304  	
+305  	    * `tornado.netutil.DefaultExecutorResolver`
+306  	    * `tornado.netutil.BlockingResolver` (deprecated)
+307  	    * `tornado.netutil.ThreadedResolver` (deprecated)
+308  	    * `tornado.netutil.OverrideResolver`
+309  	    * `tornado.platform.twisted.TwistedResolver`
+310  	    * `tornado.platform.caresresolver.CaresResolver`
+311  	
+312  	    .. versionchanged:: 5.0
+313  	       The default implementation has changed from `BlockingResolver` to
+(Pdb) ll
+211  	def add_accept_handler(sock, callback):
+212  	    """Adds an `.IOLoop` event handler to accept new connections on ``sock``.
+213  	
+214  	    When a connection is accepted, ``callback(connection, address)`` will
+215  	    be run (``connection`` is a socket object, and ``address`` is the
+216  	    address of the other end of the connection).  Note that this signature
+217  	    is different from the ``callback(fd, events)`` signature used for
+218  	    `.IOLoop` handlers.
+219  	
+220  	    A callable is returned which, when called, will remove the `.IOLoop`
+221  	    event handler and stop processing further incoming connections.
+222  	
+223  	    .. versionchanged:: 5.0
+224  	       The ``io_loop`` argument (deprecated since version 4.1) has been removed.
+225  	
+226  	    .. versionchanged:: 5.0
+227  	       A callable is returned (``None`` was returned before).
+228  	    """
+229  	    io_loop = IOLoop.current()
+230  	    removed = [False]
+231  	
+232  	    def accept_handler(fd, events):
+233  	        # More connections may come in while we're handling callbacks;
+234  	        # to prevent starvation of other tasks we must limit the number
+235  	        # of connections we accept at a time.  Ideally we would accept
+236  	        # up to the number of connections that were waiting when we
+237  	        # entered this method, but this information is not available
+238  	        # (and rearranging this method to call accept() as many times
+239  	        # as possible before running any callbacks would have adverse
+240  	        # effects on load balancing in multiprocess configurations).
+241  	        # Instead, we use the (default) listen backlog as a rough
+242  	        # heuristic for the number of connections we can reasonably
+243  	        # accept at once.
+244  	        for i in xrange(_DEFAULT_BACKLOG):
+245  	            if removed[0]:
+246  	                # The socket was probably closed
+247  	                return
+248  	            try:
+249  	                connection, address = sock.accept()
+250  	            except socket.error as e:
+251  	                # _ERRNO_WOULDBLOCK indicate we have accepted every
+252  	                # connection that is available.
+253  	                if errno_from_exception(e) in _ERRNO_WOULDBLOCK:
+254  	                    return
+255  	                # ECONNABORTED indicates that there was a connection
+256  	                # but it was closed while still in the accept queue.
+257  	                # (observed on FreeBSD).
+258  	                if errno_from_exception(e) == errno.ECONNABORTED:
+259  	                    continue
+260  	                raise
+261  	            set_close_exec(connection.fileno())
+262  	            callback(connection, address)
+263  	
+264  ->	    def remove_handler():
+265  	        io_loop.remove_handler(sock)
+266  	        removed[0] = True
+267  	
+268  	    io_loop.add_handler(sock, accept_handler, IOLoop.READ)
+269  	    return remove_handler
+(Pdb) ll
+211  	def add_accept_handler(sock, callback):
+212  	    """Adds an `.IOLoop` event handler to accept new connections on ``sock``.
+213  	
+214  	    When a connection is accepted, ``callback(connection, address)`` will
+215  	    be run (``connection`` is a socket object, and ``address`` is the
+216  	    address of the other end of the connection).  Note that this signature
+217  	    is different from the ``callback(fd, events)`` signature used for
+218  	    `.IOLoop` handlers.
+219  	
+220  	    A callable is returned which, when called, will remove the `.IOLoop`
+221  	    event handler and stop processing further incoming connections.
+222  	
+223  	    .. versionchanged:: 5.0
+224  	       The ``io_loop`` argument (deprecated since version 4.1) has been removed.
+225  	
+226  	    .. versionchanged:: 5.0
+227  	       A callable is returned (``None`` was returned before).
+228  	    """
+229  	    io_loop = IOLoop.current()
+230  	    removed = [False]
+231  	
+232  	    def accept_handler(fd, events):
+233  	        # More connections may come in while we're handling callbacks;
+234  	        # to prevent starvation of other tasks we must limit the number
+235  	        # of connections we accept at a time.  Ideally we would accept
+236  	        # up to the number of connections that were waiting when we
+237  	        # entered this method, but this information is not available
+238  	        # (and rearranging this method to call accept() as many times
+239  	        # as possible before running any callbacks would have adverse
+240  	        # effects on load balancing in multiprocess configurations).
+241  	        # Instead, we use the (default) listen backlog as a rough
+242  	        # heuristic for the number of connections we can reasonably
+243  	        # accept at once.
+244  	        for i in xrange(_DEFAULT_BACKLOG):
+245  	            if removed[0]:
+246  	                # The socket was probably closed
+247  	                return
+248  	            try:
+249  	                connection, address = sock.accept()
+250  	            except socket.error as e:
+251  	                # _ERRNO_WOULDBLOCK indicate we have accepted every
+252  	                # connection that is available.
+253  	                if errno_from_exception(e) in _ERRNO_WOULDBLOCK:
+254  	                    return
+255  	                # ECONNABORTED indicates that there was a connection
+256  	                # but it was closed while still in the accept queue.
+257  	                # (observed on FreeBSD).
+258  	                if errno_from_exception(e) == errno.ECONNABORTED:
+259  	                    continue
+260  	                raise
+261  	            set_close_exec(connection.fileno())
+262  	            callback(connection, address)
+263  	
+264  ->	    def remove_handler():
+265  	        io_loop.remove_handler(sock)
+266  	        removed[0] = True
+267  	
+268  	    io_loop.add_handler(sock, accept_handler, IOLoop.READ)
+269  	    return remove_handler
+(Pdb) p io_loop
+<tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000024026D669E8>
+(Pdb) dir(io_loop)
+['ERROR', 'NONE', 'READ', 'WRITE', '_Configurable__impl_class', '_Configurable__impl_kwargs', '_EPOLLERR', '_EPOLLET', '_EPOLLHUP', '_EPOLLIN', '_EPOLLONESHOT', '_EPOLLOUT', '_EPOLLPRI', '_EPOLLRDHUP', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_clear_current_hook', '_current', '_discard_future_result', '_handle_events', '_ioloop_for_asyncio', '_restore_configuration', '_run_callback', '_save_configuration', '_setup_logging', 'add_callback', 'add_callback_from_signal', 'add_future', 'add_handler', 'add_timeout', 'asyncio_loop', 'call_at', 'call_later', 'clear_current', 'clear_instance', 'close', 'close_fd', 'closing', 'configurable_base', 'configurable_default', 'configure', 'configured_class', 'current', 'handle_callback_exception', 'handlers', 'initialize', 'install', 'instance', 'log_stack', 'make_current', 'readers', 'remove_handler', 'remove_timeout', 'run_in_executor', 'run_sync', 'set_blocking_log_threshold', 'set_blocking_signal_threshold', 'set_default_executor', 'spawn_callback', 'split_fd', 'start', 'stop', 'time', 'update_handler', 'writers']
+(Pdb) p io_loop._handlers
+*** AttributeError: 'AsyncIOMainLoop' object has no attribute '_handlers'
+(Pdb) s
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(268)add_accept_handler()
+-> io_loop.add_handler(sock, accept_handler, IOLoop.READ)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(73)add_handler()
+-> def add_handler(self, fd, handler, events):
+(Pdb) l
+ 68  	        # assume it was closed from the asyncio side, and do this
+ 69  	        # cleanup for us, leading to a KeyError.
+ 70  	        del IOLoop._ioloop_for_asyncio[self.asyncio_loop]
+ 71  	        self.asyncio_loop.close()
+ 72  	
+ 73  ->	    def add_handler(self, fd, handler, events):
+ 74  	        fd, fileobj = self.split_fd(fd)
+ 75  	        if fd in self.handlers:
+ 76  	            raise ValueError("fd %s added twice" % fd)
+ 77  	        self.handlers[fd] = (fileobj, stack_context.wrap(handler))
+ 78  	        if events & IOLoop.READ:
+(Pdb) a
+self = <tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000024026D669E8>
+fd = <socket.socket fd=768, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>
+handler = <function add_accept_handler.<locals>.accept_handler at 0x0000024026E6F2F0>
+events = 1
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(74)add_handler()
+-> fd, fileobj = self.split_fd(fd)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(75)add_handler()
+-> if fd in self.handlers:
+(Pdb) p self.handlers
+{}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(77)add_handler()
+-> self.handlers[fd] = (fileobj, stack_context.wrap(handler))
+(Pdb) p ev & IOLoop.READents
+*** NameError: name 'e' is not defined
+(Pdb) p events & IOLoop.READ
+1
+(Pdb) p events & IOLoop.WRITE
+0
+(Pdb) p fd
+768
+(Pdb) p fileobj
+<socket.socket fd=768, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>
+(Pdb) p self.handlers
+{}
+(Pdb) l
+ 72  	
+ 73  	    def add_handler(self, fd, handler, events):
+ 74  	        fd, fileobj = self.split_fd(fd)
+ 75  	        if fd in self.handlers:
+ 76  	            raise ValueError("fd %s added twice" % fd)
+ 77  ->	        self.handlers[fd] = (fileobj, stack_context.wrap(handler))
+ 78  	        if events & IOLoop.READ:
+ 79  	            self.asyncio_loop.add_reader(
+ 80  	                fd, self._handle_events, fd, IOLoop.READ)
+ 81  	            self.readers.add(fd)
+ 82  	        if events & IOLoop.WRITE:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(78)add_handler()
+-> if events & IOLoop.READ:
+(Pdb) p self.hadnles
+*** AttributeError: 'AsyncIOMainLoop' object has no attribute 'hadnles'
+(Pdb) p self.handlers
+{768: (<socket.socket fd=768, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>, <function wrap.<locals>.null_wrapper at 0x0000024026E9F048>)}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(79)add_handler()
+-> self.asyncio_loop.add_reader(
+(Pdb) s
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(80)add_handler()
+-> fd, self._handle_events, fd, IOLoop.READ)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(81)add_handler()
+-> self.readers.add(fd)
+(Pdb) p self.readers
+set()
+(Pdb) p self.async_loop
+*** AttributeError: 'AsyncIOMainLoop' object has no attribute 'async_loop'
+(Pdb) p self.asyncio_loop
+<_WindowsSelectorEventLoop running=False closed=False debug=False>
+(Pdb) dir(self.asyncio_loop)
+['__class__', '__del__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_accept_connection', '_accept_connection2', '_add_callback', '_add_callback_signalsafe', '_add_reader', '_add_writer', '_asyncgen_finalizer_hook', '_asyncgen_firstiter_hook', '_asyncgens', '_asyncgens_shutdown_called', '_call_soon', '_check_callback', '_check_closed', '_check_thread', '_clock_resolution', '_close_self_pipe', '_closed', '_coroutine_wrapper_set', '_create_connection_transport', '_create_server_getaddrinfo', '_csock', '_current_handle', '_debug', '_default_executor', '_ensure_fd_no_transport', '_exception_handler', '_getaddrinfo_debug', '_internal_fds', '_log_subprocess', '_make_datagram_transport', '_make_legacy_ssl_transport', '_make_read_pipe_transport', '_make_self_pipe', '_make_socket_transport', '_make_ssl_transport', '_make_subprocess_transport', '_make_write_pipe_transport', '_process_events', '_process_self_data', '_read_from_self', '_ready', '_remove_reader', '_remove_writer', '_run_once', '_scheduled', '_selector', '_set_coroutine_wrapper', '_sock_accept', '_sock_connect', '_sock_connect_cb', '_sock_connect_done', '_sock_recv', '_sock_sendall', '_socketpair', '_ssock', '_start_serving', '_stop_serving', '_stopping', '_task_factory', '_thread_id', '_timer_cancelled_count', '_timer_handle_cancelled', '_transports', '_write_to_self', 'add_reader', 'add_signal_handler', 'add_writer', 'call_at', 'call_exception_handler', 'call_later', 'call_soon', 'call_soon_threadsafe', 'close', 'connect_accepted_socket', 'connect_read_pipe', 'connect_write_pipe', 'create_connection', 'create_datagram_endpoint', 'create_future', 'create_server', 'create_task', 'create_unix_connection', 'create_unix_server', 'default_exception_handler', 'get_debug', 'get_exception_handler', 'get_task_factory', 'getaddrinfo', 'getnameinfo', 'is_closed', 'is_running', 'remove_reader', 'remove_signal_handler', 'remove_writer', 'run_forever', 'run_in_executor', 'run_until_complete', 'set_debug', 'set_default_executor', 'set_exception_handler', 'set_task_factory', 'shutdown_asyncgens', 'slow_callback_duration', 'sock_accept', 'sock_connect', 'sock_recv', 'sock_sendall', 'stop', 'subprocess_exec', 'subprocess_shell', 'time']
+(Pdb) 

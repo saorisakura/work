@@ -1,0 +1,1387 @@
+C:\Users\liyan\PycharmProjects\work-python3\venv\Scripts\python.exe C:/Users/liyan/PycharmProjects/TApp/main.py
+Tornado server is ready for running.
+> c:\users\liyan\pycharmprojects\tapp\main.py(97)<module>()
+-> tornado.options.parse_command_line()
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(98)<module>()
+-> Application().listen(8000, xheaders=True)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\tapp\main.py(79)__init__()
+-> def __init__(self):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(81)__init__()
+-> handlers = url_wrapper([
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(83)__init__()
+-> (r"/upload/", include("views.upload.upload_urls"))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(85)__init__()
+-> settings = dict(
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(86)__init__()
+-> debug=True,
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(87)__init__()
+-> static_path=os.path.join(os.path.dirname(__file__), "static"),
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(88)__init__()
+-> template_path=os.path.join(os.path.dirname(__file__), "template")
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(90)__init__()
+-> tornado.web.Application.__init__(self, handlers, **settings)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1972)__init__()
+-> def __init__(self, handlers=None, default_host=None, transforms=None,
+(Pdb) l
+1967 	
+1968 	    .. versionchanged:: 4.5
+1969 	       Integration with the new `tornado.routing` module.
+1970 	
+1971 	    """
+1972 ->	    def __init__(self, handlers=None, default_host=None, transforms=None,
+1973 	                 **settings):
+1974 	        if transforms is None:
+1975 	            self.transforms = []
+1976 	            if settings.get("compress_response") or settings.get("gzip"):
+1977 	                self.transforms.append(GZipContentEncoding)
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1974)__init__()
+-> if transforms is None:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1975)__init__()
+-> self.transforms = []
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1976)__init__()
+-> if settings.get("compress_response") or settings.get("gzip"):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1980)__init__()
+-> self.default_host = default_host
+(Pdb) l
+1975 	            self.transforms = []
+1976 	            if settings.get("compress_response") or settings.get("gzip"):
+1977 	                self.transforms.append(GZipContentEncoding)
+1978 	        else:
+1979 	            self.transforms = transforms
+1980 ->	        self.default_host = default_host
+1981 	        self.settings = settings
+1982 	        self.ui_modules = {'linkify': _linkify,
+1983 	                           'xsrf_form_html': _xsrf_form_html,
+1984 	                           'Template': TemplateModule,
+1985 	                           }
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1981)__init__()
+-> self.settings = settings
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1982)__init__()
+-> self.ui_modules = {'linkify': _linkify,
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1983)__init__()
+-> 'xsrf_form_html': _xsrf_form_html,
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) h
+
+Documented commands (type help <topic>):
+========================================
+EOF    c          d        h         list      q        rv       undisplay
+a      cl         debug    help      ll        quit     s        unt      
+alias  clear      disable  ignore    longlist  r        source   until    
+args   commands   display  interact  n         restart  step     up       
+b      condition  down     j         next      return   tbreak   w        
+break  cont       enable   jump      p         retval   u        whatis   
+bt     continue   exit     l         pp        run      unalias  where    
+
+Miscellaneous help topics:
+==========================
+exec  pdb
+
+(Pdb) dir(s)elf
+*** SyntaxError: invalid syntax
+(Pdb) dir(s
+*** SyntaxError: unexpected EOF while parsing
+(Pdb) p self
+<__main__.Application object at 0x0000020E44AA4668>
+(Pdb) pp self
+<__main__.Application object at 0x0000020E44AA4668>
+(Pdb) dir(self)
+['__call__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_load_ui_methods', '_load_ui_modules', 'add_handlers', 'add_transform', 'default_host', 'find_handler', 'get_handler_delegate', 'listen', 'log_request', 'on_close', 'reverse_url', 'settings', 'start_request', 'transforms']
+(Pdb) l
+1978 	        else:
+1979 	            self.transforms = transforms
+1980 	        self.default_host = default_host
+1981 	        self.settings = settings
+1982 	        self.ui_modules = {'linkify': _linkify,
+1983 ->	                           'xsrf_form_html': _xsrf_form_html,
+1984 	                           'Template': TemplateModule,
+1985 	                           }
+1986 	        self.ui_methods = {}
+1987 	        self._load_ui_modules(settings.get("ui_modules", {}))
+1988 	        self._load_ui_methods(settings.get("ui_methods", {}))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1984)__init__()
+-> 'Template': TemplateModule,
+(Pdb) l
+1979 	            self.transforms = transforms
+1980 	        self.default_host = default_host
+1981 	        self.settings = settings
+1982 	        self.ui_modules = {'linkify': _linkify,
+1983 	                           'xsrf_form_html': _xsrf_form_html,
+1984 ->	                           'Template': TemplateModule,
+1985 	                           }
+1986 	        self.ui_methods = {}
+1987 	        self._load_ui_modules(settings.get("ui_modules", {}))
+1988 	        self._load_ui_methods(settings.get("ui_methods", {}))
+1989 	        if self.settings.get("static_path"):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1986)__init__()
+-> self.ui_methods = {}
+(Pdb) l
+1981 	        self.settings = settings
+1982 	        self.ui_modules = {'linkify': _linkify,
+1983 	                           'xsrf_form_html': _xsrf_form_html,
+1984 	                           'Template': TemplateModule,
+1985 	                           }
+1986 ->	        self.ui_methods = {}
+1987 	        self._load_ui_modules(settings.get("ui_modules", {}))
+1988 	        self._load_ui_methods(settings.get("ui_methods", {}))
+1989 	        if self.settings.get("static_path"):
+1990 	            path = self.settings["static_path"]
+1991 	            handlers = list(handlers or [])
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1987)__init__()
+-> self._load_ui_modules(settings.get("ui_modules", {}))
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1988)__init__()
+-> self._load_ui_methods(settings.get("ui_methods", {}))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1989)__init__()
+-> if self.settings.get("static_path"):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1990)__init__()
+-> path = self.settings["static_path"]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1991)__init__()
+-> handlers = list(handlers or [])
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1992)__init__()
+-> static_url_prefix = settings.get("static_url_prefix",
+(Pdb) l
+1987 	        self._load_ui_modules(settings.get("ui_modules", {}))
+1988 	        self._load_ui_methods(settings.get("ui_methods", {}))
+1989 	        if self.settings.get("static_path"):
+1990 	            path = self.settings["static_path"]
+1991 	            handlers = list(handlers or [])
+1992 ->	            static_url_prefix = settings.get("static_url_prefix",
+1993 	                                             "/static/")
+1994 	            static_handler_class = settings.get("static_handler_class",
+1995 	                                                StaticFileHandler)
+1996 	            static_handler_args = settings.get("static_handler_args", {})
+1997 	            static_handler_args['path'] = path
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) p self.settings
+{'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) dir(self)
+['__call__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_load_ui_methods', '_load_ui_modules', 'add_handlers', 'add_transform', 'default_host', 'find_handler', 'get_handler_delegate', 'listen', 'log_request', 'on_close', 'reverse_url', 'settings', 'start_request', 'transforms', 'ui_methods', 'ui_modules']
+(Pdb) p self.ui_modules
+{'linkify': <class 'tornado.web._linkify'>, 'xsrf_form_html': <class 'tornado.web._xsrf_form_html'>, 'Template': <class 'tornado.web.TemplateModule'>}
+(Pdb) p self.ui_methods
+{}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1993)__init__()
+-> "/static/")
+(Pdb) l
+1988 	        self._load_ui_methods(settings.get("ui_methods", {}))
+1989 	        if self.settings.get("static_path"):
+1990 	            path = self.settings["static_path"]
+1991 	            handlers = list(handlers or [])
+1992 	            static_url_prefix = settings.get("static_url_prefix",
+1993 ->	                                             "/static/")
+1994 	            static_handler_class = settings.get("static_handler_class",
+1995 	                                                StaticFileHandler)
+1996 	            static_handler_args = settings.get("static_handler_args", {})
+1997 	            static_handler_args['path'] = path
+1998 	            for pattern in [re.escape(static_url_prefix) + r"(.*)",
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1994)__init__()
+-> static_handler_class = settings.get("static_handler_class",
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1995)__init__()
+-> StaticFileHandler)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1996)__init__()
+-> static_handler_args = settings.get("static_handler_args", {})
+(Pdb) l
+1991 	            handlers = list(handlers or [])
+1992 	            static_url_prefix = settings.get("static_url_prefix",
+1993 	                                             "/static/")
+1994 	            static_handler_class = settings.get("static_handler_class",
+1995 	                                                StaticFileHandler)
+1996 ->	            static_handler_args = settings.get("static_handler_args", {})
+1997 	            static_handler_args['path'] = path
+1998 	            for pattern in [re.escape(static_url_prefix) + r"(.*)",
+1999 	                            r"/(favicon\.ico)", r"/(robots\.txt)"]:
+2000 	                handlers.insert(0, (pattern, static_handler_class,
+2001 	                                    static_handler_args))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1997)__init__()
+-> static_handler_args['path'] = path
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1998)__init__()
+-> for pattern in [re.escape(static_url_prefix) + r"(.*)",
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1999)__init__()
+-> r"/(favicon\.ico)", r"/(robots\.txt)"]:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2000)__init__()
+-> handlers.insert(0, (pattern, static_handler_class,
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2001)__init__()
+-> static_handler_args))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1999)__init__()
+-> r"/(favicon\.ico)", r"/(robots\.txt)"]:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2000)__init__()
+-> handlers.insert(0, (pattern, static_handler_class,
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2001)__init__()
+-> static_handler_args))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1999)__init__()
+-> r"/(favicon\.ico)", r"/(robots\.txt)"]:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2000)__init__()
+-> handlers.insert(0, (pattern, static_handler_class,
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/(favicon\\.ico)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('\\/static\\/(.*)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template'}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2001)__init__()
+-> static_handler_args))
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1999)__init__()
+-> r"/(favicon\.ico)", r"/(robots\.txt)"]:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2003)__init__()
+-> if self.settings.get('debug'):
+(Pdb) l
+1998 	            for pattern in [re.escape(static_url_prefix) + r"(.*)",
+1999 	                            r"/(favicon\.ico)", r"/(robots\.txt)"]:
+2000 	                handlers.insert(0, (pattern, static_handler_class,
+2001 	                                    static_handler_args))
+2002 	
+2003 ->	        if self.settings.get('debug'):
+2004 	            self.settings.setdefault('autoreload', True)
+2005 	            self.settings.setdefault('compiled_template_cache', False)
+2006 	            self.settings.setdefault('static_hash_cache', False)
+2007 	            self.settings.setdefault('serve_traceback', True)
+2008 	
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2004)__init__()
+-> self.settings.setdefault('autoreload', True)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2005)__init__()
+-> self.settings.setdefault('compiled_template_cache', False)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2006)__init__()
+-> self.settings.setdefault('static_hash_cache', False)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2007)__init__()
+-> self.settings.setdefault('serve_traceback', True)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2009)__init__()
+-> self.wildcard_router = _ApplicationRouter(self, handlers)
+(Pdb) l
+2004 	            self.settings.setdefault('autoreload', True)
+2005 	            self.settings.setdefault('compiled_template_cache', False)
+2006 	            self.settings.setdefault('static_hash_cache', False)
+2007 	            self.settings.setdefault('serve_traceback', True)
+2008 	
+2009 ->	        self.wildcard_router = _ApplicationRouter(self, handlers)
+2010 	        self.default_router = _ApplicationRouter(self, [
+2011 	            Rule(AnyMatches(), self.wildcard_router)
+2012 	        ])
+2013 	
+2014 	        # Automatically reload modified modules
+(Pdb) args
+self = <__main__.Application object at 0x0000020E44AA4668>
+handlers = [('/(robots\\.txt)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/(favicon\\.ico)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('\\/static\\/(.*)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+default_host = None
+transforms = None
+settings = {'debug': True, 'static_path': 'C:/Users/liyan/PycharmProjects/TApp\\static', 'template_path': 'C:/Users/liyan/PycharmProjects/TApp\\template', 'autoreload': True, 'compiled_template_cache': False, 'static_hash_cache': False, 'serve_traceback': True}
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1869)__init__()
+-> def __init__(self, application, rules=None):
+(Pdb) l
+1864 	        * it allows to use a list/tuple of rules as `~.routing.Rule` target.
+1865 	        ``process_rule`` implementation will substitute this list with an appropriate
+1866 	        `_ApplicationRouter` instance.
+1867 	    """
+1868 	
+1869 ->	    def __init__(self, application, rules=None):
+1870 	        assert isinstance(application, Application)
+1871 	        self.application = application
+1872 	        super(_ApplicationRouter, self).__init__(rules)
+1873 	
+1874 	    def process_rule(self, rule):
+(Pdb) args
+self = <tornado.web._ApplicationRouter object at 0x0000020E44B04B70>
+application = <__main__.Application object at 0x0000020E44AA4668>
+rules = [('/(robots\\.txt)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/(favicon\\.ico)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('\\/static\\/(.*)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1870)__init__()
+-> assert isinstance(application, Application)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1871)__init__()
+-> self.application = application
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1872)__init__()
+-> super(_ApplicationRouter, self).__init__(rules)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(377)__init__()
+-> def __init__(self, rules=None):
+(Pdb) l
+372  	    Each rule added to this router may have a ``name`` attribute that can be
+373  	    used to reconstruct an original uri. The actual reconstruction takes place
+374  	    in a rule's matcher (see `Matcher.reverse`).
+375  	    """
+376  	
+377  ->	    def __init__(self, rules=None):
+378  	        self.named_rules = {}  # type: typing.Dict[str]
+379  	        super(ReversibleRuleRouter, self).__init__(rules)
+380  	
+381  	    def process_rule(self, rule):
+382  	        rule = super(ReversibleRuleRouter, self).process_rule(rule)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(378)__init__()
+-> self.named_rules = {}  # type: typing.Dict[str]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(379)__init__()
+-> super(ReversibleRuleRouter, self).__init__(rules)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(275)__init__()
+-> def __init__(self, rules=None):
+(Pdb) l
+270  	
+271  	
+272  	class RuleRouter(Router):
+273  	    """Rule-based router implementation."""
+274  	
+275  ->	    def __init__(self, rules=None):
+276  	        """Constructs a router from an ordered list of rules::
+277  	
+278  	            RuleRouter([
+279  	                Rule(PathMatches("/handler"), Target),
+280  	                # ... more rules
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(302)__init__()
+-> self.rules = []  # type: typing.List[Rule]
+(Pdb) l
+297  	        accepting a request argument.
+298  	
+299  	        :arg rules: a list of `Rule` instances or tuples of `Rule`
+300  	            constructor arguments.
+301  	        """
+302  ->	        self.rules = []  # type: typing.List[Rule]
+303  	        if rules:
+304  	            self.add_rules(rules)
+305  	
+306  	    def add_rules(self, rules):
+307  	        """Appends new rules to the router.
+(Pdb) args
+self = <tornado.web._ApplicationRouter object at 0x0000020E44B04B70>
+rules = [('/(robots\\.txt)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/(favicon\\.ico)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('\\/static\\/(.*)', <class 'tornado.web.StaticFileHandler'>, {'path': 'C:/Users/liyan/PycharmProjects/TApp\\static'}), ('/upload/file', <class 'views.upload.upload_views.UploadFileHandle'>)]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(303)__init__()
+-> if rules:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(304)__init__()
+-> self.add_rules(rules)
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(304)__init__()->None
+-> self.add_rules(rules)
+(Pdb) l
+299  	        :arg rules: a list of `Rule` instances or tuples of `Rule`
+300  	            constructor arguments.
+301  	        """
+302  	        self.rules = []  # type: typing.List[Rule]
+303  	        if rules:
+304  ->	            self.add_rules(rules)
+305  	
+306  	    def add_rules(self, rules):
+307  	        """Appends new rules to the router.
+308  	
+309  	        :arg rules: a list of Rule instances (or tuples of arguments, which are
+(Pdb) s
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\routing.py(379)__init__()->None
+-> super(ReversibleRuleRouter, self).__init__(rules)
+(Pdb) l
+374  	    in a rule's matcher (see `Matcher.reverse`).
+375  	    """
+376  	
+377  	    def __init__(self, rules=None):
+378  	        self.named_rules = {}  # type: typing.Dict[str]
+379  ->	        super(ReversibleRuleRouter, self).__init__(rules)
+380  	
+381  	    def process_rule(self, rule):
+382  	        rule = super(ReversibleRuleRouter, self).process_rule(rule)
+383  	
+384  	        if rule.name:
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(1872)__init__()->None
+-> super(_ApplicationRouter, self).__init__(rules)
+(Pdb) l
+1867 	    """
+1868 	
+1869 	    def __init__(self, application, rules=None):
+1870 	        assert isinstance(application, Application)
+1871 	        self.application = application
+1872 ->	        super(_ApplicationRouter, self).__init__(rules)
+1873 	
+1874 	    def process_rule(self, rule):
+1875 	        rule = super(_ApplicationRouter, self).process_rule(rule)
+1876 	
+1877 	        if isinstance(rule.target, (list, tuple)):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2010)__init__()
+-> self.default_router = _ApplicationRouter(self, [
+(Pdb) l
+2005 	            self.settings.setdefault('compiled_template_cache', False)
+2006 	            self.settings.setdefault('static_hash_cache', False)
+2007 	            self.settings.setdefault('serve_traceback', True)
+2008 	
+2009 	        self.wildcard_router = _ApplicationRouter(self, handlers)
+2010 ->	        self.default_router = _ApplicationRouter(self, [
+2011 	            Rule(AnyMatches(), self.wildcard_router)
+2012 	        ])
+2013 	
+2014 	        # Automatically reload modified modules
+2015 	        if self.settings.get('autoreload'):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2011)__init__()
+-> Rule(AnyMatches(), self.wildcard_router)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2015)__init__()
+-> if self.settings.get('autoreload'):
+(Pdb) l
+2010 	        self.default_router = _ApplicationRouter(self, [
+2011 	            Rule(AnyMatches(), self.wildcard_router)
+2012 	        ])
+2013 	
+2014 	        # Automatically reload modified modules
+2015 ->	        if self.settings.get('autoreload'):
+2016 	            from tornado import autoreload
+2017 	            autoreload.start()
+2018 	
+2019 	    def listen(self, port, address="", **kwargs):
+2020 	        """Starts an HTTP server for this application on the given port.
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2016)__init__()
+-> from tornado import autoreload
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2017)__init__()
+-> autoreload.start()
+(Pdb) l
+2012 	        ])
+2013 	
+2014 	        # Automatically reload modified modules
+2015 	        if self.settings.get('autoreload'):
+2016 	            from tornado import autoreload
+2017 ->	            autoreload.start()
+2018 	
+2019 	    def listen(self, port, address="", **kwargs):
+2020 	        """Starts an HTTP server for this application on the given port.
+2021 	
+2022 	        This is a convenience alias for creating an `.HTTPServer`
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2017)__init__()->None
+-> autoreload.start()
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\tapp\main.py(90)__init__()->None
+-> tornado.web.Application.__init__(self, handlers, **settings)
+(Pdb) l
+ 85  	        settings = dict(
+ 86  	            debug=True,
+ 87  	            static_path=os.path.join(os.path.dirname(__file__), "static"),
+ 88  	            template_path=os.path.join(os.path.dirname(__file__), "template")
+ 89  	        )
+ 90  ->	        tornado.web.Application.__init__(self, handlers, **settings)
+ 91  	
+ 92  	
+ 93  	if __name__ == '__main__':
+ 94  	    print("Tornado server is ready for running.")
+ 95  	    import pdb
+(Pdb) n
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2019)listen()
+-> def listen(self, port, address="", **kwargs):
+(Pdb) l
+2014 	        # Automatically reload modified modules
+2015 	        if self.settings.get('autoreload'):
+2016 	            from tornado import autoreload
+2017 	            autoreload.start()
+2018 	
+2019 ->	    def listen(self, port, address="", **kwargs):
+2020 	        """Starts an HTTP server for this application on the given port.
+2021 	
+2022 	        This is a convenience alias for creating an `.HTTPServer`
+2023 	        object and calling its listen method.  Keyword arguments not
+2024 	        supported by `HTTPServer.listen <.TCPServer.listen>` are passed to the
+(Pdb) s
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2040)listen()
+-> from tornado.httpserver import HTTPServer
+(Pdb) l
+2035 	        .. versionchanged:: 4.3
+2036 	           Now returns the `.HTTPServer` object.
+2037 	        """
+2038 	        # import is here rather than top level because HTTPServer
+2039 	        # is not importable on appengine
+2040 ->	        from tornado.httpserver import HTTPServer
+2041 	        server = HTTPServer(self, **kwargs)
+2042 	        server.listen(port, address)
+2043 	        return server
+2044 	
+2045 	    def add_handlers(self, host_pattern, host_handlers):
+(Pdb) s
+--Call--
+> <frozen importlib._bootstrap>(997)_handle_fromlist()
+(Pdb) l
+[EOF]
+(Pdb) n
+> <frozen importlib._bootstrap>(1007)_handle_fromlist()
+(Pdb) n
+> <frozen importlib._bootstrap>(1032)_handle_fromlist()
+(Pdb) r
+--Return--
+> <frozen importlib._bootstrap>(1032)_handle_fromlist()-><module 'torn...ttpserver.py'>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2041)listen()
+-> server = HTTPServer(self, **kwargs)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(295)__new__()
+-> def __new__(cls, *args, **kwargs):
+(Pdb) l
+290  	
+291  	    """
+292  	    __impl_class = None  # type: type
+293  	    __impl_kwargs = None  # type: Dict[str, Any]
+294  	
+295  ->	    def __new__(cls, *args, **kwargs):
+296  	        base = cls.configurable_base()
+297  	        init_kwargs = {}
+298  	        if cls is base:
+299  	            impl = cls.configured_class()
+300  	            if base.__impl_kwargs:
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(296)__new__()
+-> base = cls.configurable_base()
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) dir(cls)n
+['_Configurable__impl_class', '_Configurable__impl_kwargs', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_handle_connection', '_restore_configuration', '_save_configuration', 'add_socket', 'add_sockets', 'bind', 'close_all_connections', 'configurable_base', 'configurable_default', 'configure', 'configured_class', 'handle_stream', 'initialize', 'listen', 'on_close', 'start', 'start_request', 'stop']
+(Pdb) p cls._Configurable__impl_class
+None
+(Pdb) p cls._Configurable__impl_kwargs
+None
+(Pdb) 
+n
+None
+(Pdb) > c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(297)__new__()
+-> init_kwargs = {}
+(Pdb) l
+292  	    __impl_class = None  # type: type
+293  	    __impl_kwargs = None  # type: Dict[str, Any]
+294  	
+295  	    def __new__(cls, *args, **kwargs):
+296  	        base = cls.configurable_base()
+297  ->	        init_kwargs = {}
+298  	        if cls is base:
+299  	            impl = cls.configured_class()
+300  	            if base.__impl_kwargs:
+301  	                init_kwargs.update(base.__impl_kwargs)
+302  	        else:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(298)__new__()
+-> if cls is base:
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) p base
+<class 'tornado.httpserver.HTTPServer'>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(299)__new__()
+-> impl = cls.configured_class()
+(Pdb) ;
+*** SyntaxError: invalid syntax
+(Pdb) l
+294  	
+295  	    def __new__(cls, *args, **kwargs):
+296  	        base = cls.configurable_base()
+297  	        init_kwargs = {}
+298  	        if cls is base:
+299  ->	            impl = cls.configured_class()
+300  	            if base.__impl_kwargs:
+301  	                init_kwargs.update(base.__impl_kwargs)
+302  	        else:
+303  	            impl = cls
+304  	        init_kwargs.update(kwargs)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(360)configured_class()
+-> @classmethod
+(Pdb) l
+355  	        if impl is not None and not issubclass(impl, cls):
+356  	            raise ValueError("Invalid subclass of %s" % cls)
+357  	        base.__impl_class = impl
+358  	        base.__impl_kwargs = kwargs
+359  	
+360  ->	    @classmethod
+361  	    def configured_class(cls):
+362  	        # type: () -> type
+363  	        """Returns the currently configured class."""
+364  	        base = cls.configurable_base()
+365  	        # Manually mangle the private name to see whether this base
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(364)configured_class()
+-> base = cls.configurable_base()
+(Pdb) p base
+*** NameError: name 'base' is not defined
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(368)configured_class()
+-> if base.__dict__.get('_Configurable__impl_class') is None:
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+(Pdb) dir(base)
+['_Configurable__impl_class', '_Configurable__impl_kwargs', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_handle_connection', '_restore_configuration', '_save_configuration', 'add_socket', 'add_sockets', 'bind', 'close_all_connections', 'configurable_base', 'configurable_default', 'configure', 'configured_class', 'handle_stream', 'initialize', 'listen', 'on_close', 'start', 'start_request', 'stop']
+(Pdb) p base
+<class 'tornado.httpserver.HTTPServer'>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(369)configured_class()
+-> base.__impl_class = cls.configurable_default()
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(370)configured_class()
+-> return base.__impl_class
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(370)configured_class()-><class 'torna...r.HTTPServer'>
+-> return base.__impl_class
+(Pdb) l
+365  	        # Manually mangle the private name to see whether this base
+366  	        # has been configured (and not another base higher in the
+367  	        # hierarchy).
+368  	        if base.__dict__.get('_Configurable__impl_class') is None:
+369  	            base.__impl_class = cls.configurable_default()
+370  ->	        return base.__impl_class
+371  	
+372  	    @classmethod
+373  	    def _save_configuration(cls):
+374  	        # type: () -> Tuple[type, Dict[str, Any]]
+375  	        base = cls.configurable_base()
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(300)__new__()
+-> if base.__impl_kwargs:
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) p base
+<class 'tornado.httpserver.HTTPServer'>
+(Pdb) dir(base0
+*** SyntaxError: unexpected EOF while parsing
+(Pdb) dir(base)
+['_Configurable__impl_class', '_Configurable__impl_kwargs', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_handle_connection', '_restore_configuration', '_save_configuration', 'add_socket', 'add_sockets', 'bind', 'close_all_connections', 'configurable_base', 'configurable_default', 'configure', 'configured_class', 'handle_stream', 'initialize', 'listen', 'on_close', 'start', 'start_request', 'stop']
+(Pdb) l
+295  	    def __new__(cls, *args, **kwargs):
+296  	        base = cls.configurable_base()
+297  	        init_kwargs = {}
+298  	        if cls is base:
+299  	            impl = cls.configured_class()
+300  ->	            if base.__impl_kwargs:
+301  	                init_kwargs.update(base.__impl_kwargs)
+302  	        else:
+303  	            impl = cls
+304  	        init_kwargs.update(kwargs)
+305  	        if impl.configurable_base() is not base:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(304)__new__()
+-> init_kwargs.update(kwargs)
+(Pdb) args
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) l
+299  	            impl = cls.configured_class()
+300  	            if base.__impl_kwargs:
+301  	                init_kwargs.update(base.__impl_kwargs)
+302  	        else:
+303  	            impl = cls
+304  ->	        init_kwargs.update(kwargs)
+305  	        if impl.configurable_base() is not base:
+306  	            # The impl class is itself configurable, so recurse.
+307  	            return impl(*args, **init_kwargs)
+308  	        instance = super(Configurable, cls).__new__(impl)
+309  	        # initialize vs __init__ chosen for compatibility with AsyncHTTPClient
+(Pdb) p impl
+<class 'tornado.httpserver.HTTPServer'>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(305)__new__()
+-> if impl.configurable_base() is not base:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(308)__new__()
+-> instance = super(Configurable, cls).__new__(impl)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(312)__new__()
+-> instance.initialize(*args, **init_kwargs)
+(Pdb) p instance
+<tornado.httpserver.HTTPServer object at 0x0000020E44C10208>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(313)__new__()
+-> return instance
+(Pdb) a
+cls = <class 'tornado.httpserver.HTTPServer'>
+args = (<__main__.Application object at 0x0000020E44AA4668>,)
+kwargs = {'xheaders': True}
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\util.py(313)__new__()-><tornado.http...0020E44C10208>
+-> return instance
+(Pdb) n
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\httpserver.py(140)__init__()
+-> def __init__(self, *args, **kwargs):
+(Pdb) l
+135  	       Added the ``trusted_downstream`` argument.
+136  	
+137  	    .. versionchanged:: 5.0
+138  	       The ``io_loop`` argument has been removed.
+139  	    """
+140  ->	    def __init__(self, *args, **kwargs):
+141  	        # Ignore args to __init__; real initialization belongs in
+142  	        # initialize since we're Configurable. (there's something
+143  	        # weird in initialization order between this class,
+144  	        # Configurable, and TCPServer so we can't leave __init__ out
+145  	        # completely)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\httpserver.py(146)__init__()
+-> pass
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\httpserver.py(146)__init__()->None
+-> pass
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2042)listen()
+-> server.listen(port, address)
+(Pdb) l
+2037 	        """
+2038 	        # import is here rather than top level because HTTPServer
+2039 	        # is not importable on appengine
+2040 	        from tornado.httpserver import HTTPServer
+2041 	        server = HTTPServer(self, **kwargs)
+2042 ->	        server.listen(port, address)
+2043 	        return server
+2044 	
+2045 	    def add_handlers(self, host_pattern, host_handlers):
+2046 	        """Appends the given handlers to our handler list.
+2047 	
+(Pdb) a
+self = <__main__.Application object at 0x0000020E44AA4668>
+port = 8000
+address = ''
+kwargs = {'xheaders': True}
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(135)listen()
+-> def listen(self, port, address=""):
+(Pdb) l
+130  	            if ('keyfile' in self.ssl_options and
+131  	                    not os.path.exists(self.ssl_options['keyfile'])):
+132  	                raise ValueError('keyfile "%s" does not exist' %
+133  	                                 self.ssl_options['keyfile'])
+134  	
+135  ->	    def listen(self, port, address=""):
+136  	        """Starts accepting connections on the given port.
+137  	
+138  	        This method may be called more than once to listen on multiple ports.
+139  	        `listen` takes effect immediately; it is not necessary to call
+140  	        `TCPServer.start` afterwards.  It is, however, necessary to start
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(143)listen()
+-> sockets = bind_sockets(port, address=address)
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(80)bind_sockets()
+-> def bind_sockets(port, address=None, family=socket.AF_UNSPEC,
+(Pdb) l
+ 75  	
+ 76  	# Default backlog used when calling sock.listen()
+ 77  	_DEFAULT_BACKLOG = 128
+ 78  	
+ 79  	
+ 80  ->	def bind_sockets(port, address=None, family=socket.AF_UNSPEC,
+ 81  	                 backlog=_DEFAULT_BACKLOG, flags=None, reuse_port=False):
+ 82  	    """Creates listening sockets bound to the given port and address.
+ 83  	
+ 84  	    Returns a list of socket objects (multiple sockets are returned if
+ 85  	    the given address maps to multiple IP addresses, which is most common
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(105)bind_sockets()
+-> if reuse_port and not hasattr(socket, "SO_REUSEPORT"):
+(Pdb) a
+port = 8000
+address = ''
+family = <AddressFamily.AF_UNSPEC: 0>
+backlog = 128
+flags = None
+reuse_port = False
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(108)bind_sockets()
+-> sockets = []
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(109)bind_sockets()
+-> if address == "":
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(110)bind_sockets()
+-> address = None
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(111)bind_sockets()
+-> if not socket.has_ipv6 and family == socket.AF_UNSPEC:
+(Pdb) a
+port = 8000
+address = None
+family = <AddressFamily.AF_UNSPEC: 0>
+backlog = 128
+flags = None
+reuse_port = False
+(Pdb) p socket
+<module 'socket' from 'C:\\Python36\\lib\\socket.py'>
+(Pdb) dir(socket)
+['AF_APPLETALK', 'AF_DECnet', 'AF_INET', 'AF_INET6', 'AF_IPX', 'AF_IRDA', 'AF_SNA', 'AF_UNSPEC', 'AI_ADDRCONFIG', 'AI_ALL', 'AI_CANONNAME', 'AI_NUMERICHOST', 'AI_NUMERICSERV', 'AI_PASSIVE', 'AI_V4MAPPED', 'AddressFamily', 'AddressInfo', 'CAPI', 'EAGAIN', 'EAI_AGAIN', 'EAI_BADFLAGS', 'EAI_FAIL', 'EAI_FAMILY', 'EAI_MEMORY', 'EAI_NODATA', 'EAI_NONAME', 'EAI_SERVICE', 'EAI_SOCKTYPE', 'EBADF', 'EWOULDBLOCK', 'INADDR_ALLHOSTS_GROUP', 'INADDR_ANY', 'INADDR_BROADCAST', 'INADDR_LOOPBACK', 'INADDR_MAX_LOCAL_GROUP', 'INADDR_NONE', 'INADDR_UNSPEC_GROUP', 'IPPORT_RESERVED', 'IPPORT_USERRESERVED', 'IPPROTO_ICMP', 'IPPROTO_IP', 'IPPROTO_RAW', 'IPPROTO_TCP', 'IPPROTO_UDP', 'IPV6_CHECKSUM', 'IPV6_DONTFRAG', 'IPV6_HOPLIMIT', 'IPV6_HOPOPTS', 'IPV6_JOIN_GROUP', 'IPV6_LEAVE_GROUP', 'IPV6_MULTICAST_HOPS', 'IPV6_MULTICAST_IF', 'IPV6_MULTICAST_LOOP', 'IPV6_PKTINFO', 'IPV6_RECVRTHDR', 'IPV6_RECVTCLASS', 'IPV6_RTHDR', 'IPV6_TCLASS', 'IPV6_UNICAST_HOPS', 'IPV6_V6ONLY', 'IP_ADD_MEMBERSHIP', 'IP_DROP_MEMBERSHIP', 'IP_HDRINCL', 'IP_MULTICAST_IF', 'IP_MULTICAST_LOOP', 'IP_MULTICAST_TTL', 'IP_OPTIONS', 'IP_RECVDSTADDR', 'IP_TOS', 'IP_TTL', 'IntEnum', 'IntFlag', 'MSG_BCAST', 'MSG_CTRUNC', 'MSG_DONTROUTE', 'MSG_MCAST', 'MSG_OOB', 'MSG_PEEK', 'MSG_TRUNC', 'MSG_WAITALL', 'MsgFlag', 'NI_DGRAM', 'NI_MAXHOST', 'NI_MAXSERV', 'NI_NAMEREQD', 'NI_NOFQDN', 'NI_NUMERICHOST', 'NI_NUMERICSERV', 'RCVALL_MAX', 'RCVALL_OFF', 'RCVALL_ON', 'RCVALL_SOCKETLEVELONLY', 'SHUT_RD', 'SHUT_RDWR', 'SHUT_WR', 'SIO_KEEPALIVE_VALS', 'SIO_LOOPBACK_FAST_PATH', 'SIO_RCVALL', 'SOCK_DGRAM', 'SOCK_RAW', 'SOCK_RDM', 'SOCK_SEQPACKET', 'SOCK_STREAM', 'SOL_IP', 'SOL_SOCKET', 'SOL_TCP', 'SOL_UDP', 'SOMAXCONN', 'SO_ACCEPTCONN', 'SO_BROADCAST', 'SO_DEBUG', 'SO_DONTROUTE', 'SO_ERROR', 'SO_EXCLUSIVEADDRUSE', 'SO_KEEPALIVE', 'SO_LINGER', 'SO_OOBINLINE', 'SO_RCVBUF', 'SO_RCVLOWAT', 'SO_RCVTIMEO', 'SO_REUSEADDR', 'SO_SNDBUF', 'SO_SNDLOWAT', 'SO_SNDTIMEO', 'SO_TYPE', 'SO_USELOOPBACK', 'SocketIO', 'SocketKind', 'SocketType', 'TCP_FASTOPEN', 'TCP_KEEPCNT', 'TCP_MAXSEG', 'TCP_NODELAY', '_GLOBAL_DEFAULT_TIMEOUT', '_GiveupOnSendfile', '_LOCALHOST', '_LOCALHOST_V6', '__all__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', '_blocking_errnos', '_intenum_converter', '_realsocket', '_socket', 'create_connection', 'dup', 'errno', 'error', 'errorTab', 'fromfd', 'fromshare', 'gaierror', 'getaddrinfo', 'getdefaulttimeout', 'getfqdn', 'gethostbyaddr', 'gethostbyname', 'gethostbyname_ex', 'gethostname', 'getnameinfo', 'getprotobyname', 'getservbyname', 'getservbyport', 'has_ipv6', 'herror', 'htonl', 'htons', 'inet_aton', 'inet_ntoa', 'inet_ntop', 'inet_pton', 'io', 'ntohl', 'ntohs', 'os', 'selectors', 'setdefaulttimeout', 'socket', 'socketpair', 'sys', 'timeout']
+(Pdb) p socket.has_ipv6
+True
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(118)bind_sockets()
+-> if flags is None:
+(Pdb) p flags
+None
+(Pdb) l
+113  	        # operations on AF_INET6 sockets to fail, but does not
+114  	        # automatically exclude those results from getaddrinfo
+115  	        # results.
+116  	        # http://bugs.python.org/issue16208
+117  	        family = socket.AF_INET
+118  ->	    if flags is None:
+119  	        flags = socket.AI_PASSIVE
+120  	    bound_port = None
+121  	    for res in set(socket.getaddrinfo(address, port, family, socket.SOCK_STREAM,
+122  	                                      0, flags)):
+123  	        af, socktype, proto, canonname, sockaddr = res
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(119)bind_sockets()
+-> flags = socket.AI_PASSIVE
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(120)bind_sockets()
+-> bound_port = None
+(Pdb) l
+115  	        # results.
+116  	        # http://bugs.python.org/issue16208
+117  	        family = socket.AF_INET
+118  	    if flags is None:
+119  	        flags = socket.AI_PASSIVE
+120  ->	    bound_port = None
+121  	    for res in set(socket.getaddrinfo(address, port, family, socket.SOCK_STREAM,
+122  	                                      0, flags)):
+123  	        af, socktype, proto, canonname, sockaddr = res
+124  	        if (sys.platform == 'darwin' and address == 'localhost' and
+125  	                af == socket.AF_INET6 and sockaddr[3] != 0):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(121)bind_sockets()
+-> for res in set(socket.getaddrinfo(address, port, family, socket.SOCK_STREAM,
+(Pdb) a
+port = 8000
+address = None
+family = <AddressFamily.AF_UNSPEC: 0>
+backlog = 128
+flags = <AddressInfo.AI_PASSIVE: 1>
+reuse_port = False
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(122)bind_sockets()
+-> 0, flags)):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(123)bind_sockets()
+-> af, socktype, proto, canonname, sockaddr = res
+(Pdb) a
+port = 8000
+address = None
+family = <AddressFamily.AF_UNSPEC: 0>
+backlog = 128
+flags = <AddressInfo.AI_PASSIVE: 1>
+reuse_port = False
+(Pdb) p res
+(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 0, '', ('0.0.0.0', 8000))
+(Pdb) l
+118  	    if flags is None:
+119  	        flags = socket.AI_PASSIVE
+120  	    bound_port = None
+121  	    for res in set(socket.getaddrinfo(address, port, family, socket.SOCK_STREAM,
+122  	                                      0, flags)):
+123  ->	        af, socktype, proto, canonname, sockaddr = res
+124  	        if (sys.platform == 'darwin' and address == 'localhost' and
+125  	                af == socket.AF_INET6 and sockaddr[3] != 0):
+126  	            # Mac OS X includes a link-local address fe80::1%lo0 in the
+127  	            # getaddrinfo results for 'localhost'.  However, the firewall
+128  	            # doesn't understand that this is a local address and will
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(124)bind_sockets()
+-> if (sys.platform == 'darwin' and address == 'localhost' and
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(133)bind_sockets()
+-> try:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(134)bind_sockets()
+-> sock = socket.socket(af, socktype, proto)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(139)bind_sockets()
+-> set_close_exec(sock.fileno())
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(140)bind_sockets()
+-> if os.name != 'nt':
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(147)bind_sockets()
+-> if reuse_port:
+(Pdb) p reuse_port
+False
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(149)bind_sockets()
+-> if af == socket.AF_INET6:
+(Pdb) a
+port = 8000
+address = None
+family = <AddressFamily.AF_UNSPEC: 0>
+backlog = 128
+flags = <AddressInfo.AI_PASSIVE: 1>
+reuse_port = False
+(Pdb) p sock
+<socket.socket fd=836, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0>
+(Pdb) p sock.fileno
+<built-in method fileno of socket object at 0x0000020E44C49868>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(163)bind_sockets()
+-> host, requested_port = sockaddr[:2]
+(Pdb) p sockaddr
+('0.0.0.0', 8000)
+(Pdb) l
+158  	            if hasattr(socket, "IPPROTO_IPV6"):
+159  	                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+160  	
+161  	        # automatic port allocation with port=None
+162  	        # should bind on the same port on IPv4 and IPv6
+163  ->	        host, requested_port = sockaddr[:2]
+164  	        if requested_port == 0 and bound_port is not None:
+165  	            sockaddr = tuple([host, bound_port] + list(sockaddr[2:]))
+166  	
+167  	        sock.setblocking(0)
+168  	        sock.bind(sockaddr)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(164)bind_sockets()
+-> if requested_port == 0 and bound_port is not None:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(167)bind_sockets()
+-> sock.setblocking(0)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(168)bind_sockets()
+-> sock.bind(sockaddr)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(169)bind_sockets()
+-> bound_port = sock.getsockname()[1]
+(Pdb) l
+164  	        if requested_port == 0 and bound_port is not None:
+165  	            sockaddr = tuple([host, bound_port] + list(sockaddr[2:]))
+166  	
+167  	        sock.setblocking(0)
+168  	        sock.bind(sockaddr)
+169  ->	        bound_port = sock.getsockname()[1]
+170  	        sock.listen(backlog)
+171  	        sockets.append(sock)
+172  	    return sockets
+173  	
+174  	
+(Pdb) p sock.getsockname()
+('0.0.0.0', 8000)
+(Pdb) p sockets
+[]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(170)bind_sockets()
+-> sock.listen(backlog)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(171)bind_sockets()
+-> sockets.append(sock)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(122)bind_sockets()
+-> 0, flags)):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(123)bind_sockets()
+-> af, socktype, proto, canonname, sockaddr = res
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(124)bind_sockets()
+-> if (sys.platform == 'darwin' and address == 'localhost' and
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(133)bind_sockets()
+-> try:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(134)bind_sockets()
+-> sock = socket.socket(af, socktype, proto)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(139)bind_sockets()
+-> set_close_exec(sock.fileno())
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(140)bind_sockets()
+-> if os.name != 'nt':
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(147)bind_sockets()
+-> if reuse_port:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(149)bind_sockets()
+-> if af == socket.AF_INET6:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(158)bind_sockets()
+-> if hasattr(socket, "IPPROTO_IPV6"):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(163)bind_sockets()
+-> host, requested_port = sockaddr[:2]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(164)bind_sockets()
+-> if requested_port == 0 and bound_port is not None:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(167)bind_sockets()
+-> sock.setblocking(0)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(168)bind_sockets()
+-> sock.bind(sockaddr)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(169)bind_sockets()
+-> bound_port = sock.getsockname()[1]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(170)bind_sockets()
+-> sock.listen(backlog)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(171)bind_sockets()
+-> sockets.append(sock)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(122)bind_sockets()
+-> 0, flags)):
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(172)bind_sockets()
+-> return sockets
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\netutil.py(172)bind_sockets()->[<socket.socke...0.0.0', 8000)>, <socket.socke..., 8000, 0, 0)>]
+-> return sockets
+(Pdb) p sockets
+[<socket.socket fd=836, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('0.0.0.0', 8000)>, <socket.socket fd=820, family=AddressFamily.AF_INET6, type=SocketKind.SOCK_STREAM, proto=0, laddr=('::', 8000, 0, 0)>]
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(144)listen()
+-> self.add_sockets(sockets)
+(Pdb) l
+139  	        `listen` takes effect immediately; it is not necessary to call
+140  	        `TCPServer.start` afterwards.  It is, however, necessary to start
+141  	        the `.IOLoop`.
+142  	        """
+143  	        sockets = bind_sockets(port, address=address)
+144  ->	        self.add_sockets(sockets)
+145  	
+146  	    def add_sockets(self, sockets):
+147  	        """Makes this server start accepting connections on the given sockets.
+148  	
+149  	        The ``sockets`` parameter is a list of socket objects such as
+(Pdb) a
+self = <tornado.httpserver.HTTPServer object at 0x0000020E44C10208>
+port = 8000
+address = ''
+(Pdb) dir(self)
+['_Configurable__impl_class', '_Configurable__impl_kwargs', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_connections', '_handle_connection', '_handlers', '_pending_sockets', '_restore_configuration', '_save_configuration', '_sockets', '_started', '_stopped', 'add_socket', 'add_sockets', 'bind', 'close_all_connections', 'configurable_base', 'configurable_default', 'configure', 'configured_class', 'conn_params', 'handle_stream', 'initialize', 'listen', 'max_buffer_size', 'on_close', 'protocol', 'read_chunk_size', 'request_callback', 'ssl_options', 'start', 'start_request', 'stop', 'trusted_downstream', 'xheaders']
+(Pdb) p self._sockets
+{}
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\tcpserver.py(144)listen()->None
+-> self.add_sockets(sockets)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2043)listen()
+-> return server
+(Pdb) p self._sockets
+*** AttributeError: 'Application' object has no attribute '_sockets'
+(Pdb) a
+self = <__main__.Application object at 0x0000020E44AA4668>
+port = 8000
+address = ''
+kwargs = {'xheaders': True}
+(Pdb) l
+2038 	        # import is here rather than top level because HTTPServer
+2039 	        # is not importable on appengine
+2040 	        from tornado.httpserver import HTTPServer
+2041 	        server = HTTPServer(self, **kwargs)
+2042 	        server.listen(port, address)
+2043 ->	        return server
+2044 	
+2045 	    def add_handlers(self, host_pattern, host_handlers):
+2046 	        """Appends the given handlers to our handler list.
+2047 	
+2048 	        Host patterns are processed sequentially in the order they were
+(Pdb) p server
+<tornado.httpserver.HTTPServer object at 0x0000020E44C10208>
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\web.py(2043)listen()-><tornado.http...0020E44C10208>
+-> return server
+(Pdb) n
+> c:\users\liyan\pycharmprojects\tapp\main.py(99)<module>()
+-> tornado.ioloop.IOLoop.instance().start()
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(201)instance()
+-> @staticmethod
+(Pdb) l
+196  	            if not issubclass(impl, BaseAsyncIOLoop):
+197  	                raise RuntimeError(
+198  	                    "only AsyncIOLoop is allowed when asyncio is available")
+199  	        super(IOLoop, cls).configure(impl, **kwargs)
+200  	
+201  ->	    @staticmethod
+202  	    def instance():
+203  	        """Deprecated alias for `IOLoop.current()`.
+204  	
+205  	        .. versionchanged:: 5.0
+206  	
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(221)instance()
+-> return IOLoop.current()
+(Pdb) s
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(253)current()
+-> @staticmethod
+(Pdb) l
+248  	        .. deprecated:: 5.0
+249  	
+250  	        """
+251  	        IOLoop.clear_current()
+252  	
+253  ->	    @staticmethod
+254  	    def current(instance=True):
+255  	        """Returns the current thread's `IOLoop`.
+256  	
+257  	        If an `IOLoop` is currently running or has been marked as
+258  	        current by `make_current`, returns that instance.  If there is
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(274)current()
+-> if asyncio is None:
+(Pdb) a
+instance = True
+(Pdb) p asyncio
+<module 'asyncio' from 'C:\\Python36\\lib\\asyncio\\__init__.py'>
+(Pdb) l
+269  	           whether we fall back to `IOLoop.instance()` (which is now
+270  	           an alias for this method). ``instance=False`` is deprecated,
+271  	           since even if we do not create an `IOLoop`, this method
+272  	           may initialize the asyncio loop.
+273  	        """
+274  ->	        if asyncio is None:
+275  	            current = getattr(IOLoop._current, "instance", None)
+276  	            if current is None and instance:
+277  	                current = IOLoop()
+278  	                if IOLoop._current.instance is not current:
+279  	                    raise RuntimeError("new IOLoop did not become current")
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(281)current()
+-> try:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(282)current()
+-> loop = asyncio.get_event_loop()
+(Pdb) l
+277  	                current = IOLoop()
+278  	                if IOLoop._current.instance is not current:
+279  	                    raise RuntimeError("new IOLoop did not become current")
+280  	        else:
+281  	            try:
+282  ->	                loop = asyncio.get_event_loop()
+283  	            except (RuntimeError, AssertionError):
+284  	                if not instance:
+285  	                    return None
+286  	                raise
+287  	            try:
+(Pdb) p loop
+*** NameError: name 'loop' is not defined
+(Pdb) l
+288  	                return IOLoop._ioloop_for_asyncio[loop]
+289  	            except KeyError:
+290  	                if instance:
+291  	                    from tornado.platform.asyncio import AsyncIOMainLoop
+292  	                    current = AsyncIOMainLoop(make_current=True)
+293  	                else:
+294  	                    current = None
+295  	        return current
+296  	
+297  	    def make_current(self):
+298  	        """Makes this the `IOLoop` for the current thread.
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(287)current()
+-> try:
+(Pdb) l
+282  	                loop = asyncio.get_event_loop()
+283  	            except (RuntimeError, AssertionError):
+284  	                if not instance:
+285  	                    return None
+286  	                raise
+287  ->	            try:
+288  	                return IOLoop._ioloop_for_asyncio[loop]
+289  	            except KeyError:
+290  	                if instance:
+291  	                    from tornado.platform.asyncio import AsyncIOMainLoop
+292  	                    current = AsyncIOMainLoop(make_current=True)
+(Pdb) p loop
+<_WindowsSelectorEventLoop running=False closed=False debug=False>
+(Pdb) l
+293  	                else:
+294  	                    current = None
+295  	        return current
+296  	
+297  	    def make_current(self):
+298  	        """Makes this the `IOLoop` for the current thread.
+299  	
+300  	        An `IOLoop` automatically becomes current for its thread
+301  	        when it is started, but it is sometimes useful to call
+302  	        `make_current` explicitly before starting the `IOLoop`,
+303  	        so that code run at startup time can find the right
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(288)current()
+-> return IOLoop._ioloop_for_asyncio[loop]
+(Pdb) s
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(288)current()-><tornado.plat...0020E44B04C18>
+-> return IOLoop._ioloop_for_asyncio[loop]
+(Pdb) p IOLoop._ioloop_for_asyncio
+{<_WindowsSelectorEventLoop running=False closed=False debug=False>: <tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000020E44B04C18>}
+(Pdb) n
+--Return--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\ioloop.py(221)instance()-><tornado.plat...0020E44B04C18>
+-> return IOLoop.current()
+(Pdb) n
+--Call--
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(124)start()
+-> def start(self):
+(Pdb) l
+119  	
+120  	    def _handle_events(self, fd, events):
+121  	        fileobj, handler_func = self.handlers[fd]
+122  	        handler_func(fileobj, events)
+123  	
+124  ->	    def start(self):
+125  	        try:
+126  	            old_loop = asyncio.get_event_loop()
+127  	        except (RuntimeError, AssertionError):
+128  	            old_loop = None
+129  	        try:
+(Pdb) a
+self = <tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000020E44B04C18>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(125)start()
+-> try:
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(126)start()
+-> old_loop = asyncio.get_event_loop()
+(Pdb) a
+self = <tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000020E44B04C18>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(129)start()
+-> try:
+(Pdb) l
+124  	    def start(self):
+125  	        try:
+126  	            old_loop = asyncio.get_event_loop()
+127  	        except (RuntimeError, AssertionError):
+128  	            old_loop = None
+129  ->	        try:
+130  	            self._setup_logging()
+131  	            asyncio.set_event_loop(self.asyncio_loop)
+132  	            self.asyncio_loop.run_forever()
+133  	        finally:
+134  	            asyncio.set_event_loop(old_loop)
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(130)start()
+-> self._setup_logging()
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(131)start()
+-> asyncio.set_event_loop(self.asyncio_loop)
+(Pdb) a
+self = <tornado.platform.asyncio.AsyncIOMainLoop object at 0x0000020E44B04C18>
+(Pdb) p self.asyncio_loop
+<_WindowsSelectorEventLoop running=False closed=False debug=False>
+(Pdb) n
+> c:\users\liyan\pycharmprojects\work-python3\venv\lib\site-packages\tornado\platform\asyncio.py(132)start()
+-> self.asyncio_loop.run_forever()
+(Pdb) l
+127  	        except (RuntimeError, AssertionError):
+128  	            old_loop = None
+129  	        try:
+130  	            self._setup_logging()
+131  	            asyncio.set_event_loop(self.asyncio_loop)
+132  ->	            self.asyncio_loop.run_forever()
+133  	        finally:
+134  	            asyncio.set_event_loop(old_loop)
+135  	
+136  	    def stop(self):
+137  	        self.asyncio_loop.stop()
+(Pdb) 
