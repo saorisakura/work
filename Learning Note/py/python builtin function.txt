@@ -1,5 +1,70 @@
 python builtin function
 
+bytearray() 方法返回一个新字节数组。这个数组里的元素是可变的，并且每个元素的值范围: 0 <= x < 256。
+
+	语法
+	bytearray()方法语法：
+
+	class bytearray([source[, encoding[, errors]]])
+	参数
+	如果 source 为整数，则返回一个长度为 source 的初始化数组；
+	如果 source 为字符串，则按照指定的 encoding 将字符串转换为字节序列；
+	如果 source 为可迭代类型，则元素必须为[0 ,255] 中的整数；
+	如果 source 为与 buffer 接口一致的对象，则此对象也可以被用于初始化 bytearray。
+	如果没有输入任何参数，默认就是初始化数组为0个元素。
+	返回值
+	返回新字节数组。
+
+	实例
+	以下实例展示了 bytearray() 的使用方法：
+
+	>>>bytearray()
+	bytearray(b'')
+	>>> bytearray([1,2,3])
+	bytearray(b'\x01\x02\x03')
+	>>> bytearray('runoob', 'utf-8')
+	bytearray(b'runoob')
+	>>>
+
+memoryview() 函数返回给定参数的内存查看对象(Momory view)。
+
+	所谓内存查看对象，是指对支持缓冲区协议的数据进行包装，在不需要复制对象基础上允许Python代码访问。
+
+	语法
+	memoryview 语法：
+
+	memoryview(obj)
+	参数说明：
+
+	obj -- 对象
+	返回值
+	返回元组列表。
+
+	实例
+	以下实例展示了 memoryview 的使用方法：
+
+	Python2.x 应用：
+	>>>v = memoryview('abcefg')
+	>>> v[1]
+	'b'
+	>>> v[-1]
+	'g'
+	>>> v[1:4]
+	<memory at 0x77ab28>
+	>>> v[1:4].tobytes()
+	'bce'
+	Python3.x 应用：
+	>>>v = memoryview(bytearray("abcefg", 'utf-8'))
+	>>> print(v[1])
+	98
+	>>> print(v[-1])
+	103
+	>>> print(v[1:4])
+	<memory at 0x10f543a08>
+	>>> print(v[1:4].tobytes())
+	b'bce'
+	>>>
+
 zip() 函数用于将可迭代的对象作为参数，将对象中对应的元素打包成一个个元组，然后返回由这些元组组成的列表。
 
 	如果各个迭代器的元素个数不一致，则返回列表长度与最短的对象相同，利用 * 号操作符，可以将元组解压为列表。
