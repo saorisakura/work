@@ -1,0 +1,344 @@
+3.1 Tornado源码阅读：asyncio：基本知识
+
+asyncio
+可以看到，这一版的Tornado主要是利用asyncio来管理IO情况和协程，那么要了解Tornado，也必须对asyncio有深入的了解。先来初步看看asyncio的简介吧。
+
+asyncio是Python 3.4 试验性引入的异步I/O框架（PEP 3156），提供了基于协程做异步I/O编写单线程并发代码的基础设施。其核心组件有事件循环（Event Loop）、协程(Coroutine）、任务(Task)、未来对象(Future)以及其他一些扩充和辅助性质的模块。
+在引入asyncio的时候，还提供了一个装饰器@asyncio.coroutine用于装饰使用了yield from的函数，以标记其为协程。但并不强制使用这个装饰器。
+虽然发展到 Python 3.4 时有了yield from的加持让协程更容易了，但是由于协程在Python中发展的历史包袱所致，很多人仍然弄不明白生成器和协程的联系与区别，也弄不明白yield 和 yield from 的区别。这种混乱的状态也违背Python之禅的一些准则。
+于是Python设计者们又快马加鞭地在 3.5 中新增了async/await语法（PEP 492），对协程有了明确而显式的支持，称之为原生协程。async/await 和 yield from这两种风格的协程底层复用共同的实现，而且相互兼容。
+在Python 3.6 中asyncio库“转正”，不再是实验性质的，成为标准库的正式一员。
+不是很明白是什么？还记得之前分析的那个网络框架里面的任务调度器么？再简单的回顾一下它是什么，做了什么。
+
+任务调度器有三个容器：分别是：等待读，等待写和准备就绪的任务。
+任务调度器有两个个容器：循环分别为主循环和IO循环。
+主循环：负责控制具体的执行流程，有准备好的任务就执行准备好的任务，没有就执行IO循环
+IO循环：然底层的select监控等待读，等待写，有可以读可以写的就执行
+其实，asyncio和那之前的任务调度器和核心原理非常的接近，只是asyncio完整，功能更多，能因对更加复杂的情况和拥有完整的logging信息。
+
+asyncio在Python的基础知识里面算是比较难以理解的（感觉比元编程还难点），因为它使用了大量的策略来使得本来同步的任务或方法并非线性的执行（asyncio本身是在线性的，而利用asyncio的方法或任务不是线性的），所以执行到什么很容易摸不着头脑。而asyncio作为Python的一个重要基础知识，又不得不了解。
+
+selectors模块
+了解asyncio之前，还必须了解一下selectors。
+
+之前参考代码中的任务调度器让系统帮忙监控IO情况是使用了select.select()，这个是非常底层的模块，会去调用系统的对应接口。select的好处就是在于其广泛的适用性，现在的系统平台都可以使用。而类似的系统级的IO多路复用的机制还有很多，而且其中很大一部分的性能会比select更好。
+
+并且这些机制的大部分的使用原理都是系统的，就是监控读或者写的文件描述符（文件句柄）。很明显可以发展，这些底层的使用复杂（这样的机制非常多，不同系统有不同的），但基本都是用于做一件事情，用法也非常相似。那么毫无疑问的，Python提供了一个更高级的模块：selectors
+
+这个模块可以根据系统自动选择最合适的机制（也可以手动选择），并且提供了注册方法（register，将要监控的文件描述符加入监控容器中：读取器（_readers）、写入器（_writers））
+
+asyncio也将这部分交给了selectors。
+
+这里selectors不是重点，所以简单了解一下就好了，详细的使用方式可以参考：官方文档
+
+（asyncio还有另一种模式：ProactorEventLoop，使用的是自己的windows_events.py模块，是针对win平台的IOCP的）
+
+
+
+3.2 Tornado源码阅读：asyncio：四个容器
+
+asyncio所使用的四个容器
+不同于之前的任务调度器，asyncio不但使用了读取器（_readers）、写入器（_writers）和可执行句柄（_ready），另外还增加了一个调度执行（_scheduled），它是针对一种特殊的句柄（延时句柄）而设计的。读取器、写入器、可执行句柄和之前的任务调度器的等待读，等待写和准备就绪的任务核心功能差不多，而调度执行的作用是什么呢？之后分析到的时候再慢慢解释。
+
+读取器（_readers）、写入器（_writers）
+这一部分，asyncio自己不进行管理，而是交给了selectors：
+
+# selectors.py
+
+class SelectSelector(_BaseSelectorImpl):
+    """Select-based selector."""
+
+    def __init__(self):
+        super().__init__()
+        self._readers = set()
+        self._writers = set()
+那selectors是如何管理这两个容器的呢？
+
+    # 添加
+    def register(self, fileobj, events, data=None):
+        key = super().register(fileobj, events, data)
+        if events & EVENT_READ:
+            self._readers.add(key.fd)
+        if events & EVENT_WRITE:
+            self._writers.add(key.fd)
+        return key
+
+    # 移除
+    def unregister(self, fileobj):
+        key = super().unregister(fileobj)
+        self._readers.discard(key.fd)
+        self._writers.discard(key.fd)
+        return key
+这里看起来还是有点简单，因为有一个super().register：
+
+    def register(self, fileobj, events, data=None):
+        if (not events) or (events & ~(EVENT_READ | EVENT_WRITE)):
+            raise ValueError("Invalid events: {!r}".format(events))
+
+
+        # SelectorKey = namedtuple('SelectorKey', ['fileobj', 'fd', 'events', 'data'])
+        key = SelectorKey(fileobj, self._fileobj_lookup(fileobj), events, data)
+
+        if key.fd in self._fd_to_key:
+            raise KeyError("{!r} (FD {}) is already registered"
+                           .format(fileobj, key.fd))
+
+        self._fd_to_key[key.fd] = key
+        return key
+这里就可以看到，register方法会将对应的文件描述器放入_readers或_readers,然后返回整个namedtuple。
+
+这里还有一个重要方法：select，这个方法会取出可读和可写的文件描述器，放入list里面后返回
+
+def select(self, timeout=None):
+        timeout = None if timeout is None else max(timeout, 0)
+        ready = []
+        try:
+            # self._select = select.select
+            r, w, _ = self._select(self._readers, self._writers, [], timeout)
+        except InterruptedError:
+            return ready
+        r = set(r)
+        w = set(w)
+        for fd in r | w:
+            events = 0            if fd in r:
+                events |= EVENT_READ
+            if fd in w:
+                events |= EVENT_WRITE
+
+            key = self._key_from_fd(fd)
+            if key:
+                ready.append((key, events & key.events))
+        return ready
+可执行句柄（_ready）
+虽然上面的selectors也出现了类似ready的东西，但那个并不是这里说的可执行句柄（_ready），asyncio内是用自己的_ready容器的：
+
+# asyncio.base_event.py
+class BaseEventLoop(events.AbstractEventLoop):
+
+    def __init__(self):
+        
+        ......
+        
+        self._ready = collections.deque()
+        
+        ......
+下面看看有关它的操作。
+
+首先是两种添加方法：_add_callback和call_soon
+
+    def _add_callback(self, handle):
+        """
+        把一个句柄加到_scheduled或者_ready
+        这个方法是给asyncio内部的其他方法使用，直接将句柄加入_ready里面
+        Add a Handle to _scheduled (TimerHandle) or _ready.
+        """
+        # 需要传入一个句柄
+        assert isinstance(handle, events.Handle), 'A Handle is required here'
+        # 判断是否取消了
+        if handle._cancelled:
+            return
+        # 不是TimerHandle(延时句柄)
+        assert not isinstance(handle, events.TimerHandle)
+        # 加入_ready
+        self._ready.append(handle)
+
+
+    def call_soon(self, callback, *args, context=None):
+        """
+        最快的安排调用回调函数.
+
+        这个操作像一个先入先出的队列，按注册回调函数的顺序调用它们
+        每个回调函数只会被调用一次.
+        """
+        # 检查是否已经关闭
+        self._check_closed()
+        # debug
+        if self._debug:
+            self._check_thread()
+            self._check_callback(callback, 'call_soon')
+        # 创建句柄
+        handle = self._call_soon(callback, args, context)
+        if handle._source_traceback:
+            del handle._source_traceback[-1]
+        # 返回句柄
+        return handle
+
+
+    def _call_soon(self, callback, args, context):
+        # 包装成一个句柄
+        handle = events.Handle(callback, args, self, context)
+        if handle._source_traceback:
+            del handle._source_traceback[-1]
+        # 加入_ready中
+        self._ready.append(handle)
+        return handle
+这里可以看出_ready里面放的是一个events.Handle对象，它主要是用来装载回调函数的（还有其他类型的句柄，例如延时句柄，继承自这个类）。
+
+class Handle:
+    """
+    由回调注册方法返回的对象
+    Object returned by callback registration methods.
+    """
+
+    # 这里规定了这个对象的属性，处理效率会更高
+    __slots__ = ('_callback', '_args', '_cancelled', '_loop',
+                 '_source_traceback', '_repr', '__weakref__',
+                 '_context')
+
+    def __init__(self, callback, args, loop, context=None):
+        # 获得上下文
+        if context is None:
+            # 这里是获得这个上下文的局部变量
+            # 这个地方是Python3.7新增的内容，具体见PEP 567
+            context = contextvars.copy_context()
+        self._context = context
+        # 这里的loop一般是BaseEventLoop类或子类
+        self._loop = loop
+        # 回调函数
+        self._callback = callback
+        self._args = args
+        self._cancelled = False
+        self._repr = None
+        if self._loop.get_debug():
+            self._source_traceback = format_helpers.extract_stack(
+                sys._getframe(1))
+        else:
+            self._source_traceback = None
+
+    def _repr_info(self):
+        # 打印信息
+        info = [self.__class__.__name__]
+        if self._cancelled:
+            info.append('cancelled')
+        if self._callback is not None:
+            info.append(format_helpers._format_callback_source(
+                self._callback, self._args))
+        if self._source_traceback:
+            frame = self._source_traceback[-1]
+            info.append(f'created at {frame[0]}:{frame[1]}')
+        return info
+
+    def __repr__(self):
+        # 打印信息
+        if self._repr is not None:
+            return self._repr
+        info = self._repr_info()
+        return '<{}>'.format(' '.join(info))
+
+    def cancel(self):
+        # 清除方法
+        if not self._cancelled:
+            self._cancelled = True
+            if self._loop.get_debug():
+                # Keep a representation in debug mode to keep callback and
+                # parameters. For example, to log the warning
+                # "Executing <Handle...> took 2.5 second"
+                self._repr = repr(self)
+            self._callback = None
+            self._args = None
+
+    def cancelled(self):
+        # 获知是否清除
+        return self._cancelled
+
+    def _run(self):
+        # 运行句柄
+        try:
+            # 在指定的上下文环境中执行回调函数
+            self._context.run(self._callback, *self._args)
+        except Exception as exc:
+            cb = format_helpers._format_callback_source(
+                self._callback, self._args)
+            msg = f'Exception in callback {cb}'
+            context = {
+                'message': msg,
+                'exception': exc,
+                'handle': self,
+            }
+            if self._source_traceback:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
+        # 当发生异常时需要中断循环。
+        self = None  # Needed to break cycles when an exception occurs.
+可以看到，关键还是这个callback回调函数是什么。这里是一个源码中用于检查是否是符合要求的回调函数：
+
+    def _check_callback(self, callback, method):
+        if (coroutines.iscoroutine(callback) or
+                coroutines.iscoroutinefunction(callback)):
+            raise TypeError(
+                f"coroutines cannot be used with {method}()")
+        if not callable(callback):
+            raise TypeError(
+                f'a callable object was expected by {method}(), '
+                f'got {callback!r}')
+可以看出，这里其实就是检查是不是协程的。
+
+另外，和_ready有关的还有一个close方法，这个是关闭方法，在关闭的时候清空_ready。
+
+    def close(self):
+        """Close the event loop.
+
+        This clears the queues and shuts down the executor,
+        but does not wait for the executor to finish.
+
+        The event loop must not be running.
+        """
+        if self.is_running():
+            raise RuntimeError("Cannot close a running event loop")
+        if self._closed:
+            return
+        if self._debug:
+            logger.debug("Close %r", self)
+        self._closed = True
+        self._ready.clear()
+        self._scheduled.clear()
+        executor = self._default_executor
+        if executor is not None:
+            self._default_executor = None
+            executor.shutdown(wait=False)
+而_ready更重要的是里面的元素将会怎么运行，这些是主循环的事，下面分析
+
+调度执行（_scheduled）
+这个容器是新出现的容器，是专门针对TimerHandle（延时句柄），看看延时句柄是怎么被_scheduled安排得明明白白的
+
+    def call_later(self, delay, callback, *args, context=None):
+        """
+        安排回调函数在指定时间被调用.
+        
+        返回句柄：一个带有cancel()方法的不透明对象，它可以用来取消调用.
+
+        延迟可以是一个int或float来表示秒。它总是与当前时间相对应.
+
+
+        每个回调将被准确地调用一次。如果两个回调被完全安排在同一时间，
+        则不能确定那个将会首先被调用.
+
+
+        所有的参数将会被出入回调函数当回调函数调用时.
+        """
+        timer = self.call_at(self.time() + delay, callback, *args,
+                             context=context)
+        if timer._source_traceback:
+            del timer._source_traceback[-1]
+        return timer
+
+    def call_at(self, when, callback, *args, context=None):
+        """
+        和call_later()类似，不过使用绝对时间.
+
+        绝对时间的格式应该和time()方法的一致.
+        """
+        self._check_closed()
+        if self._debug:
+            self._check_thread()
+            self._check_callback(callback, 'call_at')
+        timer = events.TimerHandle(when, callback, args, self, context)
+        if timer._source_traceback:
+            del timer._source_traceback[-1]
+        # TimerHandle定义了一套根据时间判断大小的方法，所以这里会按照早
+        # 执行的在前面，晚执行的在后面的顺序放入
+        heapq.heappush(self._scheduled, timer)
+        timer._scheduled = True
+        return timer
+可以看到，延时句柄会被排序好放入_scheduled中，而调用也是主循环的事，下面的文章会进行分析
+

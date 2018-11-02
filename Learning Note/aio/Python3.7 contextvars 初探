@@ -1,0 +1,344 @@
+Python3.7 contextvars 初探
+
+简述
+Python 3.7 于2018年6月27日发布，本篇文章将对其中新增模块contextvars 做初步介绍，为读者勾勒一个大概轮廓。
+
+资料来源： Python 3.7 文档、源码。
+
+首发于知乎专栏
+
+Python日常
+​zhuanlan.zhihu.com
+图标
+作者Nugine水平所限，部分表述并不准确。如有问题，请立即指出。
+
+contextvars是什么
+类与方法
+如何理解上下文
+总结
+① contextvars是什么
+这个模块提供了一组接口，可用于管理、储存、访问 局部上下文的状态。
+
+主要用于在异步环境中管理上下文变量。
+
+② 类与方法
+1. ContextVar(name[, *, default])
+这个类用于表示一个上下文变量。
+
+参数：
+name： 必要位参； 用于检验和Debug.
+
+default： 默参，且只能用keyword方式指定； 用于设定这个上下文变量的默认值。
+
+属性：
+name：只读特性。
+
+get([default])：返回该上下文变量的值。未指定默认值且上下文变量无默认值时，抛出LookupError。
+
+set(value)：设置上下文变量的值,返回一个与变量当前值相关的Token对象，可用于重置上下文变量的值到该次set之前。
+
+reset(token)：使用token重置上下文变量的值。
+
+示例:
+from contextvars import *
+
+var= ContextVar('var')
+
+x=[1]
+var.set(x)
+
+y=var.get()
+print(f'x: {id(x)},y: {id(y)},{id(x)==id(y)}')
+
+y=var.get()
+print(f'x: {id(x)},y: {id(y)},{id(x)==id(y)}')
+
+
+z=[2]
+
+token=var.set(z)
+print(f'z: {var.get()}')
+
+var.reset(token)
+
+y=var.get()
+print(f'x: {id(x)},y: {id(y)},{id(x)==id(y)}')
+输出：
+
+x: 2459227742792,y: 2459227742792,True
+x: 2459227742792,y: 2459227742792,True
+z: [2]
+x: 2459227742792,y: 2459227742792,True
+2. Token
+属性：
+var： 只读特性，指向创建它的上下文变量。
+
+old_value: 只读特性，保存set之前的上下文变量的值。如果值为空，该特性指向Token.MISSING.
+
+3. Context
+类型：Mapping
+
+Key：ContextVar
+
+Value：上下文变量的值
+
+属性：
+copy()：返回Context的浅拷贝。
+
+run(callable, *args, **kwargs)：在该上下文中运行callable(args, *kwargs).
+
+当多线程同时执行run时，抛出RuntimeError.
+
+当递归地执行run时，也会抛出RuntimeError.
+
+同一个Context，在同一时刻只能有一个run方法运行。
+
+PS：多进程显然不在考虑范围内。
+
+文档示例：
+
+var = ContextVar('var')
+var.set('spam')
+
+def main():
+    # 'var' was set to 'spam' before
+    # calling 'copy_context()' and 'ctx.run(main)', so:
+    # var.get() == ctx[var] == 'spam'
+
+    var.set('ham')
+
+    # Now, after setting 'var' to 'ham':
+    # var.get() == ctx[var] == 'ham'
+
+ctx = copy_context()
+
+# Any changes that the 'main' function makes to 'var'
+# will be contained in 'ctx'.
+ctx.run(main)
+
+# The 'main()' function was run in the 'ctx' context,
+# so changes to 'var' are contained in it:
+# ctx[var] == 'ham'
+
+# However, outside of 'ctx', 'var' is still set to 'spam':
+# var.get() == 'spam'
+4. 模块方法：copy_context()
+返回当前上下文的拷贝。
+
+时间复杂度: O(1)。因为在C源码中，这个函数只做了新建对象和指针复制。
+
+不管当前上下文有多臃肿，copy_context()的消耗都是不变的。
+
+③ 如何理解上下文
+自己动手写一些小程序试验一下是最好的方法。
+
+这里给出我的理解：
+
+作用域规定了对象访问权，而上下文规定了上下文变量值访问权。
+
+我们用ContextVar表示上下文变量，而具体的值存储在Context中。所以Context实现为ContextVar->Value的Mapping。在不同的上下文中，同一个上下文变量的值可以不同。
+
+如果作用域中没有ContextVar，你是无法访问或修改ContextVar的，文档中建议在模块级别定义ContextVar也是这个原因。
+
+Q & A
+Q：定义ContextVar时发生了什么？
+
+A：新建了一个对象，仅此而已，上下文中没有保存它。当ContextVar被set后，上下文中才会有它。
+
+Q：访问或修改ContextVar时发生了什么？
+
+A：访问ContextVar时，实际上是在当前上下文中查表，返回当前上下文中ContextVar的值。修改同理，实际上是改表。（在源码中还有cache，这里不作说明）
+
+Q：Context机制如何实现？
+
+A：Context与ThreadState相关，进入上下文时“占据”当前线程，退出时“放弃”当前线程。
+
+④ 总结
+contextvars为异步而生，上下文对象将简化asyncio的复杂操作，给异步程序的编写带来方便，推荐高级玩家使用。
+
+
+
+contextvars — Context Variables
+This module provides APIs to manage, store, and access context-local state. The ContextVar class is used to declare and work with Context Variables. The copy_context() function and the Context class should be used to manage the current context in asynchronous frameworks.
+
+Context managers that have state should use Context Variables instead of threading.local() to prevent their state from bleeding to other code unexpectedly, when used in concurrent code.
+
+See also PEP 567 for additional details.
+
+New in version 3.7.
+
+Context Variables
+class contextvars.ContextVar(name[, *, default])
+This class is used to declare a new Context Variable, e.g.:
+
+var: ContextVar[int] = ContextVar('var', default=42)
+The required name parameter is used for introspection and debug purposes.
+
+The optional keyword-only default parameter is returned by ContextVar.get() when no value for the variable is found in the current context.
+
+Important: Context Variables should be created at the top module level and never in closures. Context objects hold strong references to context variables which prevents context variables from being properly garbage collected.
+
+name
+The name of the variable. This is a read-only property.
+
+New in version 3.7.1.
+
+get([default])
+Return a value for the context variable for the current context.
+
+If there is no value for the variable in the current context, the method will:
+
+return the value of the default argument of the method, if provided; or
+return the default value for the context variable, if it was created with one; or
+raise a LookupError.
+set(value)
+Call to set a new value for the context variable in the current context.
+
+The required value argument is the new value for the context variable.
+
+Returns a Token object that can be used to restore the variable to its previous value via the ContextVar.reset() method.
+
+reset(token)
+Reset the context variable to the value it had before the ContextVar.set() that created the token was used.
+
+For example:
+
+var = ContextVar('var')
+
+token = var.set('new value')
+# code that uses 'var'; var.get() returns 'new value'.
+var.reset(token)
+
+# After the reset call the var has no value again, so
+# var.get() would raise a LookupError.
+class contextvars.Token
+Token objects are returned by the ContextVar.set() method. They can be passed to the ContextVar.reset() method to revert the value of the variable to what it was before the corresponding set.
+
+Token.var
+A read-only property. Points to the ContextVar object that created the token.
+
+Token.old_value
+A read-only property. Set to the value the variable had before the ContextVar.set() method call that created the token. It points to Token.MISSING is the variable was not set before the call.
+
+Token.MISSING
+A marker object used by Token.old_value.
+
+Manual Context Management
+contextvars.copy_context()
+Returns a copy of the current Context object.
+
+The following snippet gets a copy of the current context and prints all variables and their values that are set in it:
+
+ctx: Context = copy_context()
+print(list(ctx.items()))
+The function has an O(1) complexity, i.e. works equally fast for contexts with a few context variables and for contexts that have a lot of them.
+
+class contextvars.Context
+A mapping of ContextVars to their values.
+
+Context() creates an empty context with no values in it. To get a copy of the current context use the copy_context() function.
+
+Context implements the collections.abc.Mapping interface.
+
+run(callable, *args, **kwargs)
+Execute callable(*args, **kwargs) code in the context object the run method is called on. Return the result of the execution or propagate an exception if one occurred.
+
+Any changes to any context variables that callable makes will be contained in the context object:
+
+var = ContextVar('var')
+var.set('spam')
+
+def main():
+    # 'var' was set to 'spam' before
+    # calling 'copy_context()' and 'ctx.run(main)', so:
+    # var.get() == ctx[var] == 'spam'
+
+    var.set('ham')
+
+    # Now, after setting 'var' to 'ham':
+    # var.get() == ctx[var] == 'ham'
+
+ctx = copy_context()
+
+# Any changes that the 'main' function makes to 'var'
+# will be contained in 'ctx'.
+ctx.run(main)
+
+# The 'main()' function was run in the 'ctx' context,
+# so changes to 'var' are contained in it:
+# ctx[var] == 'ham'
+
+# However, outside of 'ctx', 'var' is still set to 'spam':
+# var.get() == 'spam'
+The method raises a RuntimeError when called on the same context object from more than one OS thread, or when called recursively.
+
+copy()
+Return a shallow copy of the context object.
+
+var in context
+Return True if the context has a value for var set; return False otherwise.
+
+context[var]
+Return the value of the var ContextVar variable. If the variable is not set in the context object, a KeyError is raised.
+
+get(var[, default])
+Return the value for var if var has the value in the context object. Return default otherwise. If default is not given, return None.
+
+iter(context)
+Return an iterator over the variables stored in the context object.
+
+len(proxy)
+Return the number of variables set in the context object.
+
+keys()
+Return a list of all variables in the context object.
+
+values()
+Return a list of all variables’ values in the context object.
+
+items()
+Return a list of 2-tuples containing all variables and their values in the context object.
+
+asyncio support
+Context variables are natively supported in asyncio and are ready to be used without any extra configuration. For example, here is a simple echo server, that uses a context variable to make the address of a remote client available in the Task that handles that client:
+
+import asyncio
+import contextvars
+
+client_addr_var = contextvars.ContextVar('client_addr')
+
+def render_goodbye():
+    # The address of the currently handled client can be accessed
+    # without passing it explicitly to this function.
+
+    client_addr = client_addr_var.get()
+    return f'Good bye, client @ {client_addr}\n'.encode()
+
+async def handle_request(reader, writer):
+    addr = writer.transport.get_extra_info('socket').getpeername()
+    client_addr_var.set(addr)
+
+    # In any code that we call is now possible to get
+    # client's address by calling 'client_addr_var.get()'.
+
+    while True:
+        line = await reader.readline()
+        print(line)
+        if not line.strip():
+            break
+        writer.write(line)
+
+    writer.write(render_goodbye())
+    writer.close()
+
+async def main():
+    srv = await asyncio.start_server(
+        handle_request, '127.0.0.1', 8081)
+
+    async with srv:
+        await srv.serve_forever()
+
+asyncio.run(main())
+
+# To test it you can use telnet:
+#     telnet 127.0.0.1 8081

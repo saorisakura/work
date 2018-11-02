@@ -1,0 +1,55 @@
+(那些過時的) Python 字串格式化以及 f-string 字串格式化
+In Python2017-08-08 louie.lu
+在 Python 裡頭，目前的最新版本 (3.6.2) 中總共有 3 種不同的方式來達成字串格式化 (String format)。分別是 %-formatting、str.format 以及 f-string。本文將會逐一介紹這些 Python 的字串格式化方式。
+
+01. %-formatting
+偉大的 C 語言字串格式化深入我們的生活，Python 自然也不意外的會有這個功能。
+
+
+>>> 'Python version: %.1f' % (3.6)
+'Python version: 3.6'
+>>> 'We have %d apple, %d banana' % (10, 20)
+'We have 10 apple, 20 banana'
+>>> 'Hello, %s' % ('Denny')
+'Hello Denny'
+從今天開始，忘了它。
+
+02. str.format
+PEP 3101 帶來了 str.format()，讓我們可以用 .format 的方式來格式化字串：
+
+
+>>> 'Python version: {:.5f}'.format(3.6)
+'Python version: 3.60000'
+>>> 'Hello {name:*^15}'.format(name='foobar')
+'Hello ****foobar*****'
+>>> for base in 'dXob':
+...     print('{:{width}{base}}'.format(15, base=base, width=5))
+... 
+   15
+    F
+   17
+ 1111
+各種技巧請參考：Format Specification Mini-Language
+
+從今天開始，忘了它。
+
+03. f-string
+PEP 498 帶來了 f-string，它的學名叫作 “Literal String Interpolation”。用法如下：
+
+>>> def upper(s):
+...     return s.upper()
+...
+>>> stock = 'tsmc'
+>>> close = 217.5
+>>> f'{stock} price: {close}'
+'tsmc price: 217.5'
+還可以這樣：
+
+Python
+1
+2
+3
+>>> f'{upper(stock)} price: {close}'
+'TSMC price: 217.5'
+>>>
+從今天開始使用 f-string!
