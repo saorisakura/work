@@ -1,0 +1,232 @@
+3.3 Tornado源码阅读：asyncio：循环
+
+asyncio里面的循环
+asyncio执行模式很多，这里只分析Tornado所使用的死循环模式。
+
+主循环
+asyncio的主循环方法是run_forever：
+
+    def run_forever(self):
+        """
+        Run until stop() is called.
+        运行直到stop()方法被调用
+        """
+        # 检测是否关闭
+        self._check_closed()
+        # 检测event loop是否已经开启了
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        # 检测其他event loop是否已经开启了
+        if events._get_running_loop() is not None:
+            raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+        # 设置错误跟踪
+        self._set_coroutine_origin_tracking(self._debug)
+        # 设置获得线程id
+        self._thread_id = threading.get_ident()
+        
+        # 设置钩子相关，在event loop第一次执行和最后执行，是一个协程生成器
+        old_agen_hooks = sys.get_asyncgen_hooks()
+        sys.set_asyncgen_hooks(firstiter=self._asyncgen_firstiter_hook,
+                               finalizer=self._asyncgen_finalizer_hook)
+        try:
+            # 往event loop中加入自己（BaseEventLoop类）
+            events._set_running_loop(self)
+            # 开始执行主循环
+            while True:
+                # 执行循环的一步
+                self._run_once()
+                # 如果_stopping则退出
+                if self._stopping:
+                    break
+        finally:
+            # 退出操作
+            self._stopping = False
+            self._thread_id = None
+            events._set_running_loop(None)
+            self._set_coroutine_origin_tracking(False)
+            sys.set_asyncgen_hooks(*old_agen_hooks)
+主循环方法只是确认情况开始了主循环，每一步循环都由在_run_once方法执行
+
+    def _run_once(self):
+        """运行event loop中的一步.
+
+        这一步调用所有当前准备好的回调函数和IO轮询，调度回调产生
+        结果，最后调度`call_later`回调函数.
+        """
+
+        # 调度执行计数
+        sched_count = len(self._scheduled)
+        if (sched_count > _MIN_SCHEDULED_TIMER_HANDLES and
+            self._timer_cancelled_count / sched_count >
+                _MIN_CANCELLED_TIMER_HANDLES_FRACTION):
+            # Remove delayed calls that were cancelled if their number
+            # is too high
+            # 当调度执行里面的延迟句柄太多并且取消了的延迟句柄太多时
+            # 会删除取消了的延迟句柄
+            # 这里的两个情况是延迟句柄大于100和取消的调度器占调度器
+            # 总数的一半或以上时
+            
+            # 这里执行的是剔除取消了的调度器
+            new_scheduled = []
+            for handle in self._scheduled:
+                if handle._cancelled:
+                    handle._scheduled = False
+                else:
+                    new_scheduled.append(handle)
+
+            # 将list转化为堆队列，更加时间判断优先级，可以加快执行速度
+            heapq.heapify(new_scheduled)
+            self._scheduled = new_scheduled
+            # 取消的延迟句柄计数器清零
+            self._timer_cancelled_count = 0
+        else:
+            # Remove delayed calls that were cancelled from head of queue.
+            # 清除堆队列前取消了的延迟句柄
+            while self._scheduled and self._scheduled[0]._cancelled:
+                self._timer_cancelled_count -= 1
+                handle = heapq.heappop(self._scheduled)
+                handle._scheduled = False
+
+
+        # 设置超时时间
+        timeout = None
+        if self._ready or self._stopping:
+            timeout = 0
+        elif self._scheduled:
+            # Compute the desired timeout.
+            when = self._scheduled[0]._when
+            timeout = max(0, when - self.time())
+
+        # debug模式下显示信息
+        if self._debug and timeout != 0:
+            t0 = self.time()
+            event_list = self._selector.select(timeout)
+            dt = self.time() - t0
+            if dt >= 1.0:
+                level = logging.INFO
+            else:
+                level = logging.DEBUG
+            nevent = len(event_list)
+            if timeout is None:
+                logger.log(level, 'poll took %.3f ms: %s events',
+                           dt * 1e3, nevent)
+            elif nevent:
+                logger.log(level,
+                           'poll %.3f ms took %.3f ms: %s events',
+                           timeout * 1e3, dt * 1e3, nevent)
+            elif dt >= 1.0:
+                logger.log(level,
+                           'poll %.3f ms took %.3f ms: timeout',
+                           timeout * 1e3, dt * 1e3)
+        else:
+            # 设置select模块的超时时间
+            event_list = self._selector.select(timeout)
+        # 处理变为可读可写的事件，下面会说明
+        self._process_events(event_list)
+
+        # Handle 'later' callbacks that are ready.
+        # 这里处理一下延迟句柄的情况，看看最早需要调用的延时句柄
+        # 是否已经准备好
+        end_time = self.time() + self._clock_resolution
+        while self._scheduled:
+            # 判断优先级最高的句柄的处理时间
+            handle = self._scheduled[0]
+            # 如果没到最早需要调用的时间，就退出这个延迟句柄处理
+            if handle._when >= end_time:
+                break
+            # 取出这个延迟句柄
+            handle = heapq.heappop(self._scheduled)
+            # 关闭这个句柄的调度
+            handle._scheduled = False
+            # 在_ready里面加入这个延迟句柄，可以执行了
+            self._ready.append(handle)
+            
+
+        # This is the only place where callbacks are actually *called*.
+        # All other places just add them to ready.
+        # Note: We run all currently scheduled callbacks, but not any
+        # callbacks scheduled by callbacks run this time around --
+        # they will be run the next time (after another I/O poll).
+        # Use an idiom that is thread-safe without using locks.
+        # 看看上面官方的注释，写得多清楚，看不懂的我这里翻译一下：
+        # 这里是唯一一个回调函数被调用的地方。所有其他地方仅仅是将它们
+        # 加入准备（_ready）
+        # 注意：我们运行所有当前预定的回调函数，但延时句柄下一轮运行
+        ntodo = len(self._ready)
+        for i in range(ntodo):
+            handle = self._ready.popleft()
+            if handle._cancelled:
+                continue
+            if self._debug:
+                try:
+                    self._current_handle = handle
+                    t0 = self.time()
+                    handle._run()
+                    dt = self.time() - t0
+                    if dt >= self.slow_callback_duration:
+                        logger.warning('Executing %s took %.3f seconds',
+                                       _format_handle(handle), dt)
+                finally:
+                    self._current_handle = None
+            else:
+                handle._run()
+        handle = None  # Needed to break cycles when an exception occurs.
+其中的select执行的操作也是取出可读或可写的文件描述器对应的事件
+
+    def select(self, timeout=None):
+        timeout = None if timeout is None else max(timeout, 0)
+        ready = []
+        try:
+            r, w, _ = self._select(self._readers, self._writers, [], timeout)
+        except InterruptedError:
+            return ready
+        r = set(r)
+        w = set(w)
+        for fd in r | w:
+            events = 0
+            if fd in r:
+                events |= EVENT_READ
+            if fd in w:
+                events |= EVENT_WRITE
+
+            key = self._key_from_fd(fd)
+            if key:
+                ready.append((key, events & key.events))
+        return ready
+而_process_events方法则是将取出的事件添加到调度执行（_scheduled）或是可执行句柄（_ready）中：
+
+    def _process_events(self, event_list):
+        for key, mask in event_list:
+            fileobj, (reader, writer) = key.fileobj, key.data
+            if mask & selectors.EVENT_READ and reader is not None:
+                if reader._cancelled:
+                    self._remove_reader(fileobj)
+                else:
+                    # 增加可读的回调函数
+                    self._add_callback(reader)
+            if mask & selectors.EVENT_WRITE and writer is not None:
+                if writer._cancelled:
+                    self._remove_writer(fileobj)
+                else:
+                    # 增加可写的回调函数
+                    self._add_callback(writer)
+这个是执行放入的方法：
+
+    def _add_callback(self, handle):
+        """Add a Handle to _scheduled (TimerHandle) or _ready."""
+        assert isinstance(handle, events.Handle), 'A Handle is required here'
+        if handle._cancelled:
+            return
+        assert not isinstance(handle, events.TimerHandle)
+        self._ready.append(handle)
+副循环？
+可以看到这里只有run_forever主循环调用了_run_once方法（执行一步），那是不是没有副循环呢？
+
+其实还不是的，这里不仅有副循环，还是两个。其中一个是_run_once里面调用的_process_events方法，一个是_run_once里面循环处理_ready那里的循环。
+
+所以实际上，主循环的每一步都会：
+
+处理所有的可执行IO事件（注意这里是不执行的哦）
+执行所有的可执行句柄（handle）
+当然，_run_once方法里面还会有一些其他的方法用于处理的事情（延迟句柄），但这些不是重点
