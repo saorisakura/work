@@ -1,0 +1,188 @@
+2.8 Tornado源码阅读：官方示例：开启IOLoop
+
+add_accept_handler中的IOLoop.current()会将进行IOLoop的创建。可以看到，创建IOLoop最先是是调用了IOLoop.current()这个方法，这是个静态方法
+
+    @staticmethod
+    def current(instance=True):
+        """返回当前线程的`IOLoop`.
+        
+        如果`IOLoop`已经运行了，或者被`make_current`标记为当前，则
+        返回这个实例，如果没有，则创建一个.
+        """
+        # 旧版本的Python中可能没有asyncio，所以要使用IOLoop._current
+        # 属性来指向当前线程的IOLoop
+        if asyncio is None:
+            current = getattr(IOLoop._current, "instance", None)
+            if current is None and instance:
+                current = IOLoop()
+                if IOLoop._current.instance is not current:
+                    raise RuntimeError("new IOLoop did not become current")
+        else:
+            try:
+                # 该方法会返回asyncio模块的EventLoop引用
+                # 如果没有则新建一个
+                loop = asyncio.get_event_loop()
+            except (RuntimeError, AssertionError):
+                if not instance:
+                    return None
+                raise
+            try:
+                # 返回当前线程的IOLoop对象，要是没创建就会报KeyError错误
+                # _ioloop_for_asyncio是一个字典，里面放着的是asyncio的loop
+                # 和Tornado的IOLoop对象关系的映射
+                return IOLoop._ioloop_for_asyncio[loop]
+            except KeyError:
+                if instance:
+                    from tornado.platform.asyncio import AsyncIOMainLoop
+                    # 这里会进行当前线程的IOLoop对象的创建
+                    current = AsyncIOMainLoop(make_current=True)
+                else:
+                    current = None
+        return current
+实际上，IOLoop对象创建并不是直接调用IOLoop类来创建的，而是使用了BaseAsyncIOLoop的初始化方法，AsyncIOMainLoop的初始化方法没干什么事情，仅仅是调用了super，所以这里看看BaseAsyncIOLoop的初始化方法：
+
+class BaseAsyncIOLoop(IOLoop):
+    def initialize(self, asyncio_loop, **kwargs):
+        # AsyncIOMainLoop中把asyncio.get_event_loop()传了进来
+        # 所以实际上self.asyncio_loop = asyncio.get_event_loop()
+        self.asyncio_loop = asyncio_loop
+        # Maps fd to (fileobj, handler function) pair (as in IOLoop.add_handler)
+        # 用于装载回调函数的相关东西
+        self.handlers = {}
+        # Set of fds listening for reads/writes
+        self.readers = set()
+        self.writers = set()
+        # 标记这个IOLoop是否关闭
+        self.closing = False
+        # If an asyncio loop was closed through an asyncio interface
+        # instead of IOLoop.close(), we'd never hear about it and may
+        # have left a dangling reference in our map. In case an
+        # application (or, more likely, a test suite) creates and
+        # destroys a lot of event loops in this way, check here to
+        # ensure that we don't have a lot of dead loops building up in
+        # the map.
+        #
+        # TODO(bdarnell): consider making self.asyncio_loop a weakref
+        # for AsyncIOMainLoop and make _ioloop_for_asyncio a
+        # WeakKeyDictionary.
+        # 检测有没有已经关闭的IOLoop，并映射字典中的相关数据
+        for loop in list(IOLoop，._ioloop_for_asyncio):
+            if loop.is_closed():
+                del IOLoop._ioloop_for_asyncio[loop]
+        # 将自己加入映射字典中，asyncio_loop = asyncio.get_event_loop()
+        IOLoop._ioloop_for_asyncio[asyncio_loop] = self
+        # 调用IOLoop类的初始化方法
+        super(BaseAsyncIOLoop, self).initialize(**kwargs)
+BaseAsyncIOLoop的初始化方法又会调用IOLoop类的初始化方法：
+
+    def initialize(self, make_current=None):
+        # 因为current传入了make_current=True，所以这里不会执行任何操作
+        # 这里主要是调用make_current方法，作用大致也是创建IOLoop
+        if make_current is None:
+            if IOLoop.current(instance=False) is None:
+                self.make_current()
+        elif make_current:
+            current = IOLoop.current(instance=False)
+            # AsyncIO loops can already be current by this point.
+            # 异步IO循环可以在这一刻成为当前循环
+            if current is not None and current is not self:
+                raise RuntimeError("current IOLoop already exists")
+            self.make_current()
+这里还是涉及到一个make_current方法：
+
+    def make_current(self):
+        # AsyncIOMainLoop already refers to the current asyncio loop so
+        # nothing to do here.
+        pass
+因为使用的是AsyncIOMainLoop来进行创建的，所以默认的逻辑已经是当前的事件循环，所以这里啥都没干。但是在旧版本中，并非使用这样的逻辑，所以这个方法就非常重要了。
+
+然后，控制权回到之前的add_accept_handler方法，它之后调用了IOLoop对象的add_handler方法，将socket和accept_handler传入：
+
+    def add_handler(self, fd, handler, events):
+        fd, fileobj = self.split_fd(fd)
+        if fd in self.handlers:
+            raise ValueError("fd %s added twice" % fd)
+        self.handlers[fd] = (fileobj, stack_context.wrap(handler))
+        if events & IOLoop.READ:
+            # 在事件循环中的reader容器中加入相应的内容
+            self.asyncio_loop.add_reader(
+                fd, self._handle_events, fd, IOLoop.READ)
+            self.readers.add(fd)
+        if events & IOLoop.WRITE:
+            # 在事件循环中的writer容器中加入相应的内容
+            self.asyncio_loop.add_writer(
+                fd, self._handle_events, fd, IOLoop.WRITE)
+            self.writers.add(fd)
+通过上面一连串调用，实际上会在当前进程创建了一个IOLoop，这里是一个AsyncIOMainLoop实例对接的asyncio的事件循环，由asyncio主要控制。
+
+再往回看到add_sockets方法，他接受的第二个参数应该是一个回调函数，并且会在其中的accept_handler方法执行。实际传入add_sockets的第二个参数是self._handle_connection。这个方法会在完成处理后调用的：
+
+    def _handle_connection(self, connection, address):
+        # 处理ssl安全相关的问题
+        if self.ssl_options is not None:
+            assert ssl, "Python 2.6+ and OpenSSL required for SSL"
+            try:
+                connection = ssl_wrap_socket(connection,
+                                             self.ssl_options,
+                                             server_side=True,
+                                             do_handshake_on_connect=False)
+            except ssl.SSLError as err:
+                if err.args[0] == ssl.SSL_ERROR_EOF:
+                    return connection.close()
+                else:
+                    raise
+            except socket.error as err:
+                # If the connection is closed immediately after it is created
+                # (as in a port scan), we can get one of several errors.
+                # wrap_socket makes an internal call to getpeername,
+                # which may return either EINVAL (Mac OS X) or ENOTCONN
+                # (Linux).  If it returns ENOTCONN, this error is
+                # silently swallowed by the ssl module, so we need to
+                # catch another error later on (AttributeError in
+                # SSLIOStream._do_ssl_handshake).
+                # To test this behavior, try nmap with the -sT flag.
+                # https://github.com/tornadoweb/tornado/pull/750
+                if errno_from_exception(err) in (errno.ECONNABORTED, errno.EINVAL):
+                    return connection.close()
+                else:
+                    raise
+        try:
+            if self.ssl_options is not None:
+                stream = SSLIOStream(connection,
+                                     max_buffer_size=self.max_buffer_size,
+                                     read_chunk_size=self.read_chunk_size)
+            else:
+                stream = IOStream(connection,
+                                  max_buffer_size=self.max_buffer_size,
+                                  read_chunk_size=self.read_chunk_size)
+
+            future = self.handle_stream(stream, address)
+            if future is not None:
+                IOLoop.current().add_future(gen.convert_yielded(future),
+                                            lambda f: f.result())
+        except Exception:
+            app_log.error("Error in connection callback", exc_info=True)
+总结一下app.listen(8888)这行代码，本质上就是
+
+创建HTTP服务器
+（在HTTP服务器过程中）创建TCP服务器
+将创建的TCP套接字绑进IOLoop当中
+那么，下面就是执行tornado.ioloop.IOLoop.current().start()了。上面可以知道IOLoop.current()实际上会返回一个AsyncIOMainLoop对象，而AsyncIOMainLoop本身没有start方法，所以还是会调用BaseAsyncIOLoop的start方法
+
+    def start(self):
+        try:
+            # 看看当前的asyncio的EventLoop有没有东西，取出来
+            old_loop = asyncio.get_event_loop()
+        except (RuntimeError, AssertionError):
+            old_loop = None
+        try:
+            # 记录信息和异常
+            self._setup_logging()
+            # 设置EventLoop
+            asyncio.set_event_loop(self.asyncio_loop)
+            # 持续运行EventLoop
+            self.asyncio_loop.run_forever()
+        finally:
+            # 保证旧的EventLoop不丢失
+            asyncio.set_event_loop(old_loop)
+而这个方法本身其实是调用asyncio来执行写协程的EventLoop来管理协程，所以这里的start方法也只是开启了asyncio的事件循环
