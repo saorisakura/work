@@ -180,3 +180,181 @@ if __name__ == '__main__':
     sched = Scheduler()
     EchoServer(('',16000),sched)
     sched.run()
+
+1.2.2前言：异步网络框架基础：网络框架的初始化
+
+延续上篇，看看示例代码的执行过程
+
+任务调度器实例
+第一步运行的代码是
+
+sched = Scheduler()
+这里初始化了初始化了一个调度器实例（Scheduler）
+
+# Task Scheduler
+# 任务调度器
+class Scheduler:
+    # 初始化方法，初始化时只执行这个方法
+    def __init__(self):
+        # 任务总数
+        self._numtasks = 0      
+        # 准备去运行的任务
+        self._ready = deque()    
+        # 等待去执行读操作的任务
+        self._read_waiting = {}  
+        # 等待去执行写操作的任务
+        self._write_waiting = {} 
+
+    # Poll for I/O events and restart waiting tasks
+    # IO事件池子和重启等待的任务
+    def _iopoll(self):
+        # select方法是模块是系统提供的一个支持多个文件描述符上
+        # 的异步I/O的方法。select这个模块下面会详细说明。
+        # 这里是将准备好等待读写的任务放到select当中，当变成可读
+        # 或者可写的时候，就返回到rset,wset
+        rset,wset,eset = select(self._read_waiting,
+                                self._write_waiting,[])
+        for r in rset:
+            # 取出可以读的任务，并执行
+            evt, task = self._read_waiting.pop(r)
+            evt.handle_resume(self, task)
+        for w in wset:
+            # 取出可以写的任务，并执行
+            evt, task = self._write_waiting.pop(w)
+            evt.handle_resume(self, task)
+
+    def new(self,task):
+        '''
+        Add a newly started task to the scheduler
+        添加一个新开始的任务到调度器里面
+        '''
+
+        self._ready.append((task, None))
+        self._numtasks += 1
+
+    def add_ready(self, task, msg=None):
+        '''
+        Append an already started task to the ready queue.
+        msg is what to send into the task when it resumes.
+        '''
+        self._ready.append((task, msg))
+
+    # Add a task to the reading set
+    # 把任务加到等待读集合当中
+    def _read_wait(self, fileno, evt, task):
+        self._read_waiting[fileno] = (evt, task)
+
+    # Add a task to the write set
+    # 把任务加到等待写集合当中
+    def _write_wait(self, fileno, evt, task):
+        self._write_waiting[fileno] = (evt, task)
+
+    def run(self):
+        '''
+        Run the task scheduler until there are no tasks
+        运行任务调度器直到没有任务
+        '''
+        # 但存在任务的时候执行循环
+        while self._numtasks:
+            # 没有准备运行的任务
+            if not self._ready:
+                # 执行iopoll，看看有没有准备好的读写
+                self._iopoll()
+            task, msg = self._ready.popleft()
+            try:
+                # Run the coroutine to the next yield
+                # 运行协程直到下一个yield
+                r = task.send(msg)
+                if isinstance(r, YieldEvent):
+                    r.handle_yield(self, task)
+                else:
+                    raise RuntimeError('unrecognized yield event')
+            except StopIteration:
+                # 任务执行完后_numtasks数量-1
+                self._numtasks -= 1
+这里只是初始化了一个任务调度器实例，并没有执行其他操作。但可以看到的是，在这里面的_iopoll方法，涉及到一个select模块的select方法
+
+rset,wset,eset = select(self._read_waiting, self._write_waiting,[])
+
+
+等待一个或多个为某种I/O准备就绪的文件描述符（文件句柄）
+前三个参数是要等待的文件描述符序列：
+RLIST——等待阅读准备
+WRIST——等待准备写作
+XLIST——等待“例外情况”，如果只需要一种条件，则使用[]代替其他情况。
+文件描述符是可以被fileno()方法调用得到的套接字、文件对象或是小整数。
+
+第四个可选参数是超时时间（单位：秒，可以使用float类型的更加精确的
+控制时间），如果没有则不会超时
+
+返回值是一个元组含有三个list包含对应传入的三个参数，每个list包含
+相应文件描述符的子集
+
+**在window系统只支持套接字**
+
+
+不是很清楚？的确，这里的说明仅仅只是介绍了这个方法如何使用，并未详细的介绍原理和作用。
+
+关于这个方法真正的作用，我这里找到两篇文章来说明，如果想深入研究，大概了解一下就可以了
+
+Python Select 解析
+Python select
+可以看出，select是涉及非常底层的内容。当然，这个理解这个网络框架并不需要太过深入的了解select的原理和源代码这些内容。只需要理解select的作用即可：
+
+它监控sockets,open files, and pipes(所有带fileno()方法的文件句柄)何时变成readable 和writeable, 或者通信错误，select()使得同时监控多个连接变的简单，并且这比写一个长循环来等待和监控多客户端连接要高效，因为select直接通过操作系统提供的C的网络接口进行操作，而不是通过Python的解释器。
+那么select在这个网络框架里面起什么作用那？简单来说，这个网络框架利用select来的监控套接字读写情况的，省去了网络框架自己去做轮训和检查套接字情况，而是调用更底层的方法，达道更高的效率。
+
+实际传入的结构为{xx.fileno:(evt, task), ...}的字典，当key变为可读（或可写）时，会返回含有value的list：[(evt, task), ...],当网络框架收到返回的list的时候，就会用evt去执行对应方法（传入task）（select方法的默认情况，即这个网络框架的用法下。如果传入超时时间会有多种情况）
+
+在这个网络框架中，对select有了以上的基础了解就足够进行下面的分析了。
+
+异步服务器实例
+这里是第二步运行的代码
+
+EchoServer(('',16000),sched)
+这里是启动了一个Echo服务器，来看看源码吧
+
+    # Echo server using generators
+    # Echo服务器使用的是生成器
+    class EchoServer:
+    
+        def __init__(self,addr,sched):
+            # 传入了刚刚建立的任务调度器
+            self.sched = sched
+            # 调用任务调度器的new方法添加一个新的任务到调度器里面
+            # 这个任务是Echo服务器的server_loop
+            sched.new(self.server_loop(addr))
+
+        def server_loop(self,addr):
+            # 建立套接字（带包装的）
+            s = Socket(socket(AF_INET,SOCK_STREAM))
+            # 绑定地址
+            s.bind(addr)
+            # 监听端口
+            s.listen(5)
+            # 循环接受连接，使用生成器模式调用
+            while True:
+                c,a = yield s.accept()
+                print('Got connection from ', a)
+                # 接受到连接后调用任务调度器的new方法添加一个新的
+                # 任务到调度器里面，处理客户请求
+                self.sched.new(self.client_handler(Socket(c)))
+
+        def client_handler(self,client):
+            # 连接处理循环，使用生成器模式调用
+            while True:
+                # 获取客户端请求
+                line = yield from readline(client)
+                if not line:
+                    break
+                line = b'GOT:' + line
+                while line:
+                    nsent = yield client.send(line)
+                    line = line[nsent:]
+            client.close()
+            print('Client closed')
+可以看到，Echo服务器初始化后就会往任务调度器添加一个新的服务器任务（server_loop），但因为任务调度器没有启动，所以这里添加完任务后进步不会进行下一步操作了。
+
+而初始化时服务器以及将自己的server_loop和任务调度器进行了绑定，所以之后只需要由任务调度器进行管理进行，不需要再由用户对服务器进行额外的操作
+
+之后到了关键的一步，但这里的情况比较复杂，所以在下一篇文章里面再对它详细的分析。
