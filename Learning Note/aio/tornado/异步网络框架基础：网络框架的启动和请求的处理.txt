@@ -1,0 +1,252 @@
+1.2.3前言：异步网络框架基础：网络框架的启动和请求的处理
+
+终于来到这个网络框架最重要的地方了，需要好好的分析一番
+
+任务调度器启动
+这一步执行的代码是
+
+sched.run()
+虽然之前的文章已经出现过它的带注释版本，但因为它太重要了，这里再来看看
+
+    def run(self):
+        '''
+        Run the task scheduler until there are no tasks
+        运行任务调度器直到没有任务
+        '''
+        # 但存在任务的时候执行循环
+        while self._numtasks:                  # 1
+            # 有准备运行的任务
+            if not self._ready:                # 2
+                # 执行iopoll的
+                self._iopoll()                 # 3
+            task, msg = self._ready.popleft()  # 4
+            try:
+                # Run the coroutine to the next yield
+                # 运行协程直到下一个yield
+                r = task.send(msg)             # 5
+                if isinstance(r, YieldEvent):
+                    r.handle_yield(self, task) # 6
+                else:
+                    raise RuntimeError('unrecognized yield event')
+            except StopIteration:
+                self._numtasks -= 1            # 7
+第一轮主循环
+循环启动
+从#1处可以看出，如果self._numtasks里面有东西，就代表有待执行的任务，那么这个循环就会一直执行下去，这里这个循环就是这个网络框架的主循环。
+
+运行到sched.run()的时候，self._numtasks里面是有东西的，因为在上面一步启动初始化Echo服务器实例时，调用任务调度器的new 方法的时候，会将增加任务调度器的self._numtasks加1，并且会往self._ready加入一个(server_loop(), None)
+
+判断是否有准备好可以执行的任务
+到了#2这里，网络框架会查看是否有准备好可以执行的任务，如果有则会跳过_iopoll方法。这里因为self._ready是有东西的，_iopoll方法并不会执行，所以暂时先不关系它到底会做什么，等到下面执行到时再分析
+
+取出可以执行的任务
+#3这里会取出这时self._ready里面唯一的元素：(server_loop(), None)，并且赋值给变量方便后面进行执行：
+
+task = server_loop()msg = None
+启动生成器
+根据之前的说明，可以知道，在#5处实际执行的代码是：
+
+server_loop().send(None)
+这里就会启动server_loop这个生成器，并将一个s.accept()返回给r。
+
+这个东西是什么呢？那必须先看看服务器的源码：
+
+s = Socket(socket(AF_INET,SOCK_STREAM))
+可以看出，这是一个用于包装套接字对象的Socket类实例对象：
+
+# Wrapper around a socket object for use with yieldclass Socket(object):    def __init__(self, sock):
+        self._sock = sock
+
+    def recv(self, maxbytes):
+        return ReadSocket(self._sock, maxbytes)
+
+    def send(self, data):
+        return WriteSocket(self._sock, data)
+
+    def accept(self):
+        return AcceptSocket(self._sock)
+
+    def __getattr__(self, name):
+        return getattr(self._sock, name)
+所以，s.accept()实际上是一个AcceptSocket类实例：
+
+class AcceptSocket(YieldEvent):
+    def __init__(self, sock):
+        self.sock = sock
+
+    # handle_yield方法，在任务调度器的等待读列表里面添加当前套接字的fileno()
+    def handle_yield(self, sched, task):
+        sched._read_wait(self.sock.fileno(), self, task)
+
+    # handle_resume方法，select返回后会被执行
+    def handle_resume(self, sched, task):
+        # 获得接受内容
+        r = self.sock.accept()
+        # 传入任务调度器的ready当中
+        sched.add_ready(task, r)
+这个对象在初始化的时候并不会执行什么操作
+
+调用handle_yield方法
+在这个网络框架中，handle_yield是一个标准方法，因为任务调度器只会YieldEvent类标准的子类执行这个方法进行操作。 先看看什么是YieldEvent类：
+
+# This class represents a generic yield event in the scheduler
+class YieldEvent:
+    def handle_yield(self, sched, task):
+        pass
+
+    def handle_resume(self, sched, task):
+        pass
+YieldEvent类的作用类似抽象类，规定了这个类的子类必须拥有的两个方法handle_yield和handle_resume，这两个方法一个会被主循环调用，另一个会被_iopoll方法里面的副循环调用，后面用到会分析到。
+
+为什么要这么做？
+
+进行这么做其实类似于定了一个“协议”，任务调度器只会执行实现了这两个方法的YieldEvent子类，而如果需要被任务调度器执行，那必须是一个实现了这两个方法的YieldEvent子类，这样做可以方便任务调度器运行和用户定义自己的类。当然，这里这两个方法也会有一点技巧
+
+回到执行本身，#6会执行的是上面取出来的AcceptSocket类实例对象的handle_yield方法。这个方法会往任务调度器的_read_waiting里面加入一个{sock.fileno():(AcceptSocket类实例对象, 上面启动了的server_loop生成器)}（AcceptSocket类实例对象里面有启动了的服务器的套接字）。
+
+任务调度器的_read_waiting（等待读的任务）里面加入了第一个元素，，这个时候，就可以利用底层的select监控_read_waiting，网络框架就不会再管理这个这个套接字什么时候接收到请求了。
+
+到这里，第一轮主循环就执行完了，回顾一下现在任务调度器是什么情况吧
+
+self._numtasks       # = 1，服务器启动时进行了加1
+self._ready          # 空
+self._read_waiting   # {sock.fileno():(AcceptSocket类实例对象, 上面启动了的server_loop生成器)}，可以托管给select了
+self._write_waiting  # 空
+第二轮主循环
+因为只要服务器启动，self._numtasks至少都为1，所以这个循环在服务器启动的时候是不会停止的
+
+判断是否有准备好可以执行的任务
+因为self._ready里面空空如也，所以运行到#2处时，就会去执行_iopoll方法
+
+IO循环：运行
+这里会第一次的执行#3处的代码，会第一次运行_iopoll方法：
+
+    # Poll for I/O events and restart waiting tasks
+    # IO事件池子和重启等待的任务
+    def _iopoll(self):
+        # select方法是模块是系统提供的一个支持多个文件描述符上
+        # 的异步I/O的方法。select这个模块下面会详细说明。
+        # 这里是将准备好等待读写的任务放到select当中，当变成可读
+        # 或者可写的时候，就返回到rset,wset
+        rset,wset,eset = select(self._read_waiting,
+                                self._write_waiting,[])
+        for r in rset:
+            # 取出可以读的任务，并执行
+            evt, task = self._read_waiting.pop(r)
+            evt.handle_resume(self, task)
+        for w in wset:
+            # 取出可以写的任务，并执行
+            evt, task = self._write_waiting.pop(w)
+            evt.handle_resume(self, task)
+简单的分析下这个方法做了什么事情：讲等待读的任务和等待写的任务都扔给底层的select管理，如果只有有一个元素（dict的key））变为可读或可写（select监控的可读列表里面的变为可读，select监控的可写列表里面的变为可写）就会返回对应元素的list，当然多个被监控的元素发生对应变化都会返回。
+
+这里也需要知道的是，当没有元素变化的时候，select是阻塞的（select方法的默认情况下，传入超时时间会有多种情况）。所以，如果没有客户端请求进来，那么套接字就不会变为可读，那么select没有东西可以返回。这么做其实是有好处的，专业的事情交给专业的人来做，不需要网络框架自行阻塞的去等待连接，只需要在网络框架“空闲”的时候询问下select就好了。更底层的框架回去考虑各种问题，并且效率会比Python这个高级语言更快，而且网络框架可以更加专注于自己的任务，而不用过多的考虑底层连接的问题。
+
+IO循环：一个客户端请求
+当一个客户端请求传入后，select会立刻返回，所以这个时候rset的情况是[(AcceptSocket类实例对象, 上面启动了的server_loop生成器)]，AcceptSocket类实例对象的套接字已经接收到一个客户端请求的。在后面的循环中这个元组的元素会被取出，并执行AcceptSocket.handle_resume(Scheduler, server_loop())。
+
+这个方法会获取这个客户端请求，并执行任务调度器的add_ready方法，它会往任务调度器的_ready加入一个(server_loop(), sock.accept())，表明接收到客户端连接，可以执行操作（读操作）。
+
+到这里，这一轮的执行完毕，继续回到任务调度器的run方法的主循环当中。
+
+获取客户端请求
+在run的#4处，刚加入的元素又会被取出来，由主循环执行下一步的读操作。
+
+在#5出，实际执行的代码是server_loop().send(sock.accept())。server_loop回去调用任务调度器的new方法，往，它的的_ready（此刻为空）里面加入一个(client_handler(Socket(socket)，None), None)，最里面的socket是接收到的客户端连接，然后sock.accept会给主循环返回一个新的AcceptSocket类实例对象。
+
+建立新的对象用于接收新请求
+需要注意的是，尽管网络框架已经知道有请求进来，并且开始进行一个操作，但对这个请求的处理并不是这个时刻最重要的任务。这个时候最重要的是要新建一个可以可以接受连接的元素并放入_read_waiting里面，让任务调度器在空闲的时候可以随时最新进的请求就行处理。
+
+所以#6处执行的操作和第一轮循环的将{sock.fileno():(AcceptSocket类实例对象, 之前的server_loop生成器)}放入_read_waiting是一样的
+
+到这里，第二轮主循环就执行完了，回顾一下现在任务调度器是什么情况吧
+
+self._numtasks       # = 2，一个服务器任务，一个客户端请求处理任务
+self._ready          # [(client_handler(Socket(socket)，None)]
+self._read_waiting   # {sock.fileno():(AcceptSocket类实例对象, 之前的server_loop生成器)}，可以托管给select了
+self._write_waiting  # 空
+第三轮主循环
+开始接收第一个客户端请求
+到了第三轮循环，任务调度器终于开始考虑处理第一个新进的请求了。
+
+self._numtasks为2，self._ready第一个元素为(client_handler(Socket(socket)，None)，所以执行到任务调度器主循环run方法的#4处时，被取出的肯定就是这个客户端请求了。
+
+启动客户请求处理器
+虽然说已经开始处理这个请求了，但是过程并不是想象的那么简单。在#5处，启动了client_handler这个生成器，回顾一下client_handler都有什么吧。
+
+        def client_handler(self,client):
+            # 连接处理循环，使用生成器模式调用
+            while True:
+                # 获取客户端请求
+                line = yield from readline(client)
+                if not line:
+                    break
+                line = b'GOT:' + line
+                while line:
+                    nsent = yield client.send(line)
+                    line = line[nsent:]
+            client.close()
+            print('Client closed')
+可以看到，由于这里的有yield from关键字，所以实际启动后会变成先要执行完后面这个readline生成器再继续执行它本身。看看这个生成器是什么。
+
+    # Example of a function involving generators.  This should
+    # be called using line = yield from readline(sock)
+    def readline(sock):
+        chars = []
+        while True:
+            c = yield sock.recv(1)
+            if not c:
+                break
+            chars.append(c)
+            if c == b'\n':
+                break
+        return b''.join(chars)
+简单来说，这个生成器用来读取客户端请求的。但这里并不是直接进行读取，启动后先返回的是sock.recv(1)。从传入的参数可知，这个东西其实Socket类的recv方法，返回一个ReadSocket类实例对象。
+
+class ReadSocket(YieldEvent):    
+    def __init__(self, sock, nbytes):
+        self.sock = sock
+        self.nbytes = nbytes
+
+    def handle_yield(self, sched, task):
+        sched._read_wait(self.sock.fileno(), self, task)
+
+    def handle_resume(self, sched, task):
+        data = self.sock.recv(self.nbytes)
+        sched.add_ready(task, data)
+准备开始读取第一个客户端请求
+在主循环run的#6处，会执行ReadSocket对象的handle_yield方法。类似的内容上面已经分析过了，这里简单的讲就是在_read_wait加入一个{sock.fileno():(ReadSocket类实例对象, 启动了的client_handler生成器)}。
+
+为什么感觉执行的内容和上面某一步的重复了？
+
+其实并没有，仔细看可以知道，虽然还是往_read_wait里面加入的还是这个连接为key的一个dict元素，但是这个连接对应的value的元组内容则完全不一样了。虽然都是这个连接，但是上面那步的含义是由客户端生成器主导，接收新入连接，而这里的含义是由客户端请求处理器主导，处理客户端请求的读取。
+
+到这里，第三轮主循环就执行完了，回顾一下现在任务调度器是什么情况吧
+
+self._numtasks       # = 2，一个服务器任务，一个客户端请求处理任务
+self._ready          # 空
+self._read_waiting   # {sock.fileno():(AcceptSocket类实例对象, 之前的server_loop生成器)， sock.fileno():(ReadSocket类实例对象, 启动了的client_handler生成器)}，这里的两个sock.fileno()不是同一个东西哦
+self._write_waiting  # 空
+读取第一个客户端请求
+程序执行到这里，会进入到第四轮的主循环，而因为_ready此时为空，所以必然会去执行IO循环，但_read_waiting里面有两个元素，就可能会产生分支。
+
+可能存在的分支
+
+简单说明就是如果第一个客户端请求的客户端连接不断，那它对应的元素sock.fileno()为可读，肯定会被取出。而如果已经有其他的请求传入时，另一个用于接收的元素也会变为可读。所以这里有可能，两个元素被取出来，那么执行到主循环的时候，就不一样是进行第一个客户端请求的读取操作，而是执行了获取第二个客户端的请求操作了。
+
+当然实际上服务器刚刚上线才开始处理第一个客户端请求，这么短的时间内第二个客户端的请求就进来了的可能性基本没有。这里为了分析方便也就不考虑这种情况，直接假设并没有第二个客户端的请求就好了。
+
+都第四轮主循环了，大部分循环内容都非常清晰了，接下来的分析就省略一些重复的细节问题，重点看代码做了什么。IO会把_read_waiting的第一个客户端连接取出，执行ReadSocket对象的handle_yield方法，将(client_handler(), data加入_ready中。其中，data只有开头1bit的量。那么，run方法的#5处执行的实际代码应为client_handler.send(data)，而执行的会是readline生成器，而返回一个ReadSocket类实例对象。
+
+这里就会进入读取第一行的循环，会一遍又一遍的：执行readline生成器——返回一个ReadSocket类实例对象——执行ReadSocket.handle_yield——执行ReadSocket.handle_resume——执行readline生成器，直到第一行读取完，readline生成器就会被装有这一行的内容的chars返回给client_handler生成器。
+
+响应第一个客户端请求
+一行的请求读取完后，主循环再次执行client_handler.send(data)，就进入响应（写）阶段了。
+
+这个网络框架并不会做复杂的处理（毕竟只是一个简单的示例框架，了解原理就好了），而是直接进行响应。
+
+基本原理逻辑和上面说的基本相似，这里的过程变为了：执行client_handler生成器——返回一个WriteSocket类实例对象——执行WriteSocket.handle_yield——_write_waiting加入一个元素——IO循环取出这个元素——执行WriteSocket.handle_resume——向客户端发送响应
+
+到这里就把这个网络框架的代码分析完了。仅仅177行，使用协程实现了一个能处理高并发的网络框架的核心。虽然少了处理部分，代码还不够健壮，但是对这个177行的代码还能要求什么呢？
+
+对这个网络框架的分析完么？当然没有，没有总结的分析怎么能结尾呢！下一篇对这个网络框架进行总结，并讨论一些有意思的话题。
