@@ -1,0 +1,673 @@
+顺序表的六种操作
+	插入
+		void insert(keytype A[], int i, keytype item, int n){
+			int j;
+			for(j=n-1;j>=i;j--){
+				A[j+1]=A[j];
+			}
+			A[i] = item;
+		}
+	删除
+		void delete(keytype A[], int i, int n){
+			int j;
+			for(j=i-1;j<n;j++)
+				A[j]=A[j+1];
+		}
+	定位locate
+	去重
+	排序
+	去重O(n)
+		void purge(keytype A[], int n, keytype item){
+			int i, j=0;
+			for(i=0;j<n;i++){
+				if(A[i]!=item)
+					A[j++]=a[i];
+			}
+			n = j;
+		}
+链表的十八种操作
+	1建立
+	2删除
+	3求长度
+	4定位locate
+	5头插法
+	6尾插法
+	7知道插入点位置插入新节点
+	8知道插入点值插入新节点
+	9有序链表插入新节点仍然保持有序(假设升序)
+		void insert(LINKLIST list, LINKNODE n){
+			LINKLIST r, p=list;
+			if(list->data>n->data){
+				n->next=list;
+				list=n;
+			}
+			else{
+				while(p!=NULL&&p->data<n->data){
+					r=p;
+					p=p->next;
+				}
+				n->next=r->next;
+				r->next=n;
+			}
+		}
+	10删除
+	11销毁链表
+		void destroy(LINKLIST *list){
+			LINKLIST p=list;
+			while(p!=NULL){
+				list=list->next;
+				free(p);
+				p=list;
+			}
+		}
+	12删除链表中值为item的点
+		void delete(LINKLIST *list, int item){
+			LINKLIST r=list, p=list-next;
+			while(p!=NULL){
+				if(p->data==item){
+					r->next=p->next;
+					free(p);
+					p=r->next;
+				}
+				else{
+					r=p;
+					p=p->next;
+				}
+			}
+			if(list->data==item){
+				p=list->next;
+				free(list);
+				list=p;
+			}
+		}
+	13逆转链表
+		void reverse(LINKLIST *list){
+			LINKLIST r, p, q;
+			q=list;
+			p=list-next;
+			while(p!=NULL){
+				r=q;
+				q=p;
+				p=p->next;
+				q->next=r;
+			}
+			list = q;  <----重点关注
+		}
+	14拼接两个链表
+		void cat(LINKLIST lista, LINKLIST listb){
+			LINKLIST p;
+			for(p=lista;p->next!=NULL;p=p->next);
+			p->next=listb;
+		}
+	15合并两个有序链表
+		LINKLIST merge(LINKLIST lista, LINKLIST listb){
+			LINKLIST listc, r, p=lista, q=listb;
+			if(p->data<q->data){
+				listc=p;
+				r=p;
+				p=p->next;
+			}
+			else{
+				listc=q;
+				r=q;
+				q=q->next;
+			}
+			
+			while(p!=NULL&&q!=NULL){
+				if(p->data<q->data){
+					r->next=p;
+					r=p;
+					p=p->next;
+				}
+				else{
+					r->next=q;
+					r=q;
+					q=q->next;
+				}
+			}
+			
+			if(p!=NULL)
+				r->next=p;
+			
+			if(q!=NULL)
+				r->next=q;
+			
+			return listc;
+		}
+	16复制链表
+	17利用线性链表进行排序
+	18将链表中最大的链节点插入到表尾或者表头
+		void move(LINKLIST list){
+			LINKLIST r=list, p=list->next, q=list, s;
+			while(p!=NULL){
+				if(q->data<p->data){
+					s=r;
+					q=p;
+				}
+				r=p;
+				p=p->next;
+			}
+			
+			if(q!=r){
+				if(q==list){
+					list=list->next;
+					r->next=q;
+					q->next=NULL;
+				}
+				else{
+					s->next=q->next;
+					r->next=q;
+					q->next=NULL;
+				}
+			}
+			
+		}
+插入排序
+	void insertsort(keytype A[], int n){
+		int i, j, temp;
+		for(i=1;i<n;i++){
+			temp = A[i];
+			for(j=i-1;j>=0;j--)
+				if(A[j]>temp)
+					A[j+1]=A[j--];
+			A[j+1] = temp;  <----重点关注
+		}
+	}
+折半插入排序
+	void binsort(keytype A[], int n){
+		int i, low, mid, high;
+		keytype temp;  <----重点关注
+		for(i=1;i<n;i++){
+			temp = A[i];  <----重点关注
+			low = 0;
+			high = i;
+			while(low < high){
+				mid = (low + high)/2;
+				if(A[mid]>temp)  <----重点关注
+					high = mid - 1;
+				else
+					low = mid + 1;
+			}
+			for(i=n-1;i>=low;i--)
+				A[i]=A[i-1];
+			A[low] = temp;  <----重点关注
+		}
+	}
+选择排序
+	void selectsort(keytype A[], int n){
+		int i, d, j;
+		keytype temp;
+		for(i=0;i<n;i++){
+			d = i;
+			for(j=i;j<n;j++)
+				if(A[d]>A[j])
+					d = j;
+			if(d!=i){
+				temp = A[d];
+				A[d] = A[i];
+				A[i] = temp;
+			}
+		}
+	}
+冒泡排序
+	void bubblesort(keytype A[], int n){
+		int i, j, flag=1;  <----重点关注
+		keytype temp;
+		for(i=n-1;i>=0&&flag==1;i--){  <----重点关注
+			flag = 0;
+			for(j=0;j<=i;j++){
+				if(A[j]>A[j+1]){
+					temp = A[j];
+					A[j+1] = A[j];
+					A[j+1] = temp;
+					flag = 1;
+				}
+			}
+		}
+	}
+shell排序
+	void shellsort(keytype A[], int n){
+		int i, j, flag, gap=n;
+		keytype temp;
+		while(gap > 1){  <----重点关注
+			gap = gap / 2;
+			do{
+				flag = 0;
+				for(i=0;i<n-gap;i++){  <----重点关注
+					j = i + gap;  <----重点关注
+					if(A[i]>A[j]){
+						temp = A[i];
+						A[i] = A[j];
+						A[j] = temp;
+						flag = 1;
+					}
+				}
+			}while(flag!=0)  <----重点关注
+		}
+	}
+快速排序
+	void quicksort(keytype A[], int s, int t){
+		int low, high;
+		if(s < t){
+			low = s;
+			high = t + 1;
+			while(1){
+				do{
+					low++;
+				}while(!(A[s]<=A[i]||i<=t));
+				do{
+					high--;
+				}while(!(A[s]>=A[j]||j>=s));
+				if(low < high)
+					swap(A[low], A[high]);
+				else
+					break;
+			}
+			swap(A[s], A[low])
+			quicksort(A, s, high-1);
+			quicksort(A, high+1, t);
+		}
+	}
+	void quick(keytype A[], int n){
+		quicksort(A, 1, n);
+	}
+堆积排序
+	#include <stdio.h>
+	#define M 100
+	void adjust(keytype A[], int i, int n){
+		int j, temp;
+		temp = A[i];
+		j = 2 * i;
+		while(j <= n){
+			if(A[j]<A[j+1] && j < n)
+				j++;
+			if(temp>A[j])
+				break;
+			A[j/2] = temp;
+			j=j*2;
+		}
+		A[j/2] = temp;
+	}
+	int heapsort(keytype A[], int n){
+		int i, temp;
+		for(i=n/2;i>=1;i--)
+		    adjust(A, i, n);
+		for(i=n-1;i>=1;i--)
+			temp = A[i];
+			A[i] = A[0];
+			A[0] = temp;
+			adjust(A, 1, i)
+		
+	}
+归并排序
+排序稳定性比较
+	n很大，元素分布比较随机，选择快速排序
+	n很大，对排序稳定性有要求，选择归并排序
+	n很大，可能数显升序或者降序，对稳定性没有要求，选择堆积或者归并
+	n很小，元素基本有序或者分布比较随机，并且有稳定要求的，选择插入排序
+	n很小，对稳定没有要求的，选择选择排序
+
+
+二叉树前序遍历
+	void PREORDER(BTREE T){
+		if(T!=NULL){
+			VISIT(T);
+			PREORDER(T->lchild);
+			PREORDER(T->rchild);
+		}
+	}
+
+	#define M 100
+	void PREORDER(BTREE T){
+		BTREE STACK[M], p=T;
+		int top=-1;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					VISIT(p);
+					STACK[++top]=p;
+					p=p->lchild;
+				}
+				p=STACK[top--];
+				p=p->rchild;
+			}while(p!=NULL||top!=-1)
+		}
+	}
+二叉树中序遍历
+	void INORDER(BTREE T){
+		if(T!=NULL){
+			VISIT(T);
+			PREORDER(T->lchild);
+			PREORDER(T->rchild);
+		}
+	}
+	
+	#define M 100
+	void INORDER(BTREE T){
+		BTREE STACK[M], p=T;
+		int top=-1;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					STACK[++top]=p;
+					p=p->lchild;
+				}
+				p=STACK[top--];
+				VISIT(p);
+				p=p->rchild;
+			}while(p!=NULL||top!=-1)
+		}
+	}
+二叉树后序遍历
+	void POSTORDER(BTREE T){
+		if(T!=NULL){
+			PREORDER(T->lchild);
+			PREORDER(T->rchild);
+			VISIT(T);
+		}
+	}
+	
+	#define M 100
+	void POSTORDER(BTREE T){
+		BTREE STACK[M], STACK2[M] p=T;
+		int top=-1, flag=0;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					STACK[++top]=p;
+					STACK[top]=0;
+					p=p->lchild;
+				}
+				p=STACK[top];
+				flag=STACK2[top--];
+				if(flag==0){
+					STACK[++top]=p;
+					STACK2[top]=1
+					p=p->rchild;
+				}
+				else{
+					VISIT(p);
+					p=NULL;
+				}
+			}while(p!=NULL||top!=-1)
+		}
+	}
+二叉树的层次遍历
+	#define M 100
+	void LAYERORDER(BTREE T){
+		BTREE QUEUE[M], p=T;
+		int front, rear;
+		if(p!=NULL){
+			QUEUE[0]=p;
+			front=-1;
+			rear=0;
+			while(front<rear){
+				p=QUEUE[++front];
+				VISIT(p);
+				if(p->lchild!=NULL)
+					QUEUE[++rear] = p->lchild;
+				if(p->rchild!=NULL)
+					QUEUE[++rear] = p->rchild;				
+			}
+		}
+	}
+求二叉树的深度(非递归中序遍历)
+	#define M 100
+	int DEPTH(BTREE T){
+		BTREE STACK[M], STACK2[M], p=T;
+		int maxdepth, curdepth=0;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					STACK[++top]=p;
+					STACK2[top]=curdepth
+					p=p->lchild;
+					curdepth++;
+				}
+				p=STACK[top];
+				curdepth=STACK2[top--];
+				if(curdepth>maxdepth)
+					maxdepth=curdepth;
+				p=p->rchild;
+			}while(p!=NULL||top!=-1)
+		}
+		return maxdepth;
+	}
+求二叉树的节点的层次(非递归后序遍历)
+	#define M 100
+	void LEVEL(BTREE T, int item){
+		BTREE STACK[M], STACK2[M] p=T;
+		int top=-1, flag=0;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					STACK[++top]=p;
+					STACK[top]=0;
+					p=p->lchild;
+				}
+				p=STACK[top];
+				flag=STACK2[top--];
+				if(flag==0){
+					STACK[++top]=p;
+					STACK2[top]=1
+					p=p->rchild;
+				}
+				else{
+					if(p->data==item)
+						return (top+2);  <----重点关注
+					p=NULL;
+				}
+			}while(p!=NULL||top!=-1)
+		}
+	}
+删除以二叉树的某个节点为根节点的二叉树(非递归前序遍历)  <----重点关注(需要记录前驱结点)
+	#define M 100
+	void DELT(BTREE T, datatype item){
+		BTREE STACK[M], q, p=T;
+		int top=-1;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					if(p->data==item){
+						if(q->lchild==p)
+							q->lchild=NULL;
+						else
+							q->rchild=NULL;
+						DESTROYT(p);
+						return T;
+					}
+					STACK[++top]=p;
+					q=p;
+					p=p->lchild;
+				}
+				p=STACK[top--];
+				q=p;
+				p=p->rchild;
+			}while(p!=NULL||top!=-1)
+		}
+	}
+	
+	void DESTROYT(BTREE T){
+		if(T!=NULL){
+			DESTROYT(T->lchild);
+			DESTROYT(T->rchild);
+			free(T);
+		}
+	}
+交换二叉树的左右节点(非递归层次遍历)
+	#define M 100
+	void SWITCH(BTREE T){
+		BTREE QUEUE[M], p=T, temp;
+		int front, rear;
+		if(p!=NULL){
+			QUEUE[0]=p;
+			front=-1;
+			rear=0;
+			while(front<rear){
+				p=QUEUE[++front];
+				temp=p->lchild;
+				p->lchild=p->rchild;
+				p->rchild=temp;
+				if(p->lchild!=NULL)
+					QUEUE[++rear] = p->lchild;
+				if(p->rchild!=NULL)
+					QUEUE[++rear] = p->rchild;				
+			}
+		}
+	}
+二叉树的相似性判断
+	void SIMILAR(BTREE T1, BTREE T2){
+		if(T1==NULL&&T2==NULL)
+			return 1;
+		if(T1&&T2&&SIMILAR(T1->lchild, T2->lchild)&&SIMILAR(T1->rchild, T2->rchild))
+			return 1;
+		return 0;
+	}
+二叉树的等价性判断
+	void EQUAL(BTREE T1, BTREE T2){
+		if(T1==NULL&&T2==NULL)
+			return 1;
+		if(T1&&T2&&T1->data==T2->data&&EQUAL(T1->lchild, T2->lchild)&&EQUAL(T1->rchild, T2->rchild))
+			return 1;
+		return 0;
+	}
+判断是否是二叉完全树  <----重点关注
+
+求二叉树节点的祖先节点(非递归后序遍历)
+	#define M 100
+	void ANCESTOR(BTREE T, datatype item){
+		BTREE STACK[M], STACK2[M] p=T;
+		int top=-1, flag=0;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					STACK[++top]=p;
+					STACK[top]=0;
+					p=p->lchild;
+				}
+				p=STACK[top];
+				flag=STACK2[top--];
+				if(flag==0){
+					STACK[++top]=p;
+					STACK2[top]=1
+					p=p->rchild;
+				}
+				else{
+					if(p->data==item);
+						for(int i=0;i<=top;i++)
+							printf("%d\t", p->data);
+					p=NULL;
+				}
+			}while(p!=NULL||top!=-1)
+		}
+	}
+求二叉树节点的兄弟节点(非递归前序遍历)
+	#define M 100
+	void BROTHER(BTREE T, BTREE item){
+		BTREE STACK[M], p=T;
+		int top=-1;
+		if(p!=NULL){
+			do{
+				while(p!=NULL){
+					if(p->lchild==item)
+						return p->rchild;
+					if(p->rchild==item)
+						return p->lchild;
+					STACK[++top]=p;
+					p=p->lchild;
+				}
+				p=STACK[top--];
+				p=p->rchild;
+			}while(p!=NULL||top!=-1)
+		}
+	}
+二叉排序树建立
+	BTREE SORTREE(datatype item){
+		BTREE q, p, T;
+		p=(BTREE *)malloc(sizeof(BTNODE));
+		p->data=item;
+		p->lchild=NULL;
+		p->rchild=NULL;
+		if(T==NULL){
+			T=p;
+		}
+		else{
+			q=T;  <----重点关注
+			while(1){  <----重点关注
+				if(q->data>p->data){
+					if(q->lchild!=NULL){
+						q=q->lchild;
+					}
+					else{
+						q->lchild=p;
+						break;
+					}
+				}
+				else{
+					if(q->rchild!=NULL){
+						q=q->rchild;
+					}
+					else{
+						q->rchild=p;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+图的深度遍历
+	void DFS(VLink G[], int v){  <----重点关注
+		int w;
+		visited[v]=1;
+		VISIT(G[v]);
+		w = FIRST(G, v);
+		while(w!=NULL){
+			if(visited[w]==0)
+				DFS(G, w);
+			w = NEXTADJ(G, v);
+		}
+	}
+	void TRAVERSE(VLink G[], int n){
+		int visited[n], i;
+		for(i=0;i<n;i++)
+			visited[i]=0;
+		
+		for(i=0;i<n;i++){
+			if(visited[i]==0)
+				DFS(G, i);
+		}
+	}
+图的广度遍历
+	void BFS(VLink G[], int v){  <----重点关注
+		int w;
+		visited[v]=1;
+		VISIT(G[v]);
+		ADDQ(Q, v);
+		while(!EMPTY(Q)){
+			v = DELQ(Q);
+			w = FIRST(G, v);
+			while(w!=NULL){
+				if(visited[w]==0){
+					ADDQ(Q, w);
+					visited[w]=1;
+					VISIT(G[w]);
+				}
+				w = NEXTADJ(G, v);
+			}
+		}
+	}
+	void TRAVERSE(VLink G[], int n){
+		int visited[n], i;
+		for(i=0;i<n;i++)
+			visited[i]=0;
+		
+		for(i=0;i<n;i++){
+			if(visited[i]==0)
+				BFS(G, i);
+		}
+	}
+求图的拓扑排序
+
+
+矩阵的压缩存储时，对称矩阵A[i][j]要进行存储时，表示前面i-1行存满，即1+2+3+4+....+i-1=i(i-1)/2，因此对应的压缩数组中的下标k为i(i-1)/2+(j-1)
