@@ -1,0 +1,7 @@
+python 中index(str)中的str似乎不支持正则，
+
+可用列表生成式及enumrate()来找到index()
+
+a=['图片1', '图片2', '图片3', 'a']
+
+[i for i,x in enumerate(a) if x.find('图片')!=-1]

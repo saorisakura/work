@@ -26,3 +26,21 @@ $ vi tmp.txt
 @            
 ...
 当然，如果误删了二进制、doc、png/jpg/gif 之类的文件，可以用一些第三方 ext2/ext3 文件恢复工具帮助恢复文件，比如 TestDisk, PhotoRec 等。
+
+
+今天误删除了Centos服务器上的某个文件夹，找了下恢复，ext3grep，extundelete等，因为文件系统是ext4的，只能使用extundelete
+
+1. 安装依赖
+
+yum -y install e2fsprogs e2fsprogs-devel
+2. 去http://extundelete.sourceforge.net/下载extundelete-0.2.4.tar.bz2并安装
+
+tar -xjf extundelete-0.2.4.tar.bz2
+cd extundelete-0.2.4
+./configure
+make
+make install
+3. 恢复
+
+extundelete /dev/***(挂载的硬盘) –restore-all  （可以先df一下确认下删除的文件夹所在的硬盘）
+4. 去当前目录RECOVERED_FILES下查看恢复的文件吧

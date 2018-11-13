@@ -1,0 +1,462 @@
+stdio.h所包含的函数：
+ 
+文件访问
+fopen
+freopen
+fflush
+fclose
+二进制输入/输出
+fread
+fwrite
+非格式化输入/输出
+fputchar
+	函数名: fputchar
+	用 法: int fputchar(char ch);
+	程序例:
+	MSDN中的例子：
+	// crt_fputchar.c
+	// This program uses _fputchar
+	// to send a character array to stdout.
+	#include <stdio.h>
+	int main( void )
+	{
+	char strptr[] = "This is a test of _fputchar!!\n";
+	char *p = NULL;
+	// Print line to stream using _fputchar.
+	p = strptr;
+	while( (*p != '\0') && _fputchar( *(p++) ) != EOF )
+	;
+	}
+fgetchar
+	#include <stdio.h>
+	int main(void)
+	{        
+		char ch;
+	/* prompt the user for input */
+		printf("Enter a character followed by \<Enter>: ");
+	/* read the character from stdin */
+		ch = fgetchar();
+	/* display what was read */
+		printf("The character read is: '%c'\n",ch);
+		return 0;
+	}
+fgetc/getc
+	从流中读取字符。
+	用法编辑
+	这个函数的返回值，是返回所读取的一个字节。如果读到文件末尾或者读取出错时返回EOF。
+	（虽然返回一个字节，但返回值不为unsigned char的原因为，返回值要能表示-1（即为EOF）。）
+	程序例编辑
+
+	#include <string.h>　
+	#include <stdio.h>　
+	#include <conio.h>　
+	int main(void)　
+	{
+		FILE *stream;
+		char string[ ] = "This is a test";
+		int ch;　
+		 
+		/* open a file for update  */
+		stream = fopen("DUMMY.FIL", "w+");　
+		 
+		/* write a string into the file */
+		fwrite(string, strlen(string), 1, stream);　
+	 
+		/* seek to the beginning of the file */
+		fseek(stream, 0, SEEK_SET);
+		do
+		{
+			/* read a char from the file */
+			ch = fgetc(stream);
+			/* display the character */
+			putch(ch);
+		} 
+		while (ch != EOF);
+		fclose(stream);
+		return 0;
+	}
+	Linux C编辑
+	相关函数
+	open，fread，fscanf，getc
+	表头文件
+	include<stdio.h>
+	定义函数
+	int fgetc(FILE * stream);
+	函数说明
+	fgetc()从参数stream所指的文件中读取一个字符，并把它作为一个字符返回。若读到文件尾或出现错误时，它就返回EOF，你必须通过ferror或feof来区分这两种情况。
+	返回值
+	fgetc()会返回读取到的字符，若返回EOF则表示到了文件尾，或出现了错误。
+	范例
+
+	#include<stdio.h>
+	void main()
+	{
+		FILE *fp;
+		int c;
+		fp=fopen("exist","r");
+		while((c=fgetc(fp))!=EOF)
+			printf("%c",c);
+		fclose(fp);
+	}
+fputc/putc
+	函数名称：写字符文件函数fputc()
+	函数格式：int fputc (int c, File *fp)
+	参数解释：fp为文件指针，它的值是执行fopen()打开文件时获得的。
+	c为输出的字符量。
+	虽然函数被定义为整形数，但仅用其低八位。
+	返回值：在正常调用情况下，函数返回写入文件的字符的ASCII码值，出错时，返回EOF（-1）。当正确写入一个字符或一个字节的数据后，文件内部写指针会自动后移一个字节的位置。EOF是在头文件 stdio.h中定义的宏。
+	程序范例编辑
+	程序例一
+
+		#include <stdio.h>
+		#include <string.h>
+		int main(void)
+		{
+		char msg[]="Hello world";
+		int i=0;
+		while(msg[i]&&(i<strlen(msg)))
+		{
+		fputc(msg[i],stdout);
+		i++;
+		}
+		return 0;
+		}
+	程序例二
+
+		#include <stdio.h>
+		#include <stdlib.h>
+		void main()
+		{
+		FILE*fpout;
+		char ch;
+		if((fpout=fopen("file_a.dat","w"))==NULL)
+		{
+		printf("Error!\n");
+		exit;
+		}
+		ch=getchar();
+		for(;ch!='#';)
+		{
+		fputc(ch,fpout);
+		ch=getchar();//不能仅写getchar();
+		}
+		fclose(fpout);
+		}
+	程序例三
+
+		#include <stdio.h>
+		#include <string.h>
+		int main()
+		{
+		FILE*f;
+		char*s="Hey,Buddy!";
+		int i;
+		f=fopen("myFile.txt","w");
+		for(i=0;i<strlen(s);i++)
+		fputc(s[i],f);
+		fclose(f);
+		return 0;
+		}
+	备注：putc()功能与用法与之完全相同。
+ungetc
+fgets
+	函数原型
+	char *fgets(char *buf, int bufsize, FILE *stream);
+	参数
+	*buf: 字符型指针，指向用来存储所得数据的地址。
+	bufsize: 整型数据，指明存储数据的大小。
+	*stream: 文件结构体指针，将要读取的文件流。
+	返回值
+	成功，则返回第一个参数buf；
+	在读字符时遇到end-of-file，则eof指示器被设置，如果还没读入任何字符就遇到这种情况，则buf保持原来的内容，返回NULL；
+	如果发生读入错误，error指示器被设置，返回NULL，buf的值可能被改变。 [1] 
+	功能
+	注意1：《UNIX 环境高级编程》中指出，每次调用fgets函数会造成标准输出设备自动刷清！案例详见《UNIX环境高级编程（第二版）》中程序清单1-5和课后习题5.7，习题5.7的答案中给出了相关的论述。
+	注意2：初入门者，大多数是在WINDOWS下，使用VS进行练习的。此环境下，对注意1中的情况进行测试，并不能看到案例中所描述的情景，因为具体的实现不同。
+	stream文件流指针体指向文件内容地址的偏移原则
+	如果使用fgets()读取某个文件，第一次读取的bufsize为5，而文件的第一行有10个字符（算上'\n'），那么读取文件的指针会偏移至当前读取完的这个字符之后的位置。也就是第二次再用fgets()读取文件的时候，则会继续读取其后的字符。而，如果使用fgets() 读取文件的时候bufsize大于该行的字符总数加2（多出来的两个，一个保存文件本身的'\n'换行，一个保存字符串本身的结束标识'\0'），文件并不会继续读下去，仅仅只是这一行读取完，随后指向文件的指针会自动偏移至下一行。
+	例：
+	如果一个文件的当前位置的文本如下
+	Love, I Have
+	Since you can do it.
+	如果用fgets(str1,6,file1);去读取
+	则执行后str1 = "Love," ，读取了6-1=5个字符
+	这个时候再执行fgets(str1,20,file1)则执行后str1 = " I Have\n"
+	而如果
+	fgets(str1,23,file1);
+	则执行str1="Love ,I Have"，读取了一行(包括行尾的'\n',并自动加上字符串结束符'\0')，当前文件位置移至下一行，虽然23大于当前行上字符总和，可是不会继续到下一行。而下一次调用fgets()继续读取的时候是从下一行开始读。
+	序例
+
+	#include<string.h>
+	#include<stdio.h>
+	 
+	int main ( void )
+	{
+		FILE*stream;
+		char string[]="Thisisatest";
+		char msg[20];
+	/*openafileforupdate*/
+		stream=fopen("DUMMY.FIL","w+");
+	/*writeastringintothefile*/
+		fwrite(string,strlen(string),1,stream);
+	/*seektothestartofthefile*/
+		fseek(stream,0,SEEK_SET);
+	/*readastringfromthefile*/
+		fgets(msg,strlen(string)+1,stream);
+	/*displaythestring*/
+		printf("%s",msg);
+		fclose(stream);
+		return 0;
+	}
+	fgets函数用来从文件中读入字符串。fgets函数的调用形式如下：fgets（str，n，fp）；此处，fp是文件指针；str是存放在字符串的起始地址；n是一个int类型变量。函数的功能是从fp所指文件中读入n-1个字符放入str为起始地址的空间内；如果在未读满n-1个字符之时，已读到一个换行符或一个EOF（文件结束标志），则结束本次读操作，读入的字符串中最后包含读到的换行符。因此，确切地说，调用fgets函数时，最多只能读入n-1个字符。读入结束后，系统将自动在最后加'\0'，并以str作为函数值返回。
+	函数原型是：char *fgets(char *s, int n, FILE *stream);
+	函数使用编辑
+	同时可以用作键盘输入：fgets（key，n，stdin）且还必须：key[strlen(key)]='\0'或者key[n-1]='\0'
+	还有种程序经常使用的方法：key[strlen(key-1)]=0x00；
+	与gets相比使用这个好处是：读取指定大小的数据，避免gets函数从stdin接收字符串而不检查它所复制的缓存的容积导致的缓存溢出问题。
+fputs
+	C语言库函数，把字符串写入到指定的流( stream) 中，但不包括空字符。
+	函数原型编辑
+	int fputs(const char *str, FILE *stream);
+	返回值：该函数返回一个非负值，如果发生错误则返回 EOF(-1)。
+	（1）str：这是一个数组，包含了要写入的以空字符终止的字符序列。
+	（2）sstream：指向 FILE 对象的指针，该 FILE 对象标识了要被写入字符串的流
+	示例编辑
+	#include<stdio.h>
+	#include<stdlib.h>
+	int main()
+	{
+	char str[80]="asdhfdf\n";
+	FILE *fp = NULL;
+	if((fp=fopen("strfile.txt","w"))==NULL)
+	{
+	printf("cannot open file\n");
+	exit(0);
+	}
+	fputs(str,fp);
+	//putchar(str);
+	fclose(fp);
+	fp = NULL;
+	return 0;
+	}
+格式化输入/输出
+scanf/fscanf/sscanf
+	函数名: fscanf
+	功 能: 从一个流中执行格式化输入,fscanf遇到空格和换行时结束，注意空格时也结束。这与fgets有区别，fgets遇到空格不结束。
+	返回值：整型，成功返回读入的参数的个数，失败返回EOF(-1)。
+	用法：
+	1
+	int fscanf(FILE*stream,constchar*format,[argument...]);
+	FILE *stream：文件指针
+	char *format：格式字符串
+	[argument...]：输入列表
+	格式字符说明编辑
+	常用基本参数对照：
+	%d：读入一个十进制整数.
+	%i ：读入十进制，八进制，十六进制整数，与%d类似，但是在编译时通过数据前置或后置来区分进制，如加入“0x”则是十六进制，加入“0”则为八进制。例如串“031”使用%d时会被算作31，但是使用%i时会算作25.
+	%u：读入一个无符号十进制整数.
+	%f %F %g %G : 用来输入实数，可以用小数形式或指数形式输入.
+	%x %X： 读入十六进制整数.
+	%o': 读入八进制整数.
+	%s : 读入一个字符串，遇空字符‘\0'结束。
+	%c : 读入一个字符。无法读入空值。空格可以被读入。
+	附加格式说明字符表修饰符说明
+	L/l 长度修饰符 输入"长"数据
+	h 长度修饰符 输入"短"数据
+	示例说明
+	如果要求从标准输入中输入一串字符串和一个整型数，那么参数“%s%d”表示什么呢？默认情况下，在终端上（这里假设程序为控制台应用程序）输入第一个参数的值的时候敲下回车，则在第二行输入的为第二个参数值，采用这种输入方法那么格式字符的形式就无关紧要了。 [1] 
+	这里要特殊说明的是如果参数在同一行给出，那么格式字符的参数与终端的输入会有什么关系。举个例子：如果格式字符为“%s+%d”，那么参数的输入就应该为 string + integer。 [2] 
+	程序例编辑
+	例一
+
+	#include <stdlib.h>
+	#include <stdio.h>
+	int main(void)
+	{
+		int i;
+		printf("Input an integer:");
+		/*从标准输入中读取一个整数*/
+		if(fscanf(stdin, "%d",&i))
+		printf("The integer read was:%d\n", i);
+		else
+		{
+			fprintf(stderr, "Error reading an integer from stdin.\n");
+			exit(1);
+		}
+		return 0;
+	}
+	 
+	返回EOF如果读取到文件结尾。
+	例二
+	附：MSDN中例子
+
+	#include <stdio.h>
+	FILE *stream;
+	int main(void)
+	{
+		long l;
+		float fp;
+		char s[81];
+		char c;
+		stream = fopen("fscanf.out", "w+");
+		if(stream==NULL)
+		printf("The file fscanf.out was not opened\n");
+		else
+		{
+			fprintf(stream,"%s%ld%f%c","a-string", 65000,3.14159, 'x');
+			/*将指针设置至文件开头*/
+			fseek(stream,0L,SEEK_SET);
+			/*从文件中读取数据*/
+			fscanf(stream,"%s",s);
+			fscanf(stream,"%ld",&l);
+			fscanf(stream,"%f",&fp);
+			fscanf(stream,"%c",&c);
+		   /*输出读取的数据*/
+			printf("%s\n",s);
+			printf("%ld\n",l);
+			printf("%f\n",fp);
+			printf("%c\n",c);
+			fclose(stream);
+		}
+		return 0;
+	}//这样会有意外输出
+printf/fprintf/sprintf
+	int fprintf (FILE* stream, const char*format, [argument])
+	FILE*stream：文件指针
+	const char* format：输出格式
+	[argument]：附加参数列表
+	函数说明编辑
+	fprintf( )会根据参数format 字符串来转换并格式化数据, 然后将结果输出到参数stream 指定的文件中, 直到出现字符串结束('\0')为止。 [1] 
+	功 能编辑
+	传送格式化输出到一个文件中与打印机输出
+	用 法编辑
+	#include <stdio.h>
+	#include<stdlib.h>
+	int fprintf( FILE *stream, const char *format, ... );
+	fprintf()函数根据指定的format(格式)发送信息(参数)到由stream(流)指定的文件. fprintf()只能和printf()一样工作. fprintf()的返回值是输出的字符数,发生错误时返回一个负值.
+	规定符编辑
+	%d, %i 十进制有符号整数
+	%u 十进制无符号整数
+	%f 浮点数
+	%s 字符串
+	%c 单个字符
+	%p指针的值
+	%e, %E 指数形式的浮点数
+	%x无符号以小写十六进制表示的整数
+	%X 无符号以大写十六进制表示的整数
+	%o 无符号以八进制表示的整数
+	%g 自动选择合适的表示法
+	程序示例VC编辑
+	函数范例
+
+	//...
+	#include <stdio.h>
+	int main(void) {
+		FILE *FSPOINTER;
+		char STRBUFF[16] = "Hello World.";
+		//...
+		FSPOINTER = fopen("HELLO.TXT", "w+");
+		//...
+		fprintf(FSPOINTER, "%s", STRBUFF);
+		//...
+		return 0;
+	}
+	输出至文件HELLO.TXT：
+	Hello World
+	示例一
+
+	#include <stdio.h>
+	int main(void)
+	{
+		FILE *in,*out;
+		in = fopen("\\AUTOEXEC.BAT", "rt");
+		if(in == NULL)
+		{
+			fprintf(in, "Can not open inputfile.\n");
+			return 1;
+		}
+		out = fopen("\\AUTOEXEC.BAT", "wt");
+		if(out == NULL)
+		{
+			fprintf(out, "Can not open outputfile.\n");
+			return 1;
+		}
+		while(!feof(in))
+			fputc(fgetc(in), out);
+		fclose(in);
+		fclose(out);
+		return 0;
+	}
+	示例二
+
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <process.h>
+	FILE* stream;
+	int main(void)
+	{
+		int i = 10;
+		double fp = 1.5;
+		char s[] = "this is a string";
+		char c = '\n';
+		stream = fopen("fprintf.out", "w");
+		fprintf(stream, "%s%c", s, c);
+		fprintf(stream, "%d\n", i);
+		fprintf(stream, "%f\n", fp);
+		fclose(stream);
+		system("typefprintf.out");
+		return 0;
+	}
+	输出至文件fprintf.out：
+	this is a string
+	10
+	1.500000
+	示例三
+
+	#include <stdio.h>
+	int main()
+	{
+		FILE* fp;
+		int i = 617;
+		char* s = "that is a good new";
+		fp = fopen("text.dat", "w");
+		fputs("total", fp);
+		fputs(":", fp);
+		fprintf(fp, "%d\n", i);
+		fprintf(fp, "%s", s);
+		fclose(fp);
+		return 0;
+	}
+	 
+	输出至文件text.dat：
+	　
+	1
+	2
+	total:617
+	that is a good new
+perror
+文件定位
+ftell
+fseek
+fgetpos
+fsetpos
+rewind
+错误处理
+feof
+ferror
+文件操作
+remove
+rename
+tmpfile
+
+注意点
+	取决于在scanf中使用还是在printf中使用。
+
+	在scanf中使用,则添加了*的部分会被忽略,不会被参数获取。
+
+	例如：int a,b;char b[10];scanf("%d%*s",&a,b);输入为：12 abc那么12将会读取到变量a中，但是后面的abc将在读取之后抛弃，不赋予任何变量(例如这里的字符数组b）
+	在printf中使用,*表示用后面的形参替代*的位置，实现动态格式输出。
+
+	例如：
+
+	printf("%*s", 10, s); /*意思是输出字符串s，但至少占10个位置，不足的在字符串s左边补空格，这里等同于printf("%10s", s);*/
