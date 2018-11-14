@@ -429,9 +429,7 @@ printf/fprintf/sprintf
 	}
 	 
 	输出至文件text.dat：
-	　
-	1
-	2
+
 	total:617
 	that is a good new
 perror
