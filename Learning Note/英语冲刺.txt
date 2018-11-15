@@ -22,4 +22,17 @@ date back / date back to
 		1、传统细节题
 		2、因果细节题-- 有明显原因词、无明显原因词；抓题干、穷尽匹配；because、due to、result from、lie in
 		3、观点细节题(实验结论和调查结论)-- hold, argue, suggest, according to ... that
+			定位需要人名家观点以及细节单词
 		4、例证题，就是此文开头的论点论据题
+
+推理题
+	1、infer learn imply indicate...
+	2、ParagraphX
+	分类
+		段落推理
+		细节推理
+	方法
+		中心句
+		定位词
+	
+	区别与细节题的标准是细节词的量大或者少
