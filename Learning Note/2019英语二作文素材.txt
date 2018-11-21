@@ -3,7 +3,11 @@
 　　也许双方的观点都有一定道理，但是，无论车辆多少，必须对废气排放实行控制。
 
 　　When it comes to the increasing use of motor vehicles in Beijing, some people think that use should be limited. Others argue that the opposite is true. There is probably some truth to both arguments, but emission controls must be instituted regardless of the number of vehicles.
-
+		instituted	英[ɪnstɪtju:tɪd]
+		美[ɪnstɪtju:tɪd]
+		v.	创立; 设置(institute的过去分词);
+		[例句]The government has instituted a court of inquiry to look into the allegations.
+		政府已成立了调查法庭来调查这些指控。
 　　2. 目前，针对流动工人的问题展开了普遍的争论。反对流动工人增加的人认为这会导致犯罪率升高，从而危害社会稳定。他们主张应该严格限制进入中国城市的流动工人。但是，另一方面，支持廉价劳动力流入的人主张，为了支持大规模的城市基础设施建设规划，流动人口是必需的。
 
 　　There is a general debate nowadays about the problem of itinerant workers. Those who object to the rising migrant population argue that increasing numbers lead to rising crime rates and harm social stability. They believe that strict limits should be placed on migrants entering China’s cities. But people who favor the influx of the cheap labor force, on the other hand, maintain that migrants are needed to support the massive urban infrastructure construction program.

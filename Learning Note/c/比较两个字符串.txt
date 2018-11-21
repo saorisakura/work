@@ -1,0 +1,61 @@
+C语言如何比较两个【字符】或者【字符串】是否相等？
+
+比较字符可以直接使用==比较操作符，如：
+char c1='a',c2='b';
+if(c1==c2) printf("%c is same as %c.",c1,c2);
+else printf("%c is different to %c",c1,c2);
+若是字符串，则需要使用字符串函数了，strcmp
+char s1[]="abc",s2[]="xyz";
+if(strcmp(s1,s2)==0) printf("%s is same as %s.",s1,s2);
+也可以忽略大小写来比较，使用函数stricmp 中间的i意思是ignore case sensitive
+还可以指定长度比较，strncmp，如：
+char s1[]="abc",s2[]="abcdefg";
+if(strncmp(s1,s2,3)==0) printf("first 3 characters are same");
+若不是从开头位置开始比较，如：
+char s1[]="abc",s2[]="xyzabc"
+if(strncmp(s1,&s2[3],3)==0) 就是比较s1和s2的第3个字符开始的内容
+
+C语言提供了几个标准库函数，可以比较两个字符串是否相同。以下是用strcmp()函数比较字符串的一个例子：
+  
+#include <stdio. h>
+#include <string. h>
+void main (void);
+void main(void)
+{
+    char* str_1 = "abc" ; char * str_2 = "abc" ; char* str_3 = "ABC" ;
+    if (strcmp(str_1, str_2) == 0)
+        printf("str_1 is equal to str_2. \n");
+    else
+        printf("str_1 is not equal to str_2. \n");
+    if (strcmp(str_1, str_3) == 0)
+       printf("str_1 is equal to str_3．\n");
+    else
+        printf("str_1 is not equalto str_3．\n")；
+}
+    
+上例的打印输出如下所示：   
+    str_1 is equal to str_2.   
+    str_1 is not equal to str_3．
+   
+strcmp()函数有两个参数，即要比较的两个字符串。strcmp()函数对两个字符串进行大小写敏感的(case-sensitiVe)和字典式的(lexicographic)比较，并返回下列值之一：
+----------------------------------------------------
+    返  回  值         意  义
+----------------------------------------------------
+    <0               第一个字符串小于第二个字符串
+     0               两个字符串相等    ·
+    >0               第一个字符串大于第二个字符串
+----------------------------------------------------
+
+在上例中，当比较str_1(即“abc”)和str_2(即“abc”)时，strcmp()函数的返回值为0。然而，当比较str_1(即"abc")和str_3(即"ABC")时，strcmp()函数返回一个大于0的值，因为按ASCII顺序字符串“ABC”小于“abc”。
+
+strcmp()函数有许多变体，它们的基本功能是相同的，都是比较两个字符串，但其它地方稍有差别。下表列出了C语言提供的与strcmp()函数类似的一些函数：   
+-----------------------------------------------------------------
+    函  数  名                   作  用
+-----------------------------------------------------------------
+    strcmp()         对两个字符串进行大小写敏感的比较
+    strcmpi()        对两个字符串进行大小写不敏感的比较
+    stricmp()        同strcmpi()
+    strncmp()        对两个字符串的一部分进行大小写敏感的比较
+    strnicmp()       对两个字符串的一部分进行大小写不敏感的比较
+-----------------------------------------------------------------
+在前面的例子中，如果用strcmpi()函数代替strcmp()函数，则程序将认为字符串“ABC”等于“abc”。
