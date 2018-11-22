@@ -1,0 +1,474 @@
+salt-api介绍
+saltsatck本身就提供了一套算完整的api，使用 CherryPy 来实现 restful 的 api，供外部的程序调用。
+
+salt-api安装
+salt-api需要安装，然后进行一些配置才可以正常使用，安装方法有两种。
+方法一：
+yum安装，需要的依赖包cherry也会被补全装上。
+安装salt-api，并设置开机启动
+
+yum -y install salt-api pyOpenSSL 
+systemctl enable salt-api
+方法二：
+pip安装，首先要确认机器上有没有安装pip模块。
+
+rpm -ivh https://mirrors.aliyun.com/epel/7/x86_64/s/salt-api-2015.5.10-2.el7.noarch.rpm
+pip install cherrypy==3.2.3
+pip install cherrypy
+pip install salt-api
+配置自签名证书
+cd /etc/pki/tls/certs/
+make testcert
+
+
+
+Enter pass phrase:    ===>  输入加密短语，这里我使用salt2017
+Verifying - Enter pass phrase:    ===>  确认加密短语
+umask 77 ; \
+/usr/bin/openssl req -utf8 -new -key /etc/pki/tls/private/localhost.key -x509 -days 365 -out /etc/pki/tls/certs/localhost.crt -set_serial 0
+Enter pass phrase for /etc/pki/tls/private/localhost.key:    ===>  再次输入相同的加密短语
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:CN
+State or Province Name (full name) []:BeiJing
+Locality Name (eg, city) [Default City]:BeiJing
+Organization Name (eg, company) [Default Company Ltd]:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, your name or your server's hostname) []:
+Email Address []:
+解密key文件，生成无密码的key文件, 过程中需要输入key密码，该密码为之前生成证书时设置的密码
+
+cd /etc/pki/tls/private/
+openssl rsa -in localhost.key -out localhost_nopass.key
+修改文件权限
+
+chmod 755 /etc/pki/tls/certs/localhost.crt 
+chmod 755 /etc/pki/tls/private/localhost.key 
+chmod 755 /etc/pki/tls/private/localhost_nopass.key
+添加用户
+生产环境请使用密码复杂度高的密码，这里我使用salt2017
+
+useradd -M -s /sbin/nologin saltapi
+passwd saltapi        
+配置salt-api
+修改/etc/salt/master文件
+
+sed -i '/#default_include/s/#default/default/g' /etc/salt/master
+创建/etc/salt/master.d/目录
+
+mkdir -p /etc/salt/master.d/
+cd /etc/salt/master.d/
+touch eauth.conf
+touch api.conf
+编辑eauth.conf，添加下面内容
+
+external_auth:
+  pam:
+    saltapi:   # 用户
+      - .*     # 该配置文件给予saltapi用户所有模块使用权限，出于安全考虑一般只给予特定模块使用权限
+编辑api.conf，添加下面内容
+
+rest_cherrypy:
+  port: 8001
+  ssl_crt: /etc/pki/tls/certs/localhost.crt
+  ssl_key: /etc/pki/tls/private/localhost_nopass.key
+启动salt-api
+systemctl restart salt-master
+systemctl start salt-api
+ps -ef|grep salt-api
+netstat -lnput|grep 8001
+验证服务
+获得token
+
+curl -k https://172.16.0.19:8001/login -H "Accept: application/x-yaml" -d username='saltapi' -d password='salt2017' -d eauth='pam'
+return:
+- eauth: pam
+  expire: 1494365711.173652
+  perms:
+  - .*
+  start: 1494322511.173652
+  token: f40623825ea02606bfc558c982dbbfbb923c7570
+  user: saltapi
+调用test.ping
+
+curl -k https://172.16.0.19:8001/ -H "Accept: application/x-yaml" -H "X-Auth-Token: f40623825ea02606bfc558c982dbbfbb923c7570" -d client='local' -d tgt='*' -d fun='test.ping'
+return:
+- client1: true
+  saltstack: true
+编写python脚本请求salt api接口
+自定义一个类，首先初始化时候获得token，然后使用token认证去请求相应的json文件。
+salt命令在shell中使用方式是salt 客户端 方法 参数（例子：salt 'client1' cmd.run 'free -m'）。
+这里salt命令方法我们已经封装好了，想使用salt的什么方法就传入对应的客户端、方法、参数即可。
+代码如下：
+
+#!/usr/bin/env python
+# _*_ coding:utf-8 _*_
+__author__ = 'junxi'
+
+
+import requests
+import json
+try:
+    import cookielib
+except:
+    import http.cookiejar as cookielib
+
+# 使用urllib2请求https出错，做的设置
+import ssl
+context = ssl._create_unverified_context()
+
+# 使用requests请求https出现警告，做的设置
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
+salt_api = "https://172.16.0.19:8001/"
+
+
+class SaltApi:
+    """
+    定义salt api接口的类
+    初始化获得token
+    """
+    def __init__(self, url):
+        self.url = url
+        self.username = "saltapi"
+        self.password = "salt2017"
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36",
+            "Content-type": "application/json"
+            # "Content-type": "application/x-yaml"
+        }
+        self.params = {'client': 'local', 'fun': '', 'tgt': ''}
+        # self.params = {'client': 'local', 'fun': '', 'tgt': '', 'arg': ''}
+        self.login_url = salt_api + "login"
+        self.login_params = {'username': self.username, 'password': self.password, 'eauth': 'pam'}
+        self.token = self.get_data(self.login_url, self.login_params)['token']
+        self.headers['X-Auth-Token'] = self.token
+
+    def get_data(self, url, params):
+        send_data = json.dumps(params)
+        request = requests.post(url, data=send_data, headers=self.headers, verify=False)
+        # response = request.text
+        # response = eval(response)     使用x-yaml格式时使用这个命令把回应的内容转换成字典
+        # print response
+        # print request
+        # print type(request)
+        response = request.json()
+        result = dict(response)
+        # print result
+        return result['return'][0]
+
+    def salt_command(self, tgt, method, arg=None):
+        """远程执行命令，相当于salt 'client1' cmd.run 'free -m'"""
+        if arg:
+            params = {'client': 'local', 'fun': method, 'tgt': tgt, 'arg': arg}
+        else:
+            params = {'client': 'local', 'fun': method, 'tgt': tgt}
+        print '命令参数: ', params
+        result = self.get_data(self.url, params)
+        return result
+
+def main():
+    print '=================='
+    print '同步执行命令'
+    salt = SaltApi(salt_api)
+    print salt.token
+    salt_client = '*'
+    salt_test = 'test.ping'
+    salt_method = 'cmd.run'
+    salt_params = 'free -m'
+    # print salt.salt_command(salt_client, salt_method, salt_params)
+    # 下面只是为了打印结果好看点
+    result1 = salt.salt_command(salt_client, salt_test)
+    for i in result1.keys():
+        print i, ': ', result1[i]
+    result2 = salt.salt_command(salt_client, salt_method, salt_params)
+    for i in result2.keys():
+        print i
+        print result2[i]
+        print
+
+if __name__ == '__main__':
+    main()
+查看运行结果
+第一行请求认证的token。
+从结果可以看出来我们请求了两条命令，test.ping和free -m
+
+==================
+同步执行命令
+83ad5789cf8046ff06972e1f92bb31f012609a78
+命令参数:  {'fun': 'test.ping', 'client': 'local', 'tgt': '*'}
+client1 :  True
+saltstack :  True
+命令参数:  {'fun': 'cmd.run', 'client': 'local', 'tgt': '*', 'arg': 'free -m'}
+client1
+              total        used        free      shared  buff/cache   available
+Mem:            220         153           7           2          59          31
+Swap:          2046         129        1917
+
+saltstack
+              total        used        free      shared  buff/cache   available
+Mem:            976         516          83          24         376         260
+Swap:          2046           0        2046
+请求异步执行salt命令后的jid结果，首先要修改/etc/salt/master.d/eauth.conf 配置文件，增加权限，然后重启salt-master和salt-api。
+
+cd /etc/salt/master.d/
+vi eauth.conf
+# 修改内容如下：
+external_auth:
+  pam:
+    saltapi:
+      - .*
+      - '@runner'
+      - '@wheel'
+python编写异步请求模块
+
+def salt_async_command(self, tgt, method, arg=None):  # 异步执行salt命令，根据jid查看执行结果
+    """远程异步执行命令"""
+    if arg:
+        params = {'client': 'local_async', 'fun': method, 'tgt': tgt, 'arg': arg}
+    else:
+        params = {'client': 'local_async', 'fun': method, 'tgt': tgt}
+    jid = self.get_data(self.url, params)['jid']
+    return jid
+
+def look_jid(self, jid):  # 根据异步执行命令返回的jid查看事件结果
+    params = {'client': 'runner', 'fun': 'jobs.lookup_jid', 'jid': jid}
+    print params
+    result = self.get_data(self.url, params)
+    return result
+查看执行结果
+
+def main():
+    print
+    print '=================='
+    print '异步执行命令'
+    salt1 = SaltApi(salt_api)
+    salt_client = '*'
+    salt_method = 'cmd.run'
+    salt_params = 'df -hT'
+    # 下面只是为了打印结果好看点
+    jid1 = salt1.salt_async_command(salt_client, salt_test)
+    result1 = salt1.look_jid(jid1)
+    for i in result1.keys():
+        print i, ': ', result1[i]
+
+    jid2 = salt1.salt_async_command(salt_client, salt_method, salt_params)
+    result2 = salt1.look_jid(jid2)
+    for i in result2.keys():
+        print i
+        print result2[i]
+        print
+
+
+if __name__ == '__main__':
+    main()
+==================
+异步执行命令
+{'fun': 'jobs.lookup_jid', 'jid': u'20170525095342243770', 'client': 'runner'}
+saltstack :  True
+client1 :  True
+{'fun': 'jobs.lookup_jid', 'jid': u'20170525095342994269', 'client': 'runner'}
+client1
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda2      xfs        17G   13G  4.1G  77% /
+devtmpfs       devtmpfs   97M     0   97M   0% /dev
+tmpfs          tmpfs     111M   12K  111M   1% /dev/shm
+tmpfs          tmpfs     111M  4.7M  106M   5% /run
+tmpfs          tmpfs     111M     0  111M   0% /sys/fs/cgroup
+/dev/sda1      xfs       297M  202M   96M  68% /boot
+
+saltstack
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda2      xfs        17G  7.2G  9.9G  43% /
+devtmpfs       devtmpfs  475M     0  475M   0% /dev
+tmpfs          tmpfs     489M   16K  489M   1% /dev/shm
+tmpfs          tmpfs     489M  6.9M  482M   2% /run
+tmpfs          tmpfs     489M     0  489M   0% /sys/fs/cgroup
+/dev/sda1      xfs       297M  202M   96M  68% /boot
+salt-api二次开发遇到的问题
+对salt-api进行了二次开发，通过api控制minion，可能会遇到发送命令线程就进入了等待，然后就是超时。
+解决方法：salt.netapi.rest_cherrypy包里面有一个app.py方法，修改'server.thread_pool': self.apiopts.get('thread_pool', 100)为200，修改'server.socket_queue_size': self.apiopts.get('queue_size', 30)为300 。重启salt-api 再次测试，OK。
+
+vi /usr/lib/python2.7/site-packages/salt/netapi/rest_cherrypy/app.py
+修改下面两行内容
+'server.thread_pool': self.apiopts.get('thread_pool', 100),
+'server.socket_queue_size': self.apiopts.get('queue_size', 30),
+为
+'server.thread_pool': self.apiopts.get('thread_pool', 200),
+'server.socket_queue_size': self.apiopts.get('queue_size', 300),
+重启salt-api
+
+systemctl restart salt-api
+
+
+salt-api安装配置及使用
+
+Python3使用saltstack和salt-api
+安装python3
+    1. tar zxvf Python-3.5.1.tgz   
+    2. cd  Python-3.5.1        
+    3. ./configure
+    4. make
+    5. make install
+    6. mv  /usr/bin/python /usr/bin/python2 # 如果是软连接，可以直接删除
+    7. ln -s /usr/local/bin/python3.5 /usr/bin/python
+    8. vim /usr/bin/yum   # 修改Yum,使yum依然有效，yum依靠老版本的python
+    9. #!/usr/bin/python 修改为#!/usr/bin/python2
+
+# 修改完/usr/bin/yum 依然还有问题，可以尝试修改/usr/libexec/urlgrabber-ext-down的文件python抬头
+安装 salt-api
+yum install salt-api -y
+配置
+生成自签名证书(用于ssl)
+cd  /etc/pki/tls/certs
+# 生成自签名证书, 过程中需要输入key密码及RDNs
+make testcert
+cd /etc/pki/tls/private/
+# 解密key文件，生成无密码的key文件, 过程中需要输入key密码，该密码为之前生成证书时设置的密码
+openssl rsa -in localhost.key -out localhost_nopass.key
+创建用于salt-api的用户
+useradd -M -s /sbin/nologin salt-api
+echo "salt-api" | passwd salt-api —stdin
+修改/etc/salt/master文件
+sed -i '/#default_include/s/#default/default/g' /etc/salt/master  
+mkdir /etc/salt/master.d 
+新增配置文件/etc/salt/master.d/api.conf
+cat /etc/salt/master.d/api.conf
+rest_cherrypy:
+  port: 8000
+  ssl_crt: /etc/pki/tls/certs/localhost.crt
+  ssl_key: /etc/pki/tls/private/localhost_nopass.key
+新增配置文件/etc/salt/master.d/eauth.conf
+cat /etc/salt/master.d/eauth.conf  
+external_auth:  
+  pam:  
+    salt-api:  
+      - .*  
+      - '@wheel'  
+      - '@runner' 
+启动salt-master and salt-api
+systemctl start salt-master
+systemctl start salt-api
+安装一个salt client
+yum install salt-minion -y
+修改配置
+sed -i "/^#master: salt/c master: 192.168.104.76"  /etc/salt/minion
+启动 client
+systemctl start salt-minion
+master 上接受key
+[root@node76 salt]# salt-key -L
+Accepted Keys:
+Denied Keys:
+Unaccepted Keys:
+node76
+Rejected Keys:
+[root@node76 salt]# salt-key -A
+The following keys are going to be accepted:
+Unaccepted Keys:
+node76
+Proceed? [n/Y] Y
+Key for minion node76 accepted.
+[root@node76 salt]# salt-key -L
+Accepted Keys:
+node76
+Denied Keys:
+Unaccepted Keys:
+Rejected Keys:
+api使用
+使用curl 获取token
+ curl -k https://192.168.104.76:8000/login -H "Accept: application/x-yaml"  -d username='salt-api' -d password='salt-api'  -d eauth='pam'
+return:
+- eauth: pam
+  expire: 1520269544.2591
+  perms:
+  - .*
+  - '@wheel'
+  - '@runner'
+  start: 1520226344.259099
+  token: 593a7224f988f28b84d58b7cda38fe5e5ea07d98
+  user: salt-api
+获取token后就可以使用token通信
+
+==注==：重启salt-api后token改变
+
+测试minion端的联通性
+下面功能类似于“salt '*' test.ping”
+
+curl -k https://192.168.104.76:8000 -H "Accept: application/x-yaml" -H "X-Auth-Token: ded897184a942ca75683276c29d787ea71c207a9" -d client='local' -d tgt='*' -d fun='test.ping' 
+return:
+- node76: true
+参数解释：
+
+client ： 模块，python处理salt-api的主要模块，‘client interfaces <netapi-clients>’
+local : 使用‘LocalClient <salt.client.LocalClient>’ 发送命令给受控主机，等价于saltstack命令行中的'salt'命令
+local_async : 和local不同之处在于，这个模块是用于异步操作的，即在master端执行命令后返回的是一个jobid，任务放在后台运行，通过产看jobid的结果来获取命令的执行结果。
+runner : 使用'RunnerClient<salt.runner.RunnerClient>' 调用salt-master上的runner模块，等价于saltstack命令行中的'salt-run'命令
+runner_async : 异步执行runner模块
+wheel : 使用'WheelClient<salt.wheel.WheelClient>', 调用salt-master上的wheel模块，wheel模块没有在命令行端等价的模块，但它通常管理主机资源，比如文件状态，pillar文件，salt配置文件，以及关键模块<salt.wheel.key>功能类似于命令行中的salt-key。
+wheel_async : 异步执行wheel模块
+备注：一般情况下local模块，需要tgt和arg(数组)，kwarg(字典)，因为这些值将被发送到minions并用于执行所请求的函数。而runner和wheel都是直接应用于master，不需要这些参数。
+tgt : minions
+fun : 函数
+arg : 参数
+expr_form : tgt的匹配规则
+'glob' - Bash glob completion - Default
+'pcre' - Perl style regular expression
+'list' - Python list of hosts
+'grain' - Match based on a grain comparison
+'grain_pcre' - Grain comparison with a regex
+'pillar' - Pillar data comparison
+'nodegroup' - Match on nodegroup
+'range' - Use a Range server for matching
+'compound' - Pass a compound match string
+执行远程命令
+下面功能类似于“salt '*' cmd.run ifconfig”
+
+curl -k https://192.168.104.76:8000 -H "Accept: application/x-yaml" -H "X-Auth-Token: ded897184a942ca75683276c29d787ea71c207a9" -d client='local' -d tgt='*' -d fun='cmd.run'   -d arg='uptime'
+return:
+- node76: ' 13:18:46 up 161 days,  2:23,  1 user,  load average: 0.15, 0.09, 0.10'
+使用state.sls
+下面功能类似于“salt '*' state.sls ifconfig”
+
+ curl -k https://192.168.104.76:8000 -H "Accept: application/x-yaml" -H "X-Auth-Token: ded897184a942ca75683276c29d787ea71c207a9" -d client='local' -d tgt='*' -d fun='state.sls' -d arg='ifconfig'
+return:
+- node76:
+        cmd_|-ifconfig_|-ifconfig_|-run:  
+      __run_num__: 0  
+      changes:  
+        pid: 30954  
+        retcode: 0  
+        stderr: ''  
+        stdout: "eth2      Link encap:Ethernet  HWaddr 00:50:56:B5:5C:28  \n     \  
+          \     inet addr:192.168.90.63  Bcast:192.168.90.255  Mask:255.255.255.0\n\  
+          \          inet6 addr: fe80::250:56ff:feb5:5c28/64 Scope:Link\n        \  
+          \  UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1\n          RX packets:825051\  
+          \ errors:0 dropped:0 overruns:0 frame:0\n          TX packets:434351 errors:0\  
+          \ dropped:0 overruns:0 carrier:0\n          collisions:0 txqueuelen:1000\  
+          \ \n          RX bytes:60353823 (57.5 MiB)  TX bytes:27062672 (25.8 MiB)\n\  
+          \nlo        Link encap:Local Loopback  \n          inet addr:127.0.0.1 \  
+          \ Mask:255.0.0.0\n          inet6 addr: ::1/128 Scope:Host\n          UP\  
+          \ LOOPBACK RUNNING  MTU:16436  Metric:1\n          RX packets:808 errors:0\  
+          \ dropped:0 overruns:0 frame:0\n          TX packets:808 errors:0 dropped:0\  
+          \ overruns:0 carrier:0\n          collisions:0 txqueuelen:0 \n         \  
+          \ RX bytes:59931 (58.5 KiB)  TX bytes:59931 (58.5 KiB)"  
+      comment: Command "ifconfig" run  
+      duration: 11.991  
+      name: ifconfig  
+      result: true  
+      start_time: '13:59:06.334112'  
+使用Targeting
+下面功能类似于"salt -L '192.168.90.61,192.168.90.63' test.ping"
+
+ curl -k https://192.168.104.76:8000 -H "Accept: application/x-yaml" -H "X-Auth-Token: ded897184a942ca75683276c29d787ea71c207a9"  -d client='local' -d tgt='node76'  -d expr_form='list'  -d fun='test.ping' 
+return:
+- node76: true
+以json格式输出
+curl -k https://192.168.104.76:8000 -H "Accept: application/json" -H "X-Auth-Token: ded897184a942ca75683276c29d787ea71c207a9"  -d client='local' -d tgt='node76'  -d fun='cmd.run' -d arg='uptime'
+{"return": [{"node76": " 13:25:20 up 161 days,  2:30,  1 user,  load average: 0.01, 0.06, 0.08"}]}
