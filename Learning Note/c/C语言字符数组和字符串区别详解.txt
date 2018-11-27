@@ -1,0 +1,335 @@
+字符数组和字符串的区别，C语言字符数组和字符串区别详解
+ 
+C 语言中并不存在字符串这个数据类型，而是使用字符数组来保存字符串。那么，字符数组就一定是字符串吗？
+
+对于这个问题，大多教科书中的回答是“是”。其实不然，字符数组和字符串是完全不相同的两个概念，千万不要混淆。分析如下所示的示例代码。
+#include <stdio.h>
+#include <string.h>
+int main(void)
+{
+    /*字符数组赋初值*/
+    char cArr[] = {'I','L','O','V','E','C'};
+    /*字符串赋初值*/
+    char sArr[] = "ILOVEC";
+    /*用sizeof（）求长度*/
+    printf("cArr的长度=%d\n", sizeof(cArr));
+    printf("sArr的长度=%d\n", sizeof(sArr));
+    /*用strlen（）求长度*/
+    printf("cArr的长度=%d\n", strlen(cArr));
+    printf("sArr的长度=%d\n", strlen(sArr));
+    /*用printf的%s打印内容*/
+    printf("cArr的内容=%s\n", cArr);
+    printf("sArr的内容=%s\n", sArr);
+    return 0;
+}
+运行结果为：
+cArr的长度=6
+sArr的长度=7
+cArr的长度=7
+sArr的长度=6
+cArr的内容=ILOVEC'
+sArr的内容=ILOVEC
+
+从代码及其运行结果中可以看出如下几点。
+
+首先，从概念上讲，cArr 是一个字符数组，而 sArr 是一个字符串。因此，对于 sArr，编译时会自动在末尾增加一个 null 字符（也就是'\0'，用十六进制表示为 0x00）；而对于 cArr，则不会自动增加任何东西。
+
+记住，这里的 sArr 必须是“char sArr[7]="ILOVEC"”，而不能够是“char sArr[6]="ILOVEC"”。
+
+其次，“sizeof()”运算符求的是字符数组的长度，而不是字符串长度。因此，对于“sizeof(cArr)”，其运行结果为 6；而对于 sizeof(sArr)，其运行结果为 7（之所以为 7，是因为 sArr 是一个字符串，编译时会自动在末尾增加一个 null 字符）。因此，对于以下代码：
+/*字符数组赋初值*/
+char cArr[] = {'I'，'L'，'O'，'V'，'E'，'C'};
+/*字符串赋初值*/
+char sArr[] = "ILOVEC";
+也可以写成如下等价形式：
+/*字符数组赋初值*/
+char cArr[6] = {'I'，'L'，'O'，'V'，'E'，'C'};
+/*字符串赋初值*/
+char sArr[7] = "ILOVEC";
+最后，对于字符串 sArr，可以直接使用 printf 的 %s 打印其内容；而对字符数组，很显然使用 printf 的 %s 打印其内容是不合适的。
+
+通过对以上代码的分析，现在我们可以很简单地得出字符数组和字符串二者之间的区别：
+对于字符数组，其长度是固定的，其中任何一个数组元素都可以为 null 字符。因此，字符数组不一定是字符串。
+对于字符串，它必须以 null 结尾，其后的字符不属于该字符串。字符串一定是字符数组，它是最后一个字符为 null 字符的字符数组。
+
+scanf函数输入字符串，C语言scanf函数输入字符串详解
+
+除了在定义字符数组时初始化外，还可以通过scanf从键盘输入字符串。下面写一个程序：
+# include <stdio.h>
+int main(void)
+{
+    char str[10];  //str是string的缩写, 即字符串
+    printf("请输入字符串：");
+    scanf("%s", str);  /*输入参数是已经定义好的“字符数组名”, 不用加&, 因为在C语言中数组名就代表该数组的起始地址*/
+    printf("输出结果：%s\n", str);
+    return 0;
+}
+输出结果是：
+请输入字符串：爱你一生一世
+输出结果：爱你一生一世
+
+用 scanf 给字符数组赋值不同于对数值型数组赋值。前面讲过，给数值型数组赋值时只能用 for 循环一个一个地赋值，不能整体赋值。而给字符数组赋值时可以直接赋值，不需要使用循环。此外从键盘输入后，系统会自动在最后添加结束标志符 '\0'。但是用 scanf 输入字符串时有一个地方需要注意：如果输入的字符串中带空格，比如“i love you”，那么就会有一个问题。我们将上面程序运行时输入的字符串改一下：
+# include <stdio.h>
+int main(void)
+{
+    char str[10];  //str是string的缩写, 即字符串
+    printf("请输入字符串：");
+    scanf("%s", str);  //输入参数是已经定义好的字符数组名
+    printf("输出结果：%s\n", str);
+    return 0;
+}
+输出结果是：
+请输入字符串：i love you
+输出结果：i
+
+我们看到，输入的是“i love you”，而输出的只有“i”。原因是系统将空格作为输入字符串之间的分隔符。也就是说，只要一“敲”空格，系统就认为当前的字符串已经结束，接下来输入的是下一个字符串，所以只会将空格之前的字符串存储到定义好的字符数组中。
+
+那么这种情况该怎么办？那么就以空格为分隔符，数数有多少个字符串，有多少个字符串就定义多少个字符数组。比如“i love you”有两个空格，表示有三个字符串，那么就定义三个字符数组：
+# include <stdio.h>
+int main(void)
+{
+    char str1[10], str2[10], str3[10];
+    printf("请输入字符串：");
+    scanf("%s%s%s", str1, str2, str3);
+    printf("输出结果：%s %s %s\n", str1, str2, str3);  //%s间要加空格
+    return 0;
+}
+输出结果是：
+请输入字符串：i love you
+输出结果：i love you
+
+需要注意的是，前面讲“清空缓冲区”的时候讲过，用 scanf 输入时，不管输入什么，最后“敲”的回车都会被留在缓冲区，这里也不例外。输入字符串时最后“敲”的回车也会被留在缓冲区，如果紧接着要给一个字符变量赋值的话，那么还没等你输入系统就自动退出来了。因为系统自动将回车产生的字符 '\n' 赋给该字符变量了，所以此时对字符变量赋值前要首先清空缓冲区。
+
+gets函数，C语言gets函数详解
+ 
+在前面从键盘输入字符串是使用 scanf 和 %s。其实还有更简单的方法，即使用 gets() 函数。该函数的原型为：
+# include <stdio.h>
+char *gets(char *str);
+
+这个函数很简单，只有一个参数。参数类型为 char* 型，即 str 可以是一个字符指针变量名，也可以是一个字符数组名。
+
+gets() 函数的功能是从输入缓冲区中读取一个字符串存储到字符指针变量 str 所指向的内存空间。
+
+下面将前面中使用 scanf 输入字符串的程序改一下：
+# include <stdio.h>
+int main(void)
+{
+    char str[20] = "\0";  //字符数组初始化\0
+    printf("请输入字符串：");
+    gets(str);
+    printf("%s\n", str);
+    return 0;
+}
+输出结果是：
+请输入字符串：i love you
+i love you
+
+可见，gets() 函数不仅比 scanf 简洁，而且，就算输入的字符串中有空格也可以直接输入，不用像 scanf 那样要定义多个字符数组。也就是说:
+gets(str);
+完全可以取代:
+scanf("%s", string);
+不仅代码更简洁，而且可以直接输入带空格的字符串。同样，前面章节中，对字符指针变量所指向的内存单元进行初始化也可以用 gets()，下面将那个程序也改一下，将 scanf 换成 gets()：
+# include <stdio.h>
+int main(void)
+{
+    char str[30];
+    char *string = str;  //一定要先将指针变量初始化
+    printf("请输入字符串：");
+    gets(string);  //也可以写成gets(str);
+    printf("%s\n", string);  //输出参数是已经定义好的“指针变量名”
+    return 0;
+}
+输出结果是：
+请输入字符串：Hi i...like you
+Hi i...like you
+
+此外，关于使用 gets() 函数需要注意：使用 gets() 时，系统会将最后“敲”的换行符从缓冲区中取出来，然后丢弃，所以缓冲区中不会遗留换行符。这就意味着，如果前面使用过 gets()，而后面又要从键盘给字符变量赋值的话就不需要吸收回车清空缓冲区了，因为缓冲区的回车已经被 gets() 取出来扔掉了。下面写一个程序验证一下：
+# include <stdio.h>
+int main(void)
+{
+    char str[30];
+    char ch;
+    printf("请输入字符串：");
+    gets(str);
+    printf("%s\n", str);
+    scanf("%c", &ch);
+    printf("ch = %c\n", ch);
+    return 0;
+}
+输出结果是：
+请输入字符串：i love you
+i love you
+Y
+ch = Y
+
+我们看到，没有清空缓冲区照样可以输入'Y'，因为 gets() 已经将缓冲区中的回车取出来丢掉了。如果前面使用的不是 gets() 而是 scanf，那么通过键盘给 ch 赋值前就必须先使用 getchar() 清空缓冲区。
+
+fgets函数及其用法，C语言fgets函数详解
+ gets函数puts函数 
+虽然用 gets() 时有空格也可以直接输入，但是 gets() 有一个非常大的缺陷，即它不检查预留存储区是否能够容纳实际输入的数据，换句话说，如果输入的字符数目大于数组的长度，gets 无法检测到这个问题，就会发生内存越界，所以编程时建议使用 fgets()。
+
+fgets() 的原型为：
+# include <stdio.h>
+char *fgets(char *s, int size, FILE *stream);
+
+fgets() 虽然比 gets() 安全，但安全是要付出代价的，代价就是它的使用比 gets() 要麻烦一点，有三个参数。它的功能是从 stream 流中读取 size 个字符存储到字符指针变量 s 所指向的内存空间。它的返回值是一个指针，指向字符串中第一个字符的地址。
+
+其中：s 代表要保存到的内存空间的首地址，可以是字符数组名，也可以是指向字符数组的字符指针变量名。size 代表的是读取字符串的长度。stream 表示从何种流中读取，可以是标准输入流 stdin，也可以是文件流，即从某个文件中读取，这个在后面讲文件的时候再详细介绍。标准输入流就是前面讲的输入缓冲区。所以如果是从键盘读取数据的话就是从输入缓冲区中读取数据，即从标准输入流 stdin 中读取数据，所以第三个参数为 stdin。
+
+下面写一个程序：
+# include <stdio.h>
+int main(void)
+{
+    char str[20];  /*定义一个最大长度为19, 末尾是'\0'的字符数组来存储字符串*/
+    printf("请输入一个字符串:");
+    fgets(str, 7, stdin);  /*从输入流stdin即输入缓冲区中读取7个字符到字符数组str中*/
+    printf("%s\n", str);
+    return 0;
+}
+输出结果是：
+请输入一个字符串:i love you
+i love
+
+我们发现输入的是“i love you”，而输出只有“i love”。原因是 fgets() 只指定了读取 7 个字符放到字符数组 str 中。“i love”加上中间的空格和最后的 '\0' 正好是 7 个字符。
+
+那有人会问：“用 fgets() 是不是每次都要去数有多少个字符呢？这样不是很麻烦吗？”不用数！fget() 函数中的 size 如果小于字符串的长度，那么字符串将会被截取；如果 size 大于字符串的长度则多余的部分系统会自动用 '\0' 填充。所以假如你定义的字符数组长度为 n，那么 fgets() 中的 size 就指定为 n–1，留一个给 '\0' 就行了。
+
+但是需要注意的是，如果输入的字符串长度没有超过 n–1，那么系统会将最后输入的换行符 '\n' 保存进来，保存的位置是紧跟输入的字符，然后剩余的空间都用 '\0' 填充。所以此时输出该字符串时 printf 中就不需要加换行符 '\n' 了，因为字符串中已经有了。
+
+下面写一个程序看一下：
+# include <stdio.h>
+int main(void)
+{
+    char str[30];
+    char *string = str;  //一定要先给指针变量初始化
+    printf("请输入字符串：");
+    fgets(string, 29, stdin);  //size指定为比字符数组元素少一就行了
+    printf("%s", string);  //printf中不需要添加'\n', 因为字符串中已经有了
+    return 0;
+}
+输出结果是：
+请输入字符串：i love studying C语言
+i love studying C语言
+
+我们看到，printf 中没有添加换行符 '\n'，输出时也自动换行了。
+
+所以 fgets() 和 gets() 一样，最后的回车都会从缓冲区中取出来。只不过 gets() 是取出来丢掉，而 fgets() 是取出来自己留着。但总之缓冲区中是没有回车了！所以与 gets() 一样，在使用 fgets() 的时候，如果后面要从键盘给字符变量赋值，那么同样不需要清空缓冲区。下面写一个程序验证一下。
+# include <stdio.h>
+int main(void)
+{
+    char str[30];
+    char ch;
+    printf("请输入字符串：");
+    fgets(str, 29, stdin);
+    printf("%s", str);  //后面不要加'\n'
+    scanf("%c", &ch);
+    printf("ch = %c\n", ch);
+    return 0;
+}
+输出结果是：
+请输入字符串：i love you
+i love you
+Y
+ch = Y
+
+puts函数，C语言puts函数用法详解
+ 
+前面在输出字符串时都使用printf，通过“%s”输出字符串。其实还有更简单的方法，就是使用 puts() 函数。该函数的原型为：
+# include <stdio.h>
+int puts(const char *s);
+
+这个函数也很简单，只有一个参数。s可以是字符指针变量名、字符数组名，或者直接是一个字符串常量。功能是将字符串输出到屏幕。输出时只有遇到 '\0' 也就是字符串结束标志符才会停止。
+
+下面写一个程序：
+# include <stdio.h>
+int main(void)
+{
+    char name[] = "祖国!";
+    printf("%s\n", name);  //用printf输出
+    puts(name);  //用puts()输出
+    puts("我爱你!");  //直接输出字符串
+    return 0;
+}
+输出结果是：
+祖国!祖国!我爱你!
+
+可见使用 puts() 输出更简洁、更方便。而且使用 puts() 函数连换行符 '\n' 都省了，使用 puts() 显示字符串时，系统会自动在其后添加一个换行符，也就是说：
+printf("%s\n", name);
+和：
+puts(name);
+是等价的。所以前面字符指针变量中：
+printf("%s\n", string);
+也可以直接写成：
+puts(string);
+我们写一个程序来验证一下：
+# include <stdio.h>
+int main(void)
+{
+    char *string = "I Love You China!";
+    puts(string);
+    return 0;
+}
+输出结果是：
+I Love You China!
+
+但是 puts() 和 printf() 相比也有一个小小的缺陷，就是如果 puts() 后面的参数是字符指针变量或字符数组，那么括号中除了字符指针变量名或字符数组名之外什么都不能写。比如 printf() 可以这样写：
+printf("输出结果是：%s\n", str);
+而 puts() 就不能使用如下写法：
+puts(输出结果是：str);
+因此，puts() 虽然简单、方便，但也仅限于输出字符串，功能还是没有 printf() 强大。
+
+fputs函数，C语言fputs函数及其用法详解
+ 
+fputs() 函数也是用来显示字符串的，它的原型是：
+# include <stdio.h>
+int fputs(const char *s, FILE *stream);
+
+s 代表要输出的字符串的首地址，可以是字符数组名或字符指针变量名。
+
+stream 表示向何种流中输出，可以是标准输出流 stdout，也可以是文件流。标准输出流即屏幕输出，printf 其实也是向标准输出流中输出的。
+
+fputs() 和 puts() 有两个小区别：
+puts() 只能向标准输出流输出，而 fputs() 可以向任何流输出。
+使用 puts() 时，系统会在自动在其后添加换行符；而使用 fputs() 时，系统不会自动添加换行符。
+
+那么这是不是意味着使用 fputs() 时就要在后面添加一句“printf("\n")；”换行呢？看情况！如果输入时使用的是 gets()，那么就要添加 printf 换行；但如果输入时用的是 fgets()，则不需要。
+
+因为使用 gets() 时，gets() 会将回车读取出来并丢弃，所以换行符不会像 scanf 那样被保留在缓冲区，也不会被 gets() 存储；而使用 fgets() 时，换行符会被 fgets() 读出来并存储在字符数组的最后，这样当这个字符数组被输出时换行符就会被输出并自动换行。
+
+但是也有例外，比如使用 fgets() 时指定了读取的长度，如只读取 5 个字符，事实上它只能存储 4 个字符，因为最后还要留一个空间给 '\0'，而你却从键盘输入了多于 4 个字符，那么此时“敲”回车后换行符就不会被 fgets() 存储。数据都没有地方存放，哪有地方存放换行符呢！此时因为 fgets() 没有存储换行符，所以就不会换行了。
+
+下面写一个程序验证一下：
+# include <stdio.h>
+int main(void)
+{
+    char str[20];  /*定义一个最大长度为19, 末尾是'\0'的字符数组来存储字符串*/
+    printf("请输入一个字符串:");
+    fgets(str, 19, stdin);  /*从输入流stdin中读取19个字符到字符数组str中*/
+    fputs(str, stdout);  //将字符数组的内容输出到输出流stdout中
+    return 0;
+}
+输出结果是：
+请输入一个字符串:i love you
+i love you
+Press any key to continue
+
+我们看到读取 19 个字符足够存储“i love you”，所以 fgets() 最后会存储换行符。这样 fputs() 输出时这个换行符就能换行了。
+
+下面再将读取的字符改小一点看看：
+# include <stdio.h>
+int main(void)
+{
+    char str[20];  /*定义一个最大长度为19, 末尾是'\0'的字符数组来存储字符串*/
+    printf("请输入一个字符串:");
+    fgets(str, 5, stdin);  //从输入流stdin中读取4个字符到字符数组str中
+    fputs(str, stdout);  //将字符数组的内容输出到输出流stdout中
+    return 0;
+}
+输出结果是：
+请输入一个字符串:i love you
+i loPress any key to continue
+
+我们看到并没有换行。
+
+值得说明的是，虽然 gets()、fgets()、puts()、fputs() 都是字符串处理函数，但它们都包含在 stdio.h 头文件中，并不是包含在 string.h 头文件中。
+
