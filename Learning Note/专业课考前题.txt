@@ -1,3 +1,43 @@
+c语言用字符数组和字符指针删除相同字符
+
+如何用字符数组和字符指针做参数删除与某字符相同的字符
+1.用字符数组
+char *DelLetter1(char str1[],char a)   //用字符数组删除
+{
+	int i = 0;
+	int c = 0;
+	char *b = (char*)malloc((strlen(str1))*sizeof(char));   //定义动态数组
+	for (i = 0; i < (strlen(str1)+1); i++)
+	{
+		if (str1[i]!=a)                      //把不是指定字符的元素复制进入新的数组
+		{
+			b[c] = str1[i];   
+			c++;
+		}
+		else {
+			continue;
+			 }
+	}
+	return b;                                       //返回新的数组
+}
+2.用字符指针
+char *DelLetter2(char str1[], char a)
+{
+	char *c = str1;
+	char *e = (char*)malloc((strlen(str1)) * sizeof(char));         //定义动态数组
+	char *f = e;                                                 //记录新的指针开始值
+	while (*c != '\0')
+	{
+		if (*c != a)					//复制进入新的数组
+		{
+			*e = *c;
+			e++;
+		}
+		c++;
+	}
+	return f;                    //返回开始地址
+
+
 树的遍历方法，及与其对应二叉树的遍历方法的关系。
   树结构有两种次序遍历树的方法：
     1.先根遍历：先访问树的根节点，再依次先根遍历子树；
