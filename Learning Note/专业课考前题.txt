@@ -1,3 +1,167 @@
+假设文件包含10字节，并且你读取了十字节，调用feof函数，函数返回值均为0，这是因为尽管文件指针这时已经指向文件尾了，但是你没有试图越过文件尾读取数据，只有当你尝试了读取第十一个字节时，调用feof，函数才会返回0.
+
+#include <stdio.h>
+#include <string.h>
+
+void removeDuplicate(char str[]);
+void removeDup(char *str);
+void removeDup2(char *str);
+
+int main (void) {
+    char name1[] = "aaaabababababababasdbasbdasbdabsdqqq";
+    char name2[] = "aaaabababababababasdbasbdasbdabsdqqq";
+    char name3[] = "aaaabababababababasdbasbdasbdabsdqqq";
+    removeDuplicate(name1);
+	removeDup(name2);
+	removeDup2(name3);
+    printf("name1: %s\n", name1);
+    printf("name2: %s\n", name2);
+    printf("name3: %s\n", name3);
+    return 0;
+}
+
+void removeDuplicate(char str[]) {
+    int len = strlen(str);
+    int p = 0;
+    int i;
+    int j;
+    for (i=0; i<len; i++) {
+        if (str[i] != '\0') {
+            str[p++] = str[i];
+            for (j=i+1; j<len; j++) {
+                if (str[i] == str[j]) {
+                    str[j] = '\0';
+                }
+            }
+        }
+    }
+    str[p] = '\0';
+}
+
+void removeDup(char *str){
+	int len = strlen(str);
+	char *p;
+	p=str;
+	int i, j, q=0;
+	for(i=0;i<len; i++) {
+		if (*(p+i) != '\0') {
+            *(p+q) = *(p+i);
+            q++;
+            for (j=i+1; j<len; j++) {
+                if (*(p+i) == *(p+j)) {
+                    *(p+j) = '\0';
+                }
+            }
+        }
+	}
+	*(p+q)='\0';
+}
+
+void removeDup2(char *str){
+    int len = strlen(str);
+    char *q=str;
+    int p = 0;
+    int i;
+    int j;
+    for (i=0; i<len; i++) {
+        if (q[i] != '\0') {
+            q[p++] = q[i];
+            for (j=i+1; j<len; j++) {
+                if (q[i] == q[j]) {
+                    q[j] = '\0';
+                }
+            }
+        }
+    }
+    q[p] = '\0';
+}
+//上面的代码一共出现了3次'\0', 前2次的'\0'没有什么特殊含义, 可以替换成任何在所给字符串中
+//不会出现的字符. 最后一个'\0'则是C语言中特有的, 是字符串结束标志.
+//就是把所有重复的元素标记成'\0', 那么剩下的元素则是不重复的元素, 通过变量p, 把这些元素重新
+//添加到结果字符串中即可.
+
+共用体的概念;
+
+       共用体又叫联合体 关键字为union
+
+   定义：
+
+union 共用体名
+{
+成员表列
+}变量表列;
+实例：
+      union
+
+     {
+
+             int i;
+
+            char c;
+
+            float b;
+
+    } q，r；
+
+ 共用体几个变量互相覆盖。这种几个不同的变量共同占用一段内存的结构
+
+共用体初始化：
+
+      共用体只能初始化成员列表，不能初始化变量列表 如 q={1，‘2’，0.3}是错误的。q.i=2是对的
+
+共用体的引用：
+
+      不能引用共用体变量，而只能引用共用体变量中的成员。
+#include <stdio.h>
+
+int main(){
+	union {
+		int i;
+		char c;
+	}u={'A'};
+	
+	printf("%d\n", u.i);
+	return 0;
+} 
+--》65
+
+数值后面加“L”、“l”、“U”、“u”、“H”、“h”，“B”、“b”，数值前面加“0”和“0x”的意义
+2018年01月14日 19:08:38 Ruo_Xiao 阅读数：1855
+版权声明：本文为博主原创文章，未经博主允许不得转载。	https://blog.csdn.net/itworld123/article/details/79057957
+2018-01-14   创建人：Ruo_Xiao
+2018-01-15   修改人：Ruo_Xiao
+增加对long的说明。
+2018-07-14   修改人：Ruo_Xiao
+1、增加对数值后面加“H”、“h”、“B”和“b”的说明。
+2、对模块进行归类。
+1
+2
+3
+4
+5
+6
+一、用于说明数据类型
+数值后面加“L”和“l”（小写的l）的意义是该数值是long型。 
+详细说如下： 
+5L的数据类型为long int。 
+5.12L的数据类型为long double。
+数值后面加“U”和“u”的意义是该数值是unsigned型。
+二、用于说明数值表示方法
+数值后面加“”H“、“h”的意义是该数值是用16进制表示的。
+数值后面加“”B“、“b”的意义是该数值是用2进制表示的。
+后面什么也不加，代表10进制。 
+栗子： 
+11111111B = FFH = 255
+数值前面加“0”的意义是该数值是八进制。
+数值前面加“0x”的意义是该数值是十六进制
+
+中缀转后缀表达式 转换的另一种方法
+1)先按照运算符的优先级对中缀表达式加括号，变成( ( a+(b*c) ) + ( ((d*e)+f) *g ) )
+
+2)将运算符移到括号的后面，变成((a(bc)*)+(((de)*f)+g)*)+
+
+3)去掉括号，得到abc*+de*f+g*+
+
 当sqr(625)时，
 分块查找的平均查找长度ASL取最小值sqr(625)+1,
 因为进行分块查找时，可将长度为N的表均匀地分成B块，每块含有S个记录，即有B=N/S，
@@ -221,6 +385,8 @@ C和D表述不全面
 结构体字节对齐：每个成员相对于结构体首地址的偏移量都得是当前成员所占内存大小的整数倍，如果不是会在成员前面加填充字节。结构体的大小是内部最宽的成员的整数倍。
 
 共用体
+
+
 #include <stdio.h>
 //gcc让不同类型的变量共享内存地址 ,同一时间只有一个成员有效
 union data{ 
