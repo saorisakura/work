@@ -1,0 +1,184 @@
+C指针操作——全部替换字符串里某个字符或者某个子串
+2016年10月28日 17:03:49 Ifen_huang 阅读数：10342 标签： c语言  更多
+个人分类： C语言
+#include<string.h>
+#include<stdio.h>
+#include<stdlib.h>
+
+//把source字符串里所有s1字符全部替换成字符s2
+
+void replace_char(char *result, char *source, char s1, char s2)
+{
+    int i = 0;
+    char *q = NULL;
+
+    q = source;
+    for(i=0; i<strlen(q); i++)
+    {
+        if(q[i] == s1)
+        {
+            q[i] = s2;
+        }
+    }
+    strcpy(result, q);
+}
+
+
+void replace_string(char *result, char *source, char* s1, char *s2)
+{
+    char *q=NULL;
+    char *p=NULL;
+   
+    p=source;
+    while((q=strstr(p, s1))!=NULL)
+    {
+        strncpy(result, p, q-p);
+        result[q-p]= '\0';//very important, must attention!
+        strcat(result, s2);
+        strcat(result, q+strlen(s1));
+        strcpy(p,result);
+    }
+    strcpy(result, p);    
+}
+
+void main()
+{
+    char url[64] = "ad12 fdf5 d12f dfd12 dfp";
+    char result[64] = {0};
+    
+    replace_char(result, url, ' ', '_' );//把url里所有‘ ’字符替换成'_'字符，结果存在result中
+    printf("char final result=%s\n",result);
+    memset(result, 0, sizeof(result));
+    replace_string(result, url, "12", "@@@");//把url里所有“12”字符串替换成“@@@”字符串
+    printf("string final result=%s\n", result);
+}
+
+分别单独运行的结果如下：
+
+char final result=ad12_fdf5_d12f_dfd12_dfp
+string final result=ad@@@_fdf5_d@@@f_dfd@@@_dfp
+
+C中strstr的实现方法
+做题目的时候须要自己实现strstr函数
+
+/************************************************************************/
+/*       编写函数IND。让它推断一个字符串是否为还有一个字符串的子串的功能。若是则返回第一次出现的起始位置，否则返回0。  
+/*
+/************************************************************************/
+
+#include <stdio.h>
+#include <assert.h>
+
+const char * IND(const char * str, const char * substr)
+{
+    assert(substr != NULL && str != NULL);
+    const char * psub = substr;
+    const char * pstr = str;
+
+    while (*pstr)
+    {
+//      if (*pstr != *psub)
+//          continue;
+
+        const char * tmp = pstr;
+        while (*tmp++ == *psub++);
+
+        if (*psub == '\0')
+            return pstr;
+
+        psub = substr;
+        pstr++;
+    }
+
+    return NULL;
+}
+
+int main()
+{
+    //char * substr = "hello";
+    char * substr = "";
+    char * str = "skljdfhellosjdlf";
+
+    const char * res = IND(str, substr);
+    if (res != NULL)
+        printf("%s\n", res);
+    else
+        printf("not find\n");
+
+    res = strstr(str, substr);
+    if (res != NULL)
+        printf("%s\n", res);
+    else
+        printf("not find\n");
+
+    return 0;
+}
+这是微软提供的库函数版本号
+
+/***
+*strstr.c - search for one string inside another
+*
+*       Copyright (c) Microsoft Corporation. All rights reserved.
+*
+*Purpose:
+*       defines strstr() - search for one string inside another
+*
+*******************************************************************************/
+
+#include <cruntime.h>
+#include <string.h>
+
+/***
+*char *strstr(string1, string2) - search for string2 in string1
+*
+*Purpose:
+*       finds the first occurrence of string2 in string1
+*
+*Entry:
+*       char *string1 - string to search in
+*       char *string2 - string to search for
+*
+*Exit:
+*       returns a pointer to the first occurrence of string2 in
+*       string1, or NULL if string2 does not occur in string1
+*
+*Uses:
+*
+*Exceptions:
+*
+*******************************************************************************/
+
+char * __cdecl strstr (
+        const char * str1,
+        const char * str2
+        )
+{
+        char *cp = (char *) str1;
+        char *s1, *s2;
+
+        if ( !*str2 )
+            return((char *)str1);
+
+        while (*cp)
+        {
+                s1 = cp;
+                s2 = (char *) str2;
+
+                while ( *s1 && *s2 && !(*s1-*s2) )
+                        s1++, s2++;
+
+                if (!*s2)
+                        return(cp);
+
+                cp++;
+        }
+
+        return(NULL);
+
+}
+得到的效果是一致的， 只是。 我们这里没有使用强制类型转化将const char * 转化为 char *类型，（事实上从这点上来看， C中的const仅仅是一个纸老虎， 一个强制类型转换就没了<-_->!!） 
+库函数代码中
+
+ if ( !*str2 )
+            return((char *)str1);
+感觉似乎没有这段也是能够输出预期的结果的。

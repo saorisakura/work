@@ -1,3 +1,50 @@
+fread与fwrite读取数字或数组
+
+#include <stdio.h>  
+int main()  
+{  
+    FILE* pFile;  
+    int num1=20,num2=21;  
+    pFile = fopen("myfile.bin" , "wb"); 
+    fwrite(&num1 , sizeof(int) , 1 ,pFile);
+    fwrite(&num2 ,  sizeof(int) ,1 , pFile); 
+    fclose(pFile);
+
+    int n1,n2;
+    pFile = fopen("myfile.bin" , "r");  
+    fread(&n1 ,  sizeof(int) , 1 ,pFile);
+    fread(&n2 ,  sizeof(int) ,1 , pFile);
+    printf("%d %d\n", n1,n2);
+
+    fclose(pFile);
+    return 0;
+}  
+
+#include <stdio.h>  
+int main()  
+{
+    int i;
+    FILE* pFile;  
+    int arr[5];
+    for(i=0; i<5; i++)
+    {
+        arr[i] = i;
+    }
+    pFile = fopen("myfile.bin" , "wb"); 
+    fwrite(arr, sizeof(int), 5, pFile);
+    fclose(pFile);
+
+    int recvarr[5];
+    pFile = fopen("myfile.bin" , "r");  
+    fread(recvarr,  sizeof(int), 5, pFile);
+    for(i=0; i<5; i++)
+    {
+        printf("%d ",recvarr[i]);
+    }  
+    fclose(pFile);
+    return 0;
+}  
+
 例如对整型二维数组a[3][2]赋值
 方法一：
 在定义的同时赋值
