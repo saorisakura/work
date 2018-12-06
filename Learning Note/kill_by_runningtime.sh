@@ -1,3 +1,20 @@
+find /usr/local/minivdir/pics/ -mmin 10 # 查询10分钟前改变的内容
+-mmin n
+
+              File's data was last modified n minutes ago.
+
+-mtime n
+
+              File's data was last modified n*24 hours ago.
+
+find /home/  -mtime 1  #查询1天前改变的内容
+find /home/  -mmin 1    #查询1分钟前改变的内容
+当然，也可以用与或非操作。
+
+（-a）（-o）（！）
+
+find /home/  -mtime 1 -o -mmin 1
+
 #!/bin/bash
 
 p_name=ffmpeg

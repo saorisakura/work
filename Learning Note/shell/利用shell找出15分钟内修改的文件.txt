@@ -1,0 +1,42 @@
+利用shell找出15分钟内修改的文件
+如果你的文件只是生成不会修改的话，可以这样：
+
+find * -mmin -15 2>/dev/null 
+
+如果可能修改，则需要这样（先创建一个 15 分之前的时间戳的文件，然后找比这个文件新的文件）： 
+touch -t $(date -d "15 min ago" +%Y%m%d%H%M) temp.tmp
+find * -newer temp.tmp 2>/dev/null
+rm -rf temp.tmp
+
+脚本如下：
+#!/bin/bash
+
+echo -en "\e[1;32mPlease enter the required time: \e[0m"
+read input
+
+rm -rf /tmp/error/*
+
+cd /u01/app/siebel/ses/siebsrvr/enterprises/FFP_82/FFPAPP01/log
+
+touch -t $(date -d "$input min ago" +%Y%m%d%H%M) /tmp/error/temp.tmp
+filename=`find * -newer /tmp/error/temp.tmp 2>/dev/null`
+
+for i in $filename:
+do
+logname=`echo $i|awk -F'_' '{print $1}'`
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" >> /tmp/error/$logname-`date +%F`.log
+echo $i >> /tmp/error/$logname-`date +%F`.log
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" >> /tmp/error/$logname-`date +%F`.log
+sed -n '/error/p; /Error/p; /fail/p; /Fail/p' $i >> /tmp/error/$logname-`date +%F`.log
+if [ $? -eq 0 ];then
+echo "create log successfully! $i /tmp/error/$logname-`date +%F`.log"
+else
+echo "create log fail. please check it out"
+fi
+done
+
+if [ $? -eq 0 ];then
+echo -e '\e[1;32mcreate log successfully! congratulation!\e[0m'
+else
+echo -e '\e[1;31mcreate log fail. please check it out!\e[0m'
+fi
