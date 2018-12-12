@@ -1,3 +1,41 @@
+如何通过ftell和fseek来获取文件大小
+复制代码
+ 1 #include <stdio.h> 
+ 2 int main () 
+ 3    { 
+ 4         FILE * pFile=NULL; 
+ 5     long size; 
+ 6     pFile = fopen ("myfile.txt","rb"); 
+ 7     if (pFile==NULL) perror ("Error opening file"); 
+ 8     else
+ 9         { 
+10     fseek (pFile, 0, SEEK_END);
+11     size=ftell (pFile); 
+12     fclose (pFile);
+13     pFile=NULL;
+14      printf ("Size of myfile.txt is: %ld bytes.\n",size); 
+15          } 
+16     return 0; 
+17      }
+复制代码
+　　首先利用fseek(pfile,0,SEEK_END)将文件的当前位置移到文件的末尾，然后调用函数ftell()获得当前位置相对于文件首的位移，该位移值就等于文件所含字节数。这样就得到文件大小了！
+
+    fseek(重定位流上的文件指针)
+
+    int fseek(FILE *stream, long offset, int fromwhere);
+
+    函数说明：第一个参数stream为文件指针，  第二个参数offset为偏移量，整数表示正向偏移，负数表示负向偏移  第三个参数fromwhere设定从文件的哪里开始偏移,可能取值为：SEEK_CUR（当前位置）、 SEEK_END（文件结尾）或 SEEK_SET（文件开头）， 其中SEEK_SET,SEEK_CUR和SEEK_END的值依次为0，1和2。
+   例如：
+fseek(fp,100L,0);把fp指针移动到离文件开头100字节处；
+
+   返回值: 成功，返回0，否则返回其他值。
+
+   ftell(返回当前文件位置)
+
+   long ftell(FILE *stream)
+
+   函数说明：用于得到文件位置指针当前位置相对于文件首的偏移字节数。
+
 唐老师的元素交换一定要用指针--程序题时
 
 strrev函数不常用，不过在进行数制转换和加密等场合还是有机会用到，因为一些针对嵌入式平台的编译器和VC对它提供了支持。对于不支持strrev函数的编译器，许多网友提供了不少很有价值的解决方案，不过直接从VC所提供的源代码中去提炼，似乎更能够兼顾效率和移植性，以下提供一份经典的实现代码：
