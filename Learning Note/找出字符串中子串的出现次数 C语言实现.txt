@@ -1,0 +1,47 @@
+#include <stdio.h>
+#include <string.h>
+ 
+void  findchar(char* str,char *sub,int *count)
+{
+	char *temp1,*temp2;
+	char *temp3;
+	int cnt=0;
+	temp1=str;
+	temp2=sub;
+	while(*temp1)            //如果没有到字符串尾
+	{
+		if(*temp2==*temp1)   //如果与子串第一个字符相等,进行下一步的比较
+		{
+			temp3=temp1;                
+			while(*temp2)        //如果子串没有到结尾
+			{
+				if(*temp2++==*temp3++)
+					continue;
+				else             //说明匹配失败，重新让temp2指向子串首地址
+				{
+					temp2=sub;
+					break;
+				}
+			}
+		}
+			if(!*temp2)           //如果*tmep2为0，则说明成功匹配一次
+			{
+				temp2=sub;        //重新置为子串的首地址
+				cnt++;               //计数变量加1
+				temp1+=strlen(sub);   //temp1增加子串长度
+			}
+			else                     //说明匹配失败，temp跳1个长度
+				temp1++;
+	}
+		*count = cnt;               //返回次数结果
+}
+ 
+int main()
+{
+	char a[]="abcd13123ab324abc9012abc";
+	char b[]="abc";
+	int cnt=0;
+	findchar(a,b,&cnt);
+	printf("%d",cnt);
+	return 0;
+}
