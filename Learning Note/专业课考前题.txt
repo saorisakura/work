@@ -1,3 +1,170 @@
+每日一练哈:
+1.C语言中，数组和指针的区别？
+2.break和continue的区别，以及while和do-while语句的区别?
+3.void main（）能够带几个参数，各代表什么？
+
+C语言strtok()函数：字符串分割
+
+头文件：#include <string.h>
+
+定义函数：char * strtok(char *s, const char *delim);
+
+函数说明：strtok()用来将字符串分割成一个个片段。参数s 指向欲分割的字符串，参数delim 则为分割字符串，当strtok()在参数s 的字符串中发现到参数delim 的分割字符时则会将该字符改为\0 字符。在第一次调用时，strtok()必需给予参数s 字符串，往后的调用则将参数s 设置成NULL。每次调用成功则返回下一个分割后的字符串指针。
+
+返回值：返回下一个分割后的字符串指针，如果已无从分割则返回NULL。
+
+范例
+#include <string.h>
+main(){
+    char s[] = "ab-cd : ef;gh :i-jkl;mnop;qrs-tu: vwx-y;z";
+    char *delim = "-: ";
+    char *p;
+    printf("%s ", strtok(s, delim));
+    while((p = strtok(NULL, delim)))
+        printf("%s ", p);
+        printf("\n");
+}
+
+执行结果：
+ab cd ef;gh i jkl;mnop;qrs tu vwx y;z     //－与:字符已经被\0 字符取代
+
+面试官很喜欢让求职者写一些常用库函数的实现，有很多是和字符串相关的，有一些是关于内存拷贝的。一般，常会让写的函数有以下几个：
+
+strcpy ， strncpy， memcpy。
+
+memset一般不会让去写，但这个函数也很有特点，有很多容易用错的地方。一并总结吧。
+
+1.  strcpy
+
+strcpy函数的原型是：
+
+char * strcpy（char* dest, const char* src)
+
+strcpy的实现经常要注意的细节是：
+
+（1）判断地址是否为空，个人感觉可以使用断言
+
+（2）参数只有两个地址，没有拷贝的长度。拷贝到'\0‘时就会终止，要保证最终dest末尾是'\0'。
+
+（3）要保证目标字串的长度足够，能够容纳原串的长度。
+
+（4）因为拷贝是dest会移动，而最终要返回的是拷贝后字符串的起始地址，因此要先保存dest的地址，便于最终返回。
+
+          在实现这一点时，有两种方法。 char* temp=dest; 拷贝时移动dest返回temp，或者拷贝时移动temp返回dest，不知道哪个是对的。感觉两个都是没有问题的
+
+ 其中一种实现方式：
+
+[cpp] view plaincopy
+
+char* mystrcpy(char* dest,const char* src)  
+{  
+    assert(dest!=NULL && src!=NULL);  
+  
+    char* temp=dest;  
+  
+    while((*temp++ = *src++ )!='\0')  
+    {}  
+  
+    return dest;  
+}  
+
+2. strncpy
+
+strncpy的功能和strcpy相似，只是它复制时多了一个终止条件。即是未遇到原串的'\0’，如果已经复制了n个字符（n为提供的参数长度），复制同样会终止。
+
+strcpy的实现要注意的细节也基本适用于strncpy的实现。
+
+ 
+
+实现方式：
+
+[cpp] view plaincopy
+
+char* mystrncpy(char* dest, const char* src, int len)  
+{  
+    assert(dest!=NULL && src!=NULL);  
+  
+    char* temp=dest;  
+    int i=0;  
+  
+    while(i++ < len  && (*temp++ = *src++)!='\0')  
+    {}  
+  
+    if(*(--temp)!='\0')  
+        *temp='\0';  
+  
+    return dest;  
+}  
+[cpp] view plaincopy
+
+注意：刚开始我写strncpy的实现时，把while(i++ < len && (*temp++ = *src++)!='\0')写成了while( (*temp++ = *src++)!='\0' && i++ < len); 导致最后多复制了一个字符，明白为什么吧。。  
+ 
+
+3. memcpy
+
+memcpy和strncpy有些类似，但也有本质的不同。
+
+（1）strncpy只能复制字符串，但memcpy对类型没有要求。
+
+（2）strncpy有两个终止条件，memcpy只有一个终止条件，那就是复制n个字节。（n是memcpy的第三个参数）
+
+（3）要特别注意目的地址和源地址重合的问题，拷贝前要加以判断。
+
+（4）实现这个函数时一般要把原来的指针类型转换成char*，这样每次移动都是一个字节。
+
+ 
+
+实现方式：（考虑了两个地址空间是否会有重叠）
+
+[cpp] view plaincopy
+
+void* mymemcpy(void* dest, void* src, int len)  
+{  
+    int i=0;  
+    char* tempdest=(char*)dest;  
+    char* tempsrc=(char*)src;  
+  
+    if(tempdest<tempsrc || tempdest>(tempsrc+len-1))  
+    {  
+        while(i<len)  
+        {  
+            *tempdest++ = *tempsrc++;  
+            i++;  
+        }  
+    }  
+    else  
+    {  
+        tempdest+=len;  
+        tempsrc+=len;  
+        i=len;  
+        while(i>0)  
+        {  
+            *tempdest-- = *tempsrc--;  
+            i--;  
+        }  
+    }  
+    return dest;  
+}  
+注意，memcpy是对内存的拷贝，对其他安全性不做考虑。用户在使用这个函数时要小心，比如用它来拷贝字符串（当然如果是字符串拷贝肯定是用strncpy）就要注意末尾的\0字符之类的。
+
+4. memset
+
+memset函数的原型是：
+
+void *memset(void *s, int ch, size_t n)
+
+作用是把s所指向的地址开始的n个字节的内容全部置位ch所指定的ASCII值。
+
+一般经常用memset对某段内存空间置零。
+
+ 
+
+经常会出现的一个问题：在C++中，为什么不提倡在构造函数中使用：memset(this,0,sizeof(*this))
+
+原因： 在C++中，如果类中都是基本类型的数据成员并且没有虚函数和虚继承的话，使用memset这样用到没有太多影响。
+
+如果有虚函数，memset会把虚表指针等全部置零，对类会产生破坏。
+
 如何通过ftell和fseek来获取文件大小
 复制代码
  1 #include <stdio.h> 
