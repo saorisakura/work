@@ -1,3 +1,26 @@
+下列的哪个赋值语句是不正确的
+
+A．float f = 11.1；
+B．double d = 5.3E12；
+C．float d=3.14f；
+D．double f = 11.1E10f；
+
+正确答案
+A
+
+答案解析
+解析：浮点型数的赋值，带有小数点的数字缺省是double型的，如果在浮点数后面加f或者F则是float，后面加d或者D则是double，科学计数法形式的浮点数也是double型的，而double的精度比float高，将一个高精度的double赋值给一个低精度的float时需要进行强制类型转换，反之则不需要。
+
+C语言，double型和float型，赋值怎么赋值的，比如3，怎么赋值？还有可不可以float
+C语言，double型和float型，赋值怎么赋值的，比如3，怎么赋值？还有可不可以float a=3？系统是不是自动转化成小数点的
+
+可以的，float a=3的话，编译器会把3自动转化为float型
+追问
+那float型具体这一次吧，标准的，还有把double也写一遍，书中double a=3.0为什么double是这么写？那3.333怎么写
+追答
+默认的小数都是double型的，float a = 3.0;和float a = 3；都是没有问题的，但是第一个会有警告，因为小数默认是double型，将double赋值给float会有截位现象，如果非要说一个正确的赋值的话你可以用%f直接输入给float赋值，也可以使用这种的方式赋值:float a = (float)3.0;这样就不会有警告了。
+double的话比较简单，直接赋值就可以了，double b = 4.0;
+
 VC++环境下连续自增(自减)运算规则 i++ ++i
 2013年06月27日 23:24:55 chenbang110 阅读数：1350更多
 个人分类： Linux c/c++ 面试/工作
