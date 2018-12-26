@@ -1,0 +1,204 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+# -*- Author:Seiya -*-
+import time
+
+
+class Person(object):
+    _num = 0
+
+    def __init__(self, name):
+        Person._num += 1
+        self.name = name
+        print("Person {}: {} created.".format(id(self), self.name))
+
+    def __del__(self):
+        Person._num -= 1
+        print("Person {}: {} deleted.".format(id(self), self.name))
+
+    @staticmethod
+    def num():
+        return Person._num
+
+
+a = Person("liyang")
+print(Person.num())
+b = Person("zhenzhen")
+print(Person.num())
+del b
+print(Person.num())
+time.sleep(10)
+
+
+python之类的构造和析构函数
+
+
+python的构造和析构函数为固定的名字。
+
+构造函数---------------------   __init__( self )
+
+析构函数---------------------  __del__( self )
+
+ 
+
+不像c++中那样构造函数和析构函数是类名字。
+
+ 
+
+并且在python中这构造函数和析构函数可以省略。先看简单的例子：
+
+[html] view plaincopy
+
+class Simple:  
+
+     def __init__( self ):  
+
+         pass  
+
+     def __del__( self ):  
+
+         pass  
+
+     def func( self ):  
+
+         pass   
+
+上面定义了一个简单的类，一个构造函数，析构函数和普通的函数。
+
+ 
+
+如果觉得不需要构造函数和析构函数，那么这个类可以简化成
+
+[python] view plaincopy
+
+class Simple:  
+
+     def func( self ):  
+
+         pass   
+
+构造函数在类的构造的时候调用，但是不是一定会调用，这点我会在后面提到原因；析构函数被python的垃圾回收器销毁的时候调用。
+
+ 
+
+下面写的简单的类测试一下：
+
+类的定义：
+
+[python] view plaincopy
+
+class Simple:  
+
+    def __init__( self ):  
+
+        print( "constructor called, id={0}".format( id( self )))  
+
+    def __del__( self ):  
+
+        print( "destructor called, id={0}".format( id( self )))  
+
+    def func( sef ):  
+
+        print( "Simple func" )  
+
+使用类：
+
+[python] view plaincopy
+
+a = Simple()         #输出->constructor called, id = 3211123  
+
+b = Simple()         #输出->constructor called, id = 3211145  
+
+  
+
+a = Simple()         #输出->constructor called, id = 32111225  #destructor called, id = 3211123   
+
+上面构造2个对象a, b。 我们看到每一次构造一个对象，构造函数就会被调用一次。在构造函数中输出了被构造对象的id（id相当于c/c++对象的地址），是为了和后面的析构函数id比较。
+
+a的id为   3211123
+
+b的id为   3211145
+
+ 
+
+后面为什么又实例化 a呢，因为我们想要利用python的垃圾回收器自动回收我们的之前实例化的a对象，这样先会调用构造函数__init__来构造一个新的对象，这个新的对象的id为32111225，和我们之前a的id不一样。接下来垃圾回收器，发现已经没有变量来引用它了，因此就会调用a之前引用的对象id = 3211123的析构函数，然后从内存中彻底销毁它。
+
+注意是先构造新对象，然后才销毁旧对象。
+
+ 
+
+上面我们提到构造函数不是一定调用，那是什么情况下回出现这种情况呢？ 如果类提供了__new__这个函数，并且没有返回实例，也就是没有返回解释器传给它的参数，那么构造函数__init__就不会被调用。
+
+ 
+
+关于__new__我们简单介绍一下
+
+它的引进是为了让程序员控制实例的创建过程，python的设计人员建议这个方法主要用在子类化稳定类型，如int, str。并且这个方法只有python新风格类（或者新类）才会被调用，新类是以object为基类的类。
+
+[python] view plaincopy
+
+class Old：  
+
+   def __new__( self ):  
+
+         return self  
+
+  
+
+class New( object )：  
+
+   def __new__( self ):  
+
+         return super( New, self ).__new__( self )  
+
+上面的New的就是一个新类，因为它继承自object，它的__new__会被调用，而Old类的__new__不会被调用。
+
+ 
+
+接下来我们做个测试来验证上面所说的。
+
+[python] view plaincopy
+
+class Simple( object ):  
+
+    def __init__( self ):  
+
+        print( "constructor called, id={0}".format( id( self )))  
+
+    def __del__( self ):  
+
+        print( "destructor called, id={0}".format( id( self )))  
+
+    def __new__( self ):  
+
+        print( "new called, id={0}".format( id( self )))  
+
+        #return super( CA, self ).__new__( self )  
+
+上面的__new__中我们屏蔽掉了返回实例的一行。然后我们实例化一个对象
+
+a = Simple()
+
+发现什么了，__init__没有被调用吧。
+
+ 
+
+上面对构造函数和析构函数做了测试，也知道它的作用和怎么用，下面对它们补充。
+
+ 
+
+构造函数 -   __init__
+
+如果基类和子类都有__init__，那么子类必须显式的调用的基类的__init__。
+
+ 
+
+析构函数   -   __del__
+
+如果基类和子类都有__del__，那么子类必须显式的调用的基类的__del__。
+
+
+
+如果你还想了解更多的关于构造函数和析构函数的内容，参考python官方的英文文档：
+
+http://docs.python.org/reference/datamodel.html
