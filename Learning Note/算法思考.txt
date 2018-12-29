@@ -76,5 +76,55 @@ int main()
 综上可知：表达式x&(x-1)的意义，就是将二进制数据中的最后位的1转换为0.
 
 
+我们今天讲的都是非常规的二分查找问题，今天的思考题也是一个非常规的二分查找问题。如果有序数组是一个循环有序数组，比如4，5，6，1，2，3.针对这种情况，如何实现一个求“值等于给定值”的二分查找算法
+
+思考题，在leetcode上练习验证通过了，本着实现算法的思想，写了一大段复杂的代码
+public static int binaryCycleSearch(int[] nums,int target) {
+//二分法将数组分成两部分，要区分出哪部分是有序的
+//当nums[mid] > nums[mid-1] 时，前半部分有序
+//当nums[mid] < nums[mid + 1]时，后半部分有序
+int low = 0;
+int high = nums.length - 1;
+while (high>=low) {
+
+int mid = low + ((high-low) >> 1);
+if(nums[mid] == target) {
+return mid;
+}
+if(high == low) {
+return -1;
+}
+if(mid == 0) {
+low = low = mid + 1;
+continue;
+} else if(mid == high) {
+high = mid -1;
+continue;
+}
+if(nums[mid] >=nums[low]) {
+//target落在前半部分有序队列中
+if(nums[mid] > target && (nums[mid-1] >= target && nums[low] <= target)) {
+high = mid - 1;
+}
+//target未落在有序队列中（后半部分）
+else {
+low = mid + 1;
+}
+} else if(nums[mid] < nums[high] ){
+//target落在后半部分有序队列中
+if(nums[mid] < target && (nums[high] >=target && nums[mid+1] <= target)) {
+low = mid + 1;
+} else {
+high = mid - 1;
+}
+}
+
+}
+
+return -1;
+
+}
+
+
 假设我们现在需要对 D，a，F，B，c，A，z 这个字符串进行排序，要求将其中所有小写字母都排在大写字母的前面，但小写字母内部和大写字母内部不要求有序。比如经过排序之后为 a，c，z，D，F，B，A，这个如何来实现呢？如果字符串中存储的不仅有大小写字母，还有数字。要将小写字母的放到前面，大写字母放在最后，数字放在中间，不用排序算法，又该怎么解决呢？
 
