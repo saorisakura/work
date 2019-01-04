@@ -1,0 +1,58 @@
+创建一个带sshd的Centos镜像
+
+思路概述
+下载一个Centos镜像
+以该镜像创建容器
+连接到容器
+手动安装sshd服务
+保存容器修改到新镜像
+代码
+#查找centos镜像
+docker search centos
+#下载镜像
+docker pull centos
+#启动容器，注意，这里后面的CMD不能省略，否则容器自动退出
+docker run -d -i -t <imageID> /bin/bash  
+#连接到容器
+docker attach <ContainerID>  
+#安装OpenSSH服务
+yum install openssh-server -y
+#生成ssh key 
+sudo ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
+sudo ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
+sudo ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key 
+#退出，但不停止容器
+Ctrl+P+Q
+#回到Docker下面，停止容器
+docker stop <容器ID>
+#提交当前容器到镜像
+docker commit <容器ID> <NAME/VERSION>
+#启动新容器，并且进行端口映射
+docker run -itd -p 2222:22 centos-sshd /usr/sbin/sshd -D
+要点
+即使使用-d去启动容器，也要给出CMD参数，否则centos容器启动后自动退出。
+sshd不能用服务的方式启动，因为centos7的镜像中没有systemctl命令。需要/usr/sbin/sshd -D来启动sshd。
+
+参考创建一个带sshd的Centos镜像完成官方镜像获取并开启sshd。
+启动centos容器镜像，连接到容器，安装mysql
+
+#容器是精简版，没有wget软件包，需要yum安装wget
+yum install wget
+#下载并安装MySQL官方的 Yum Repository
+wget -i -c http://dev.mysql.com/get/mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql-community-server
+#初始化mysql
+mysqld --initialize --explicit_defaults_for_timestamp --user=mysql
+#启动mysql
+mysqld --user=mysql
+#初始root密码
+grep "password" /var/log/mysqld.log
+#连接到mysql后，修改密码
+mysql -u root -p 
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'new password';
+
+
+剩下的就是docker commit进行镜像创建。
+
+docker commit -m="add mysql5.7" --author="eleorc" 92bb1324fcd5 centos-sshd-mysql

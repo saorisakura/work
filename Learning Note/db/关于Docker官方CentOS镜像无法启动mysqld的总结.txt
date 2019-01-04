@@ -1,0 +1,153 @@
+关于Docker官方CentOS镜像无法启动mysqld的总结
+很多童鞋反映，在Docker官方CentOS镜像中安装了Mysql server后，无法正常启动。
+
+无法正常启动表现为两种情况：
+
+1> 初始完数据库后，mysqld启动报错
+
+2> systemctl start mysqld或者service mysqld start报错
+
+首先重现一下现场。
+
+第一种情况
+
+一、启动CentOS镜像，安装Mysql Server
+
+注意，Docker官方CentOS镜像latest版本是7.1。CentOS 7 yum源中默认没有Mysql Server的。
+
+关于如何在CentOS 7中安装Mysql Server，可参考这篇博客 CentOS 7中如何安装mysql server
+
+二、初始化数据库
+
+[root@e80a5553b647 ~]# mysql_install_db
+三、启动Mysqld服务
+
+复制代码
+[root@e80a5553b647 ~]# mysqld
+2015-09-25 03:46:43 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2015-09-25 03:46:43 0 [Note] mysqld (mysqld 5.6.26) starting as process 775 ...
+2015-09-25 03:46:43 775 [ERROR] Fatal error: Please read "Security" section of the manual to find out how to run mysqld as root!
+2015-09-25 03:46:43 775 [ERROR] Aborting
+2015-09-25 03:46:43 775 [Note] Binlog end
+2015-09-25 03:46:43 775 [Note] mysqld: Shutdown complete
+复制代码
+报以上错误。很多童鞋到这一步就不知所措了，怎么会启动失败呢？但细心的童鞋看到报错信息，就知道失败的原因在于mysqld命令是用roor身份执行的。
+
+四、尝试以mysql身份启动Mysqld服务
+
+复制代码
+[root@e80a5553b647 ~]# mysqld --user=mysql
+2015-09-25 02:56:43 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2015-09-25 02:56:43 0 [Note] mysqld (mysqld 5.6.26) starting as process 167 ...
+2015-09-25 02:56:43 167 [Note] Plugin 'FEDERATED' is disabled.
+mysqld: Can't find file: './mysql/plugin.frm' (errno: 13 - Permission denied)
+2015-09-25 02:56:43 167 [ERROR] Can't open the mysql.plugin table. Please run mysql_upgrade to create it.
+2015-09-25 02:56:43 167 [Note] InnoDB: Using atomics to ref count buffer pool pages
+2015-09-25 02:56:43 167 [Note] InnoDB: The InnoDB memory heap is disabled
+2015-09-25 02:56:43 167 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+2015-09-25 02:56:43 167 [Note] InnoDB: Memory barrier is not used
+2015-09-25 02:56:43 167 [Note] InnoDB: Compressed tables use zlib 1.2.3
+2015-09-25 02:56:43 167 [Note] InnoDB: Using Linux native AIO
+2015-09-25 02:56:43 167 [Note] InnoDB: Using CPU crc32 instructions
+2015-09-25 02:56:43 167 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+2015-09-25 02:56:43 167 [Note] InnoDB: Completed initialization of buffer pool
+2015-09-25 02:56:43 167 [ERROR] InnoDB: ./ibdata1 can't be opened in read-write mode
+2015-09-25 02:56:43 167 [ERROR] InnoDB: The system tablespace must be writable!
+2015-09-25 02:56:43 167 [ERROR] Plugin 'InnoDB' init function returned error.
+2015-09-25 02:56:43 167 [ERROR] Plugin 'InnoDB' registration as a STORAGE ENGINE failed.
+2015-09-25 02:56:43 167 [ERROR] Unknown/unsupported storage engine: InnoDB
+2015-09-25 02:56:43 167 [ERROR] Aborting
+。。。。。
+复制代码
+还是启动失败。
+
+第二种情况
+
+以systemctl启动，
+
+[root@e80a5553b647 ~]# systemctl start mysqld
+Failed to get D-Bus connection: No connection to service manager.
+[root@e80a5553b647 ~]# service mysqld start
+Starting mysqld (via systemctl):  Failed to get D-Bus connection: No connection to service manager.
+                                                           [FAILED]
+报“Failed to get D-Bus connection: No connection to service manager.”错误，在网上找了好久，原因在于该CentOS镜像为精简版，有很多包再制作的过程中没有安装。故导致systemctl命令无法启动。
+
+基于第二种情况，很多童鞋就认为CentOS镜像不完善，导致mysql服务无法启动。
+
+失败原因：
+
+深究下去，第一种方式失败的原因在于第二步初始化数据库的时候是用的ROOT账户运行的。这样，会导致数据库的datadir（即/var/lib/mysql）目录的属主为root。
+
+复制代码
+[root@e80a5553b647 ~]# ll /var/lib/mysql/
+total 110600
+-rw-rw---- 1 root root 50331648 Sep 25 04:46 ib_logfile0
+-rw-rw---- 1 root root 50331648 Sep 25 04:46 ib_logfile1
+-rw-rw---- 1 root root 12582912 Sep 25 04:46 ibdata1
+drwx------ 2 root root     4096 Sep 25 04:46 mysql
+drwx------ 2 root root     4096 Sep 25 04:46 performance_schema
+复制代码
+因为mysqld在以ROOT账户执行时会出错，这个与数据库初始化无关，而是数据库基于安全的考虑，不推荐使用ROOT账户启动数据库 ！！！
+
+而此时，如果指定mysql用户运行mysqld命令，因为var/lib/mysql目录的属主为root，必然报出“mysqld: Can't find file: './mysql/plugin.frm' (errno: 13 - Permission denied)”错误。
+
+正确的启动方式：
+
+主要有以下两种：
+
+1> 初始化数据库时指定以mysql用户运行，即 mysql_install_db  --user=mysql
+
+     启动mysql服务，同样有两种方式：
+
+     (1)  mysqld --user=mysql
+
+     (2)  mysqld_safe 
+
+2> 以 /etc/init.d/mysqld start 方式启动
+
+总结：
+
+1> 如果第一次以mysql_install_db初始化数据库，mysqld --user=mysql启动mysql服务失败后，再次用mysql_install_db  --user=mysql初始化数据库，还是会启动失败，其实看看来看看/var/lib/mysql/的属主就知道了，
+
+复制代码
+[root@e80a5553b647 /]# ll /var/lib/mysql/
+total 110600
+-rw-rw---- 1 root  root  12582912 Sep 25 05:57 ibdata1
+-rw-rw---- 1 root  root  50331648 Sep 25 05:57 ib_logfile0
+-rw-rw---- 1 root  root  50331648 Sep 25 05:57 ib_logfile1
+drwx------ 2 mysql mysql     4096 Sep 25 05:57 mysql
+drwx------ 2 root  root      4096 Sep 25 05:57 performance_schema
+复制代码
+只有mysql目录的属主变为mysql了，其它依旧是root，可通过chown -R mysql:mysql /var/lib/mysql重新设置目录的属性。
+
+2> 启动mysql服务失败的原因还是在于对mysql不熟悉，建议看看mysql服务脚本，即/etc/init.d/mysqld。
+
+3>  关于mysql的启动方式和停止方式（与docker无关）
+
+启动方式主要有以下三种：
+
+（1）使用service启动
+
+        service mysqld start  在CentOS7中，相当于systemctl start mysqld  
+
+（2）使用脚本启动
+
+        /etc/inint.d/mysqld start
+
+（3） 使用safe_mysqld或mysqld --user=mysql启动
+
+关闭方式也有以下三种：
+
+（1）使用service关闭
+
+       service mysqld stop 在CentOS7中，相当于systemctl stop mysqld
+
+（2）使用脚本关闭
+
+       /etc/inint.d/mysqld stop
+
+（3）mysqladmin shutdown
+
+注意：使用safe_mysqld或mysqld --user=mysql启动的服务，只能通过mysqladmin shutdown关闭，不能通过service或脚本关闭。
+
+        mysqladmin shutdown可关闭以上三种服务。脚本可关闭service开启的服务，同样service也可关闭脚本开启的服务。

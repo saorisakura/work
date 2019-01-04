@@ -1,0 +1,433 @@
+分析Mysql 5.6的Dockerfile
+Docker官方的Mysql镜像的Dockerfile托管在Github上，地址如下：
+
+https://github.com/docker-library/mysql/tree/5836bc9af9deb67b68c32bebad09a0f7513da36e/5.6
+
+仔细研究了一下其Dockerfile，发现最有技术含量的倒不是其Dockerfile本身，无非是更新软件仓库，下载Mysql Server，稍微修改一下其配置文件。
+
+倒是ENTRYPOINT对应的docker-entrypoint.sh很耐人寻味，这个文件相当详实，涉及了Mysql如何初始化，如何设置密码，如何启动服务等关键问题。
+
+今天花费了大半天来分析这个脚本，果然是受益匪浅。
+
+脚本及分析结果如下：
+
+复制代码
+#!/bin/bash
+set -e
+
+# if command starts with an option, prepend mysqld
+if [ "${1:0:1}" = '-' ]; then
+    set -- mysqld "$@"
+fi
+
+if [ "$1" = 'mysqld' ]; then
+    # Get config
+    DATADIR="$("$@" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
+
+    if [ ! -d "$DATADIR/mysql" ]; then
+        if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" ]; then
+            echo >&2 'error: database is uninitialized and MYSQL_ROOT_PASSWORD not set'
+            echo >&2 '  Did you forget to add -e MYSQL_ROOT_PASSWORD=... ?'
+            exit 1
+        fi
+
+        mkdir -p "$DATADIR"
+        chown -R mysql:mysql "$DATADIR"
+
+        echo 'Running mysql_install_db'
+        mysql_install_db --user=mysql --datadir="$DATADIR" --rpm --keep-my-cnf
+        echo 'Finished mysql_install_db'
+
+        mysqld --user=mysql --datadir="$DATADIR" --skip-networking &
+        pid="$!"
+
+        mysql=( mysql --protocol=socket -uroot )
+
+        for i in {30..0}; do
+            if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+                break
+            fi
+            echo 'MySQL init process in progress...'
+            sleep 1
+        done
+        if [ "$i" = 0 ]; then
+            echo >&2 'MySQL init process failed.'
+            exit 1
+        fi
+
+        # sed is for https://bugs.mysql.com/bug.php?id=20545
+        mysql_tzinfo_to_sql /usr/share/zoneinfo | sed 's/Local time zone must be set--see zic manual page/FCTY/' | "${mysql[@]}" mysql
+
+        "${mysql[@]}" <<-EOSQL
+            -- What's done in this file shouldn't be replicated
+            --  or products like mysql-fabric won't work
+            SET @@SESSION.SQL_LOG_BIN=0;
+            DELETE FROM mysql.user ;
+            CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
+            GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
+            DROP DATABASE IF EXISTS test ;
+            FLUSH PRIVILEGES ;
+        EOSQL
+
+        if [ ! -z "$MYSQL_ROOT_PASSWORD" ]; then
+            mysql+=( -p"${MYSQL_ROOT_PASSWORD}" )
+        fi
+
+        if [ "$MYSQL_DATABASE" ]; then
+            echo "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\` ;" | "${mysql[@]}"
+            mysql+=( "$MYSQL_DATABASE" )
+        fi
+
+        if [ "$MYSQL_USER" -a "$MYSQL_PASSWORD" ]; then
+            echo "CREATE USER '"$MYSQL_USER"'@'%' IDENTIFIED BY '"$MYSQL_PASSWORD"' ;" | "${mysql[@]}"
+
+            if [ "$MYSQL_DATABASE" ]; then
+                echo "GRANT ALL ON \`"$MYSQL_DATABASE"\`.* TO '"$MYSQL_USER"'@'%' ;" | "${mysql[@]}"
+            fi
+
+            echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
+        fi
+
+        echo
+        for f in /docker-entrypoint-initdb.d/*; do
+            case "$f" in
+                *.sh)  echo "$0: running $f"; . "$f" ;;
+                *.sql) echo "$0: running $f"; "${mysql[@]}" < "$f" && echo ;;
+                *)     echo "$0: ignoring $f" ;;
+            esac
+            echo
+        done
+
+        if ! kill -s TERM "$pid" || ! wait "$pid"; then
+            echo >&2 'MySQL init process failed.'
+            exit 1
+        fi
+
+        echo
+        echo 'MySQL init process done. Ready for start up.'
+        echo
+    fi
+
+    chown -R mysql:mysql "$DATADIR"
+fi
+
+exec "$@"
+复制代码
+说明如下：
+
+1> set -e, Manual文档的说明如下：
+
+Exit immediately if a pipeline (which may consist of a single simple command), a subshell com‐
+mand enclosed in parentheses, or one of the commands executed as part of a command list
+enclosed by braces (see SHELL GRAMMAR above) exits with a non-zero status.
+
+这句语句告诉bash如果任何语句的执行结果不是true则应该退出。这样的好处是防止错误像滚雪球般变大导致一个致命的错误，而这些错误本应该在之前就被处理掉。
+
+关于set -e的利弊，可参考一下两篇博客
+
+（1）Unix/Linux 脚本中 “set -e” 的作用
+
+（2）linux中的set命令: "set -e" 与 "set -o pipefail"
+
+2> 
+
+if [ "${1:0:1}" = '-' ]; then
+    set -- mysqld "$@"
+fi
+用于判断该脚本后面的参数是否以“-”开始，它考虑的是启动mysqld是带参数的情况，如果有的话，就将mysqld和参数作为变量存到$@中。
+
+关于set --，Manual文档的说明如下：
+
+If no arguments follow this option, then the positional parameters are unset. Otherwise, the
+positional parameters are set to the args, even if some of them begin with a -.
+
+验证如下：
+
+首先构造脚本
+
+复制代码
+[root@localhost ~]# cat 4.sh 
+#!/bin/bash
+if [ "${1:0:1}" = '-' ]; then
+        set -- mysqld "$@"
+fi
+echo '$@: '"$@"
+echo '$1: '"$1"
+复制代码
+加入参数进行验证
+
+复制代码
+[root@localhost ~]# sh 4.sh 123
+$@: 123
+$1: 123
+[root@localhost ~]# sh 4.sh -123
+$@: mysqld -123
+$1: mysqld
+[root@localhost ~]# sh 4.sh -123 456
+$@: mysqld -123 456
+$1: mysqld
+复制代码
+补充一点：关于$@与$*的区别，$@指每个位置参数参数都是一个独立的""引用字串,这就意味着参数被完整地传递，而$*则指所有位置参数只被一个""引用，相当于一个参数。
+
+3>
+
+if [ "$1" = 'mysqld' ]; then
+如果$1为mysqld，则执行下面的代码，如果不是，则执行该脚本最后一行的exec "$@"。
+
+注意：Dockerfile中的CMD命令为 ["mysqld"]，CMD命令其实就是ENTRYPOINT的参数，譬如如果ENTRYPOINT命令为ls，则CMD命令为-l，则实现的效果就是ls -l，
+
+在启动容器时，自己输入的命令其实是覆盖CMD参数的，具体在本例中，就意味着在启动容器时，自已输入的命令只有在三种情况下才会启动mysqld服务：一、mysqld（相当于CMD参数）。二、以“-”开始的参数列表，这样上述2中的脚本才会判断为真。三、mysqld + 以“-”开始的参数列表。除此之外，其它所有的命令都不会启动mysql server服务，而是直接执行自己输入的命令。
+
+4>
+
+ DATADIR="$("$@" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
+获取mysql server的数据目录,倘若我们没有输入任何以“-”开始的参数列表，则$@为mysqld，上述命令执行的结果如下：
+
+[root@localhost ~]# mysqld --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }'
+/var/lib/mysql/
+5> 
+
+ if [ ! -d "$DATADIR/mysql" ]; then
+如果存在/var/lib/mysql/mysql目录存在文件，则跳过中间的步骤，直接执行chown -R mysql:mysql "$DATADIR"，它这里判断的一个依据是，如果/var/lib/mysql/mysql存在文件，则代表mysql server已经安装，这时就无需安装（当然，如果强行安装的 话，可能会覆盖），直接将其属主修改为mysql用户。很多童鞋可能好奇，不是新建的镜像么？这个目录怎么可能存在呢？我当初也存在这样的疑惑，后来验证了一番，发现如果将宿主机的目录直接挂载到镜像的/var/lib/mysql下，则启动mysql镜像时，没有进行mysql的初始化，设置root密码等，直接启动mysql服务，具体如下：
+
+复制代码
+[root@localhost ~]# docker run -v /var/lib/mysql:/var/lib/mysql mysql
+2015-09-24 02:08:05 0 [Note] mysqld (mysqld 5.6.26) starting as process 1 ...
+2015-09-24 02:08:05 1 [Note] Plugin 'FEDERATED' is disabled.
+2015-09-24 02:08:05 1 [Note] InnoDB: Using atomics to ref count buffer pool pages
+2015-09-24 02:08:05 1 [Note] InnoDB: The InnoDB memory heap is disabled
+2015-09-24 02:08:05 1 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+2015-09-24 02:08:05 1 [Note] InnoDB: Memory barrier is not used
+2015-09-24 02:08:05 1 [Note] InnoDB: Compressed tables use zlib 1.2.7
+2015-09-24 02:08:05 1 [Note] InnoDB: Using Linux native AIO
+2015-09-24 02:08:05 1 [Note] InnoDB: Using CPU crc32 instructions
+2015-09-24 02:08:05 1 [Note] InnoDB: Initializing buffer pool, size = 128.0M
+2015-09-24 02:08:05 1 [Note] InnoDB: Completed initialization of buffer pool
+2015-09-24 02:08:05 1 [Note] InnoDB: Highest supported file format is Barracuda.
+2015-09-24 02:08:06 1 [Note] InnoDB: 128 rollback segment(s) are active.
+2015-09-24 02:08:06 1 [Note] InnoDB: Waiting for purge to start
+2015-09-24 02:08:06 1 [Note] InnoDB: 5.6.26 started; log sequence number 1697388
+2015-09-24 02:08:06 1 [Note] Server hostname (bind-address): '*'; port: 3306
+2015-09-24 02:08:06 1 [Note] IPv6 is available.
+2015-09-24 02:08:06 1 [Note]   - '::' resolves to '::';
+2015-09-24 02:08:06 1 [Note] Server socket created on IP: '::'.
+2015-09-24 02:08:06 1 [Warning] 'user' entry 'root@localhost.localdomain' ignored in --skip-name-resolve mode.
+2015-09-24 02:08:06 1 [Warning] 'user' entry '@localhost.localdomain' ignored in --skip-name-resolve mode.
+2015-09-24 02:08:06 1 [Warning] 'proxies_priv' entry '@ root@localhost.localdomain' ignored in --skip-name-resolve mode.
+2015-09-24 02:08:06 1 [Note] Event Scheduler: Loaded 0 events
+2015-09-24 02:08:06 1 [Note] mysqld: ready for connections.
+Version: '5.6.26'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server (GPL)
+复制代码
+而先前的启动过程则涉及到初始化，启动，显性设置root密码等。
+
+将宿主机的var/lib/mysql/挂载给容器后，我们再来看看宿主机上该目录的权限。
+
+复制代码
+[root@localhost ~]# ll /var/lib/mysql/
+total 110604
+-rw-rw---- 1 polkitd ssh_keys       56 Sep 14 15:46 auto.cnf
+drwx------ 2 polkitd ssh_keys      131 Sep 14 16:03 db1
+drwx------ 2 polkitd ssh_keys      131 Sep 14 16:03 db2
+drwx------ 2 polkitd ssh_keys       55 Sep 14 16:02 db3
+-rw-rw---- 1 polkitd ssh_keys 12582912 Sep 24 10:08 ibdata1
+-rw-rw---- 1 polkitd ssh_keys 50331648 Sep 24 10:08 ib_logfile0
+-rw-rw---- 1 polkitd ssh_keys 50331648 Sep 14 15:45 ib_logfile1
+drwx------ 2 polkitd ssh_keys     4096 Sep 23 14:18 mysql
+drwx------ 2 polkitd ssh_keys     4096 Sep 22 13:47 performance_schema
+复制代码
+属主为polkitd，属组为ssh_keys。
+
+此时，需显性将/var/lib/mysql的属主和属组恢复为mysql，即chown -R mysql:mysql /var/lib/mysql/，不然，宿主机的mysql服务将无法启动。
+
+ 
+
+6> 
+
+ if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" ]; then
+            echo >&2 'error: database is uninitialized and MYSQL_ROOT_PASSWORD not set'
+            echo >&2 '  Did you forget to add -e MYSQL_ROOT_PASSWORD=... ?'
+            exit 1
+ fi
+设置mysql的root账户的密码，其中-z判断是否为空字符串，-a 两个条件同时满足，才为true。从这里也可以看出来，随意给MYSQL_ALLOW_EMPTY_PASSWORD赋一个值，都可以实现无密码登录。
+
+7>
+
+复制代码
+        mkdir -p "$DATADIR"
+        chown -R mysql:mysql "$DATADIR"
+
+        echo 'Running mysql_install_db'
+        mysql_install_db --user=mysql --datadir="$DATADIR" --rpm --keep-my-cnf
+        echo 'Finished mysql_install_db'
+
+        mysqld --user=mysql --datadir="$DATADIR" --skip-networking &
+        pid="$!"
+复制代码
+创建/var/lib/mysql，同时将其属主和属组设置为mysql，然后初始化数据库，最后用mysqld命令启动数据库。$!指的是Shell最后运行的后台Process的PID。
+
+8> 
+
+复制代码
+        mysql=( mysql --protocol=socket -uroot )
+
+        for i in {30..0}; do
+            if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+                break
+            fi
+            echo 'MySQL init process in progress...'
+            sleep 1
+        done
+        if [ "$i" = 0 ]; then
+            echo >&2 'MySQL init process failed.'
+            exit 1
+        fi
+复制代码
+这段代码主要是利用mysql客户端测试mysql服务是否启动。这里面利用括号()构造mysql变量的方式挺有意思的，以前没有见过。特意验证了一下：
+
+[root@localhost ~]# mysql=( mysql --protocol=socket -uroot )
+[root@localhost ~]# echo ${mysql}
+mysql
+[root@localhost ~]# echo ${mysql[@]}
+mysql --protocol=socket -uroot
+这段代码给了30s的时间来判断mysql服务是否已启动，如果启动了，则退出循环，如果没有启动，循环结束后，变量i的值为0，通过后续的if语句，屏幕输出“MySQL init process failed”。
+
+这里判断mysql服务是否启动的方式蛮有意思的，
+
+复制代码
+[root@localhost ~]# mysql=( mysql --protocol=socket -uroot )
+[root@localhost ~]# echo 'SELECT 1' | "${mysql[@]}" 
+1
+1
+[root@localhost ~]# mysql
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 11
+Server version: 5.6.26 MySQL Community Server (GPL)
+mysql> select 1;
++---+
+| 1 |
++---+
+| 1 |
++---+
+1 row in set (0.01 sec)
+复制代码
+如果停掉了mysql服务，则输出如下：
+
+[root@localhost ~]# systemctl stop mysqld
+[root@localhost ~]# echo 'SELECT 1' | "${mysql[@]}" 
+ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/var/lib/mysql/mysql.sock' (2)
+在这里，还有一点很让人疑惑，
+
+ if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+    break
+ fi
+if判断的条件难道不是echo 'SELECT 1' | "${mysql[@]}"命令的返回码么？如果是这样的话，成功执行，则$?为0，此时不应该执行break语句的，但事实与推测的相反。关于这点暂且留下。
+
+9> 
+
+mysql_tzinfo_to_sql /usr/share/zoneinfo | sed 's/Local time zone must be set--see zic manual page/FCTY/' | "${mysql[@]}" mysql
+修改mysql关于时区的一个bug,不去深究。
+
+10> 
+
+复制代码
+       "${mysql[@]}" <<-EOSQL
+            -- What's done in this file shouldn't be replicated
+            --  or products like mysql-fabric won't work
+            SET @@SESSION.SQL_LOG_BIN=0;
+            DELETE FROM mysql.user ;
+            CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
+            GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
+            DROP DATABASE IF EXISTS test ;
+            FLUSH PRIVILEGES ;
+        EOSQL
+复制代码
+这段主要是用客户端登录数据库进行相关操作，包括修改root密码，为其授权，删除测试数据库等。SET @@SESSION.SQL_LOG_BIN=0的作用是停止使用日志文件，这点不是很明白。
+
+11> 
+
+复制代码
+        if [ ! -z "$MYSQL_ROOT_PASSWORD" ]; then
+            mysql+=( -p"${MYSQL_ROOT_PASSWORD}" )
+        fi
+
+        if [ "$MYSQL_DATABASE" ]; then
+            echo "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\` ;" | "${mysql[@]}"
+            mysql+=( "$MYSQL_DATABASE" )
+        fi
+
+        if [ "$MYSQL_USER" -a "$MYSQL_PASSWORD" ]; then
+            echo "CREATE USER '"$MYSQL_USER"'@'%' IDENTIFIED BY '"$MYSQL_PASSWORD"' ;" | "${mysql[@]}"
+
+            if [ "$MYSQL_DATABASE" ]; then
+                echo "GRANT ALL ON \`"$MYSQL_DATABASE"\`.* TO '"$MYSQL_USER"'@'%' ;" | "${mysql[@]}"
+            fi
+
+            echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
+        fi
+复制代码
+这段代码主要是创建数据库，新建mysql用户，并授权。这其实意味着用户在启动容器时可以通过指定MYSQL_DATABASE参数来创建数据库，通过MYSQL_USER和MYSQL_PASSWORD来创建新的数据库用户。
+
+其中，mysql+=( -p"${MYSQL_ROOT_PASSWORD}" )用于拼接变量。譬如：
+
+[root@localhost ~]# mysql=( mysql --protocol=socket -uroot )
+[root@localhost ~]# MYSQL_DATABASE=docker
+[root@localhost ~]# mysql+=( "$MYSQL_DATABASE" )
+[root@localhost ~]# echo ${mysql[@]}
+mysql --protocol=socket -uroot docker
+12>
+
+复制代码
+       for f in /docker-entrypoint-initdb.d/*; do
+            case "$f" in
+                *.sh)  echo "$0: running $f"; . "$f" ;;
+                *.sql) echo "$0: running $f"; "${mysql[@]}" < "$f" && echo ;;
+                *)     echo "$0: ignoring $f" ;;
+            esac
+            echo
+        done      
+复制代码
+其它需要执行的shell脚本或者sql脚本，可放到/docker-entrypoint-initdb.d/目录下。只需启动容器时，通过-v参数将容器该目录挂载到宿主机目录上。
+
+13> 
+
+        if ! kill -s TERM "$pid" || ! wait "$pid"; then
+            echo >&2 'MySQL init process failed.'
+            exit 1
+        fi
+关闭已启动的mysql server，可能很多人会感到好奇，不是提供mysql服务么？为什么还要关闭呢？
+
+答案就在于dockerfile中CMD的命令为 ["mysqld"]，如果不关闭的话，这里就无法启动。
+
+这里比较有意思的还是在于脚本部分，
+
+一、关于kill，kill命令是通过向进程发送指定的信号来结束进程的。
+
+-s的意思是Specify the signal to send.  The signal may be given as a signal name or number.指定需要发送的信号.
+
+如果没有指定发送信号，那么默认值为TERM信号。
+
+关于-TERM和-9的区别
+
+kill -TERM PID：TERM是请求彻底终止某项执行操作.它期望接收进程清除自给的状态并退出，它是一种较温和的方式。
+
+kill -9 PID：
+
+这个强大和危险的命令迫使进程在运行时突然终止，进程在结束后不能自我清理。危害是导致系统资源无法正常释放，一般不推荐使用，除非其他办法都无效。
+当使用此命令时，一定要通过ps -ef确认没有剩下任何僵尸进程。只能通过终止父进程来消除僵尸进程。如果僵尸进程被init收养，问题就比较严重了。杀死init进程意味着关闭系统。
+如果系统中有僵尸进程，并且其父进程是init，而且僵尸进程占用了大量的系统资源，那么就需要在某个时候重启机器以清除进程表
+
+二、关于||运算符
+
+关于&&和||的区别
+
+command1 && command2 ：左边的命令（命令1）返回真(即返回0，成功被执行）后，&&右边的命令（命令2）才能够被执行。
+
+command1 || command2：左边的命令（命令1）执行失败了，就执行右边的命令（命令2）。
+
+三、关于wait
+
+wait命令用来等待指令的完成，直到其执行完毕后返回终端。
+
+所以这段脚本的逻辑是首先用kill -s TERM "$pid"的方式关闭mysqld进程，如果执行成功了，则! kill -s TERM "$pid"的结果为false，这时候就执行wait "$pid"，wait是等待mysqld的关闭，mysqld关闭完毕后，wait "$pid"结果为真，此时! wait "$pid"结果为假。echo语句就不执行。
+
+至此，分析完毕~
