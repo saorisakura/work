@@ -1,0 +1,28 @@
+调优思考
+
+CPU
+	loadavg高，使用下面的工具查找进程或者线程
+	mpstat -P ALL 5 1 分析多核CPU使用情况
+	pidstat -u (cpu) -w (context switch) -d (disk) -r (mem) 分析进程内部的使用情况
+	ps top
+	vmstat  同时查看CPU和内存的使用情况
+		cs（context switch）是每秒上下文切换的次数。
+		in（interrupt）则是每秒中断的次数。
+		r（Running or Runnable）是就绪队列的长度，也就是正在运行和等待 CPU 的进程数。
+		b（Blocked）则是处于不可中断睡眠状态的进程数。
+	
+	dstat ，它的好处是，可以同时查看 CPU 和 I/O 资源的使用情况
+	perf record -g 
+	perf report -g 
+	
+	系统调用不需要让CPU切换CPU缓存和程序计数器
+	不同进程的切换需要上下文切换
+	不同线程的切换因为可能在同一个进程中，上线文切换的情况略有不同
+	CPU使用率高，在找不到具体进程的时候，考虑是不断有短时的进程生成，或者某进程不断重启
+		top   ps   pstree PID
+	线程是调度的基本单位，而进程则是资源拥有的基本单位
+	僵尸进程Z和不可中断进程D
+	
+	CPU使用率，时间内核分片，一秒钟发出多少次中断
+		$ grep 'CONFIG_HZ=' /boot/config-$(uname -r)
+		CONFIG_HZ=250
