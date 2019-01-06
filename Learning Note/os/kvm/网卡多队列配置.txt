@@ -1,0 +1,123 @@
+网卡多队列
+
+多队列 Virtio网卡
+
+Redhat的两位工程师已经实现了多队列Virtio网卡驱动程序。其使用方法如下：
+
+1）判断内核是否支持多队列。如果命令输出为空，就表示不支持多队列。
+
+[root@localhost ~]# grep IFF_MULTI_QUEUE /usr/include/Linux/if_tun.h
+
+
+
+
+
+2）配置。
+
+<interface type='bridge'>
+
+<mac address='52:54:00:43:6e:3f'/>
+
+<source bridge='clients'/>
+
+<model type='Virtio'/>
+
+<driver name='vhost' queues='N'/>
+
+<address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0’/>
+
+</interface>
+
+N 1 - 8 最多支持8个队列
+
+在虚拟机上执行以下命令开启多队列网卡
+
+#ethtool -L eth0 combined M
+
+M 1 - N M小于等于N
+
+3）目前多队列Virtio网卡在小包转发上性能还不理想，有待优化，因此还不建议在生产环境使用。
+
+
+单个 CPU 处理网络中断存在瓶颈，您可以将 ECS 实例中的网卡中断分散给不同的 CPU 处理。经测试，在网络 PPS 和网络带宽的测试中，与 1 个队列相比，2 个队列最多可提升 50% 到 1 倍，4 个队列的性能提升更大。
+
+支持多队列的 ECS 实例规格
+各种实例规格对网卡多队列的支持现状，详见 实例规格族。
+
+支持多队列的镜像
+目前，由阿里云官方提供的公共镜像中，支持多队列的镜像如下表所示。镜像是否支持多队列与操作系统的位数无关。
+
+镜像名称	是否支持多队列？	备注
+Windows 2012 R2	是	尚未公开支持，可邀测
+Windows 2016	是	尚未公开支持，可邀测
+CentOS 7.2	是	无
+CentOS 6.8	是	无
+Ubuntu 16.04	是	无
+Ubuntu 14.04	是	无
+Debian 8.6	是	无
+SUSE Linux Enterprise Server 12 SP1	是	无
+OpenSUSE 13.1	是	无
+CoreOS	是	无
+在 Linux ECS 实例上配置网卡多队列
+推荐使用较新的 Linux 发行版（如 CentOS 7.2）配置网卡多队列。
+
+这里以 CentOS 7.2 为例介绍如何配置网卡多队列，假设是 2 个队列，网卡 interface 名称为 eth0。
+
+查看网卡是否支持多队列。运行命令：ethtool -l eth0。
+
+设置网卡当前使用多队列。运行命令：ethtool -L eth0 combined 2。
+
+对于有多个网卡的用户，可以对多个网卡分别进行设置：
+
+[root@localhost ~]# ethtool -l eth0
+Channel parameters for eth0:
+Pre-set maximums:
+RX: 0
+TX: 0
+Other: 0
+Combined: 2 # 这一行表示最多支持设置2个队列
+Current hardware settings:
+RX: 0
+TX: 0
+Other: 0
+Combined: 1 #表示当前生效的是1个队列
+[root@localhost ~]# ethtool -L eth0 combined 2 # 设置eth0当前使用2个队列
+建议开启 irqbalance 服务，让系统自动调整网卡中断在多个 CPU 核上的分配。运行命令：systemctl start irqbalance （CentOS 7.2 已默认开启）。
+
+开启多队列后，如果网络性能提升仍不如您的预期，您可以考虑开启 RPS 特性。参考如下 Shell 脚本：
+
+#!/bin/bash
+cpu_num=$(grep -c processor /proc/cpuinfo)
+quotient=$((cpu_num/8))
+if [ $quotient -gt 2 ]; then
+quotient=2
+elif [ $quotient -lt 1 ]; then
+quotient=1
+fi
+for i in $(seq $quotient)
+do
+cpuset="${cpuset}f"
+done
+for rps_file in $(ls /sys/class/net/eth*/queues/rx-*/rps_cpus)
+do
+echo $cpuset > $rps_file
+done
+在 Windows ECS 实例上配置网卡多队列
+注意：目前，Windows 用户采用邀测的方式。Windows 系统使用网卡多队列后其网络性能也会提升，但是提升效果不如 Linux 系统。
+
+如果您使用的是 Windows 系统，您需要下载并安装驱动程序，才能使用网卡多队列功能。
+
+Windows 系统的驱动安装过程如下。
+
+提交工单，索取并下载驱动安装包。
+
+解压驱动安装包。您会看到几个文件夹，Windows 2012/2016 应使用 Win8/amd64 文件夹下的驱动。
+
+升级网卡驱动：
+
+选择 设备管理器 > 网络适配器；
+右键单击 Red Hat VirtIO Ethernet Adapter，选择 更新驱动程序软件；
+选择本地刚才解压的驱动目录的 Win8/admin64 目录，更新驱动即可。
+完成驱动升级后，建议重启 Windows 系统。
+
+至此，您就可以开始使用网卡多队列功能了。

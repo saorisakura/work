@@ -1,5 +1,5 @@
 调优思考
-
+sysstat tcpdump hping3 dstat perf
 CPU
 	loadavg高，使用下面的工具查找进程或者线程
 	mpstat -P ALL 5 1 分析多核CPU使用情况
