@@ -26,3 +26,8 @@ CPU
 	CPU使用率，时间内核分片，一秒钟发出多少次中断
 		$ grep 'CONFIG_HZ=' /boot/config-$(uname -r)
 		CONFIG_HZ=250
+	
+	top中si,hi频繁
+		cat /proc/softirqs   /proc/interrupt
+		sar -n DEV 查看网络收发 BPS PPS
+		tcpdump 观察flag
