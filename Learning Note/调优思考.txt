@@ -3,7 +3,7 @@ sysstat tcpdump hping3 dstat perf
 CPU
 	loadavg高，使用下面的工具查找进程或者线程
 	mpstat -P ALL 5 1 分析多核CPU使用情况
-	pidstat -u (cpu) -w (context switch) -d (disk) -r (mem) 分析进程内部的使用情况
+	pidstat -u (cpu) -w (context switch) -d (disk) -r (mem) -t (threads)分析进程内部的使用情况
 	ps top
 	vmstat  同时查看CPU和内存的使用情况
 		cs（context switch）是每秒上下文切换的次数。
