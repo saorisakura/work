@@ -1,0 +1,300 @@
+OSPF（下称“协议”或“本协议”）仅在单一自治系统内部路由网际协议（IP）数据包，因此被分类为内部网关协议。该协议从所有可用的路由器中搜集链路状态（Link-state）信息从而构建该网络的拓扑图，由此决定提交给网际层（Internet Layer）的路由表，最终路由器依据在网际协议数据包中发现的目的IP地址，结合路由表作出转发决策。OSPF原生支持VLSM与CIDR。
+本协议使用Dijkstra算法计算出到达每一网络的最短路径，并在检测链路的变化情况（如链路失效）时执行该算法快速收敛到新的无环路拓扑。
+本协议可以通过调整路由界面的开销值来管控数据包的流向（也就是说，OSPF通过开销值来落实管理员所制定的路由策略）。开销值是RTT、链路吞吐量、链路可用（可靠）性等衡量因素的无量纲整数表达。
+一个OSPF网络可以划分成多个与骨干区域（Backbone Area，区域号为0）相连的区域，各区域的区域号可以使用正整数（如0）或点分十进制记法（如0.0.0.0）表达。0号（或0.0.0.0号）区域分配给该网络的核心，称为骨干区域，其他区域必须与骨干区域通过区域边界路由器（Area Border Router）直接或间接（通过OSPF虚链接）相连。同时，ABR负责维护全网的聚合路由，并为每个区域保留一份单独的链路状态数据库（Link-State Database）。
+与大多数路由协议不同（参考BGP和RIP的工作过程），本协议不依赖于传输层协议（如TCP、UDP）提供数据传输、错误检测与恢复服务，数据包直接封装在网际协议（协议号89）内传输。
+本协议使用多播（Multicast）技术提供邻居发现（Neighbor Discovery）服务，对于不支持多播（广播）功能的链路，协议提供了相应的配置选项以便正常工作。默认情况下，协议监听224.0.0.5（IPv4）、FF02::5（IPv6）组播地址（别名：AllSPFRouters）。对于DR与BDR，协议会额外监听224.0.0.6（IPv4）、FF02::6（IPv6）组播地址（别名：AllDRRouters）。本协议数据包只传输一跳（TTL或Hop Count等于且仅等于1），不能跨越广播域。
+在IPv4协议上工作时，OSPF可通过内建的安全机制保护链路状态数据库的安全性。在IPv6网络上，本协议使用IPSec提供安全服务。
+OSPFv3对OSPFv2进行了如下修改：
+1. 邻居路由器只使用链路本地地址进行路由信息交换（虚拟链路除外）
+2. OSPFv3基于每条单独的链路进行工作
+3. 链路状态通告与Hello报文中不再包含网际协议前缀（IP Prefix）信息
+
+
+OSPF协议的工作原理
+2012-03-24 14:23:20             收藏   我要投稿
+
+ 
+
+OSPF 协议工作原理
+
+ 
+
+OSPF(Open Shortest Path First开放式最短路径优先 )是一个内部网关协议(Interior Gateway Protocol,简称IGP)，用于在单一自治系统(autonomous system,AS)内决策路由。 链路是路由器接口的另一种说法，因此OSPF也称为接口状态路由协议。OSPF通过路由器之间通告网络接口的状态来建立链路状态数据库，生成最短路径树，每个OSPF路由器使用这些最短路径构造路由表。 OSPF路由协议是一种典型的链路状态（Lin OSPF(Open Shortest Path First开放式最短路径优先)是一个内部网关协议(Interior Gateway Protocol,简称IGP)，用于在单一自治系统(autonomous system,AS)内决策路由。
+
+链路是路由器接口的另一种说法，因此OSPF也称为接口状态路由协议。OSPF通过路由器之间通告网络接口的状态来建立链路状态数据库，生成最短路径树，每个OSPF路由器使用这些最短路径构造路由表。
+
+OSPF路由协议是一种典型的链路状态（Link-state）的路由协议，一般用于同一个路由域内。在这里，路由域是指一个自治系统 （Autonomous System），即AS，它是指一组通过统一的路由政策或路由协议互相交换路由信息的网络。在这个AS中，所有的OSPF路由器都维护一个相同的描述这个 AS结构的数据库，该数据库中存放的是路由域中相应链路的状态信息，OSPF路由器正是通过这个数据库计算出其OSPF路由表的。
+
+作为一种链路状态的路由协议，OSPF将链路状态广播数据包LSA（Link State Advertisement）传送给在某一区域内的所有路由器，这一点与距离矢量路由协议不同。运行距离矢量路由协议的路由器是将部分或全部的路由表传递给与其相邻的路由器。
+
+一 OSPF的数据包
+
+OSPF的包类型：
+
+1 HELLO 12 Database Description 数据库的描述 DBD 可靠
+
+3 Link-state Request 链路状态请求包 LSR 可靠
+
+4 Link-state Update 链路状态更新包 LSU 可靠
+
+5 Link-state Acknowledment 链路状态确认包 LSACK
+
+1.Hello协议的目的:
+
+1.用于发现邻居
+
+2.在成为邻居之前,必须对Hello包里的一些参数协商成功
+
+3.Hello包在邻居之间扮演着keepalive的角色
+
+4.允许邻居之间的双向通信
+
+5.它在NBMA(Nonbroadcast Multi-access)网络上选举DR和BDR（NBMA中默认30s发送一次，多路访问和点对点网络上默认10s发送一次）
+
+2.Hello Packet包含以下信息:
+
+1.源路由器的RID
+
+2.源路由器的Area ID
+
+3.源路由器接口的掩码
+
+4.源路由器接口的认证类型和认证信息
+
+5.源路由器接口的Hello包发送的时间间隔
+
+6.源路由器接口的无效时间间隔
+
+7.优先级
+
+8.DR/BDR
+
+9.五个标记位(flag bit)
+
+10.源路由器的所有邻居的RID
+
+二 OSPF的网络类型
+
+OSPF定义的5种网络类型:
+
+1.点到点网络, 比如T1线路,是连接单独的一对路由器的网络,点到点网络上的有效邻居总是可以形成邻接关系的,在这种网络上,OSPF包的目标地址使用的是224.0.0.5,这个组播地址称为AllSPFRouters.
+
+2.广播型网络,比如以太网,Token Ring和FDDI,这样的网络上会选举一个DR和BDR,DR/BDR的发送的OSPF包的目标地址为224.0.0.5,运载这些OSPF包的帧的目 标MAC地址为0100.5E00.0005;而除了DR/BDR以外的OSPF包的目标地址为224.0.0.6,这个地址叫AllDRouters.
+
+3.NBMA网络, 比如X.25,Frame Relay,和ATM,不具备广播的能力,因此邻居要人工来指定,在这样的网络上要选举DR和BDR,OSPF包采用unicast的方式
+
+4.点到多点网络 是NBMA网络的一个特殊配置,可以看成是点到点链路的集合. 在这样的网络上不选举DR和BDR.
+
+5.虚链接: OSPF包是以unicast的方式发送
+
+所有的网络也可以归纳成2种网络类型:
+
+1.传输网络(Transit Network)
+
+2.末节网络(Stub Network )
+
+三 OSPF的DR及BDR
+
+OSPF路由器在完全邻接之前,所经过的几个状态:
+
+1.Down: 初始化状态.
+
+2.Attempt: 只适于NBMA网络,在NBMA网络中邻居是手动指定的,在该状态下,路由器将使用HelloInterval取代PollInterval来发 送Hello包.
+
+3.Init: 表明在DeadInterval里收到了Hello包,但是2-Way通信仍然没有建立起来.
+
+4.two-way: 双向会话建立.
+
+5.ExStart: 信息交换初始状态,在这个状态下,本地路由器和邻居将建立Master/Slave关系,并确定DD Sequence Number,接口等级高的的成为Master.
+
+6.Exchange: 信息交换状态,本地路由器向邻居发送数据库描述包,并且会发送LSR用于请求新的LSA.
+
+7.Loading: 信息加载状态,本地路由器向邻居发送LSR用于请求新的LSA .
+
+8.Full: 完全邻接状态,这种邻接出现在Router LSA和Network LSA中.
+
+在DR和BDR出现之前，每一台路由器和他的邻居之间成为完全网状的OSPF邻接关系，这样5台路由器之间将需要形成10个邻接关系,同时将产生 25条LSA.而且在多址网络中,还存在自己发出的LSA 从邻居的邻居发回来,导致网络上产生很多LSA的拷贝,所以基于这种考虑，产生了DR和BDR.
+
+DR将完成如下工作：
+
+1. 描述这个多址网络和该网络上剩下的其他相关路由器.
+
+2. 管理这个多址网络上的flooding过程.
+
+3. 同时为了冗余性，还会选取一个BDR，作为双备份之用.
+
+DR BDR选取规则： DR BDR选取是以接口状态机的方式触发的.
+
+1. 路由器的每个多路访问(multi-access)接口都有个路由器优先级(Router Priority),8位长的一个整数,范围是0到255,Cisco路由器默认的优先级是1优先级为0的话将不能选举为DR/BDR.优先级可以通过命 令ip ospf priority进行修改.
+
+2. Hello包里包含了优先级的字段,还包括了可能成为DR/BDR的相关接口的IP地址.
+
+3. 当接口在多路访问网络上初次启动的时候,它把DR/BDR地址设置为0.0.0.0,同时设置等待计时器(wait timer)的值等于路由器无效间隔(Router Dead Interval).
+
+DR BDR选取过程：
+
+1. 在和邻居建立双向(2-Way)通信之后,检查邻居的Hello包中Priority,DR和BDR字段,列出所有可以参与DR/BDR选举的邻居.所有 的路由器声明它们自己就是DR/BDR(Hello包中DR字段的值就是它们自己的接口地址;BDR字段的值就是它们自己的接口地址)
+
+2. 从这个有参与选举DR/BDR权的列表中,创建一组没有声明自己就是DR的路由器的子集(声明自己是DR的路由器将不会被选举为BDR)
+
+3. 如果在这个子集里,不管有没有宣称自己就是BDR,只要在Hello包中BDR字段就等于自己接口的地址,优先级最高的就被选举为BDR;如果优先级都一样,RID最高的选举为BDR
+
+4. 如果在Hello包中DR字段就等于自己接口的地址,优先级最高的就被选举为DR;如果优先级都一样,RID最高的选举为DR;如果选出的DR不能工作,那么新选举的BDR就成为DR，再重新选举一个BDR。
+
+5. 要注意的是,当网络中已经选举了DR/BDR后,又出现了1台新的优先级更高的路由器,DR/BDR是不会重新选举的
+
+6. DR/BDR选举完成后,DRother只和DR/BDR形成邻接关系.所有的路由器将组播Hello包到AllSPFRouters地址 224.0.0.5以便它们能跟踪其他邻居的信息,即DR将洪泛update packet到224.0.0.5;DRother只组播update packet到AllDRouter地址224.0.0.6,只有DR/BDR监听这个地址.
+
+四 OSPF邻居关系
+
+邻接关系建立的4个阶段:
+
+1.邻居发现阶段
+
+2.双向通信阶段：Hello报文都列出了对方的RID，则BC完成.
+
+3.数据库同步阶段：
+
+4.完全邻接阶段: full adjacency
+
+邻居关系的建立和维持都是靠Hello包完成的,在一般的网络类型中,Hello包是每经过1个HelloInterval发送一次,有1个例外: 在NBMA网络中,路由器每经过一个PollInterval周期发送Hello包给状态为down的邻居(其他类型的网络是不会把Hello包发送给状 态为down的路由器的).Cisco路由器上PollInterval默认60s Hello Packet以组播的方式发送给224.0.0.5，在NBMA类型，点到多点和虚链路类型网络，以单播发送给邻居路由器。邻居可以通过手工配置或者 Inverse-ARP发现.
+
+
+
+ 
+
+OSPF泛洪
+
+Flooding采用2种报文
+
+LSU Type 4---链路状态更新报文
+
+LSA Type 5---链路状态确认报文
+
+在P-P网络，路由器是以组播方式将更新报文发送到组播地址224.0.0.5.
+
+在P-MP和虚链路网络，路由器以单播方式将更新报文发送至邻接邻居的接口地址.
+
+在广播型网络，DRother路由器只能和DR&BDR形成邻接关系，所以更新报文将发送到224.0.0.6，相应的DR以 224.0.0.5泛洪LSA并且BDR只接收LSA，不会确认和泛洪这些更新，除非DR失效 在NBMA型网络，LSA以单播方式发送到DR BDR，并且DR以单播方式发送这些更新.
+
+LSA通过序列号,校验和,和老化时间保证LSDB中的LSA是最新的,
+
+Seq: 序列号(Seq)的范围是0x80000001到0x7fffffff.
+
+Checksum: 校验和(Checksum)计算除了Age字段以外的所有字段,每5分钟校验1次.
+
+Age: 范围是0到3600秒,16位长.当路由器发出1个LSA后,就把Age设置为0,当这个LSA经过1台路由器以后,Age就会增加1个LSA保存在LSDB中的时候,老化时间也会增加.
+
+当收到相同的LSA的多个实例的时候,将通过下面的方法来确定哪个LSA是最新的:
+
+1. 比较LSA实例的序列号,越大的越新.
+
+2. 如果序列号相同,就比较校验和,越大越新.
+
+3. 如果校验和也相同,就比较老化时间,如果只有1个LSA拥有MaxAge(3600秒)的老化时间,它就是最新的.
+
+4. 如果LSA老化时间相差15分钟以上,(叫做MaxAgeDiff),老化时间越小的越新.
+
+5. 如果上述都无法区分,则认为这2个LSA是相同的.
+
+五 OSPF区域
+
+区域长度32位，可以用10进制，也可以类似于IP地址的点分十进制分3种通信量
+
+1. Intra-Area Traffic:域内间通信量
+
+2. Inter-Area Traffic:域间通信量
+
+3. External Traffic:外部通信量
+
+路由器类型
+
+1. Internal Router:内部路由器
+
+2. ABR(Area Border Router):区域边界路由器
+
+3. Backbone Router(BR):骨干路由器
+
+4. ASBR(Autonomous System Boundary Router):自治系统边界路由器。
+
+虚链路(Virtual Link)
+
+以下2中情况需要使用到虚链路:
+
+1. 通过一个非骨干区域连接到一个骨干区域.
+
+2. 通过一个非骨干区域连接一个分段的骨干区域两边的部分区域.
+
+虚链接是一个逻辑的隧道（Tunnel）,配置虚链接的一些规则:
+
+1. 虚链接必须配置在2个ABR之间.
+
+2. 虚链接所经过的区域叫Transit Area,它必须拥有完整的路由信息.
+
+3. Transit Area不能是Stub Area.
+
+4. 尽口的避免使用虚链接,它增加了网络的复杂程度和加大了排错的难度.
+
+OSPF区域—OSPF的精华
+
+Link-state 路由在设计时要求需要一个层次性的网络结构.
+
+OSPF网络分为以下2个级别的层次:
+
+骨干区域 (backbone or area 0)
+
+非骨干区域 (nonbackbone areas)
+
+在一个OSPF区域中只能有一个骨干区域,可以有多个非骨干区域,骨干区域的区域号为0。
+
+各非骨干区域间是不可以交换信息的，他们只有与骨干区域相连，通过骨干区域相互交换信息。
+
+非骨干区域和骨干区域之间相连的路由叫边界路由（ABRs-Area Border Routers）,只有ABRs记载了各区域的所有路由表。各非骨干区域内的非ABRs只记载了本区域内的路由表，若要与外部区域中的路由相连，只能通过 本区域的ABRs，由ABRs连到骨干区域的BR，再由骨干区域的BR连到要到达的区域。
+
+骨干区域和非骨干区域的划分，大大降低了区域内工作路由的负担。
+
+六 LSA类型
+
+1.类型1:Router LSA:每个路由器都将产生Router LSA,这种LSA只在本区域内传播，描述了路由器所有的链路和接口，状态和开销.
+
+2.类型2:Network LSA:在每个多路访问网络中，DR都会产生这种Network LSA，它只在产生这条Network LSA的区域泛洪描述了所有和它相连的路由器（包括DR本身）.
+
+3.类型3:Network Summary LSA :由ABR路由器始发,用于通告该区域外部的目的地址.当其他的路由器收到来自ABR的Network Summary LSA以后,它不会运行SPF算法,它只简单的加上到达那个ABR的开销和Network Summary LSA中包含的开销,通过ABR,到达目标地址的路由和开销一起被加进路由表里,这种依赖中间路由器来确定到达目标地址的完全路由(full route)实际上是距离矢量路由协议的行为
+
+4.类型4:ASBR Summary LSA:由ABR发出，ASBR汇总LSA除了所通告的目的地是一个ASBR而不是一个网络外，其他同NetworkSummary LSA.
+
+5.类型5:AS External LSA:发自ASBR路由器,用来通告到达OSPF自主系统外部的目的地,或者OSPF自主系统那个外部的缺省路由的LSA.这种LSA将在全AS内泛洪
+
+6.类型6:Group Membership LSA
+
+7.类型7:NSSA External LSA:来自非完全Stub区域（not-so-stubby area）内ASBR路由器始发的LSA通告它只在NSSA区域内泛洪，这是与LSA-Type5的区别.
+
+不透明LSA：
+
+8.类型8:External Attributes LSA
+
+9.类型9:Opaque LSA(link-local scope,)
+
+10.类型10:Opaque LSA(area-local scope)
+
+11.类型11:Opaque LSA(AS scope)
+
+OSPF末节区域
+
+这种区域不接受本自治系统以外的路由信息,位于Stub边界的ABR将宣告一条默认路由到所有的Stub区域内的内部路由器.
+
+末节区域限制：
+
+a) 所有位于stub area的路由器必须保持LSDB信息同步, 并且它们会在它的Hello包中设置一个值为0的E位(E-bit),因此这些路由器是不会接收E位为1的Hello包,也就是说在stub area里没有配置成stub router的路由器将不能和其他配置成stub router的路由器建立邻接关系.
+
+b) 不能在stub area中配置虚链接(virtual link),并且虚链接不能穿越stub area.
+
+c) stub area里的路由器不可以是ASBR.stub area可以有多个ABR,但是由于默认路由的缘故,内部路由器无法判定哪个ABR才是到达ASBR的最佳选择.
+
+完全末节区域：不接受外部自治系统路由或来自本自治系统内其他区域的的汇总路由（Cisco专有特性）。
+
+次末节区域（NSSA）：允许外部路由被宣告OSPF域中来,同时保留Stub Area的特征,因此NSSA里可以有ASBR,ASBR将使用type7-LSA来宣告外部路由,但经过ABR,Type7被转换为Type5.7类 LSA通过OSPF报头的一个P-bit作Tag,如果NSSA里的ABR收到P位设置为1的NSSA External LSA,它将把LSA类型7转换为LSA类型5.并把它洪泛到其他区域中;如果收到的是P位设置为0的NSSAExternal LSA,它将不会转换成类型5的LSA,并且这个类型7的LSA里的目标地址也不会被宣告到NSSA的外部NSSA在IOS11.2后支持.
+
+ 
+
