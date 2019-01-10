@@ -1,0 +1,179 @@
+SaltStack:编写自己的模块代码
+
+Salt的执行模块函数并没有什么特别之处，它们实际上就是Python函数，但是当它们结合上Salt的远程执行功能就会变得非常强大。当然，我们可以用Python扩展出自己的模块。
+
+默认情况下，我们的定制化模块存放在/srv/salt/_modules文件夹下，这个文件夹不是默认创建的，需要建立对应的目录并添加文件
+
+mkdir -pv /srv/salt/_modules/
+创建完之后就可以在该文件下写第一个我们自己的模块了
+
+def world():
+    """
+    This is hello function.
+    CLI Example:
+        salt '*' hello.world
+    """
+    return 'Hello world'
+模块添加完成后，需要把模块推送到所有minion上，命令如下：
+
+[root@localhost _modules]# salt "*" saltutil.sync_modules
+minion-one:
+    - modules.hello
+minion-two:
+    - modules.hello
+返回结果是minion接收到的新模块名，接下来我们就可以测试模块的执行效果了：
+
+[root@localhost _modules]# salt "*" hello.world
+minion-two:
+    Hello world
+minion-one:
+    Hello world
+ok，这样我们就成功的完成了第一个模块的编写执行，虽然这个例子很简单，但是python语言能提供的强大功能都可以编写成Salt模块，并通过远程执行的方式进行调用。
+
+实战编写一个完整模块
+作为系统管理员可能经常需要查出当前系统最占用内存的程序以及当前系统中最占用CPU的程序，下面我们就把这个常用的功能写成一个模块，让它使用起来更加便捷。
+
+vi /srv/salt/_modules/prank.py
+# -*- coding: utf-8 -*-
+'''
+The top nth processes which take up CPU and memory space usage are available through this module, additional;
+The module can get the system load information.
+'''
+# Import python libs
+import os
+
+# Import salt libs
+import salt.utils
+
+def cpu(n):
+    '''
+    Return the top nth processes which take up the CPU usage for this minion
+    CLI Example:
+        salt '*' prank.cpu <n>
+    '''
+    cmd = "ps axu|sort -k3 -nr|head -n%s" % str(n)
+    output = __salt__['cmd.run_stdout'](cmd)
+    res = []
+    for line in output.splitlines():
+        res.append(lines)
+    return res
+
+def mem(n):
+    '''
+    Return the top nth processes which take up the memory usage for this minion
+    CLI Example:
+        salt '*' prank.mem <n>
+    '''
+    cmd = "ps axu|sort -k4 -nr|head -n%s" % str(n)
+    output = __salt__['cmd.run_stdout'](cmd)
+    res = []
+    for line in output.splitlines():
+        res.append(lines)
+    return res
+
+def load():
+    '''
+    Return the load averages for this minion
+    CLI Example:
+    .. code-block:: bash
+        salt '*' prank.loadavg
+    '''
+    load_avg = os.getloadavg()
+    return {'1-min': load_avg[0],
+           '5-min': load_avg[1],
+           '15-min': load_avg[2]}
+这个模块中cpu(n)和mem(n)分别调用了__salt__['cmd.run_stdout']来执行命令，最后将命令返回结果传回给master显示，load()函数用系统的os模块收集了load情况。
+
+模块编写完成后执行模块同步命令：
+
+[root@localhost _modules]# salt "*" saltutil.sync_modules
+minion-one:
+    - modules.prank
+minion-two:
+    - modules.prank
+同步完成后就可以使用命令查看最占CPU或者最占内存的程序了
+
+salt "*" prank.cpu 4
+salt "*" prank.mem 4
+
+
+
+Salt 创建自定义的执行模块
+By 06月29日 2016 SaltStack SaltStack
+
+引言
+之前 Salt 远程执行的学习谈到了可以创建自定义的执行模块（一个模块实际就是一个 Python 文件），现在我们来实际配置下。
+
+1 Salt Modules 模块放置目录
+系统模块放置在 /usr/lib/python2.7/site-packages/salt/modules/
+自定义模块放置在 /srv/salt/_modules （不存在时需创建）
+2 编写模块（即编写 Python 文件）
+Python 文件名是模块名。 下面我们写一个简单的示例文件 my_disk.py
+
+#!/usr/bin/env python
+# -*- conding: utf-8 -*-
+
+def list():
+    cmd = 'df -h'
+    ret = __salt__['cmd.run'](cmd)
+    return ret
+3 刷新同步模块
+# 使用 saltutil.sync_modules
+[root@linux-node1 _modules]# salt '*' saltutil.sync_modules
+linux-node1.example.com:
+    - modules.my_disk
+linux-node2.example.com:
+    - modules.my_disk
+
+# 可以在 minion 相关目录看到同步过去的模块
+[root@linux-node1 _modules]# tree /var/cache/salt/minion/
+/var/cache/salt/minion/
+├── extmods
+│   └── modules
+│       └── my_disk.py
+├── files
+│   └── base
+│       └── _modules
+│           └── my_disk.py
+├── module_refresh
+├── pkg_refresh
+└── proc
+
+[root@linux-node2 ~]# tree /var/cache/salt/minion/
+/var/cache/salt/minion/
+├── accumulator
+├── extmods
+│   └── modules
+│       └── my_disk.py
+├── files
+│   └── base
+│       ├── apache.sls
+│       └── _modules
+│           └── my_disk.py
+├── highstate.cache.p
+├── module_refresh
+├── pkg_refresh
+├── proc
+└── sls.p
+4 执行自定义模块
+执行命令及结果如下：
+
+[root@linux-node1 _modules]# salt '*' my_disk.list
+linux-node2.example.com:
+    Filesystem               Size  Used Avail Use% Mounted on
+    /dev/mapper/centos-root   48G  1.6G   46G   4% /
+    devtmpfs                 907M     0  907M   0% /dev
+    tmpfs                    917M   12K  917M   1% /dev/shm
+    tmpfs                    917M  8.5M  908M   1% /run
+    tmpfs                    917M     0  917M   0% /sys/fs/cgroup
+    /dev/sda1                497M  168M  329M  34% /boot
+    tmpfs                    184M     0  184M   0% /run/user/0
+linux-node1.example.com:
+    Filesystem               Size  Used Avail Use% Mounted on
+    /dev/mapper/centos-root   48G  2.1G   46G   5% /
+    devtmpfs                 907M     0  907M   0% /dev
+    tmpfs                    917M   28K  917M   1% /dev/shm
+    tmpfs                    917M   17M  900M   2% /run
+    tmpfs                    917M     0  917M   0% /sys/fs/cgroup
+    /dev/sda1                497M  168M  329M  34% /boot
+    tmpfs                    184M     0  184M   0% /run/user/0
