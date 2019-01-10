@@ -1,0 +1,88 @@
+压缩大文件时如何限制CPU使用率？----几种CPU资源限制方法的测试说明
+
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。	https://blog.csdn.net/xueyanzhang/article/details/77161416
+一、说明
+我们的MySQL实例在备份后需要将数据打包压缩，部分低配机器在压缩时容易出现CPU打满导致报警的情况，需要在压缩文件时进行CPU资源的限制。
+
+因此针对此问题进行了相关测试，就有了此文章。
+
+二、测试过程
+0. 正常打包
+正常打包压缩操作：
+
+[root@mysql-test data1]$ du -sh 5555
+34G     5555
+[root@mysql-test data1]$ tar -czf 5555.tar.gz 5555
+1
+2
+3
+打包压缩过程中的CPU占用：
+
+no_tool
+
+1. nice 命令打包
+nice 命令用于设定进程的优先级，取值范围[-20,19],-20为最高，19为最低。
+
+使用nice命令：
+
+[root@mysql-test data1]$ du -sh 5555
+34G     5555
+[root@mysql-test data1]$ nice -n 19 tar -czf 5555.tar.gz 5555
+1
+2
+3
+过程中CPU占用：
+
+nice_tool
+
+第4列 NI 列为19，表示优先级，此时已经是使用了最低优先级
+由于平时并没有太多的任务进行（夜间备份期间更是如此），因此即使设置了最低优先级，依旧占用CPU较高
+2. cpulimit 命令打包
+cpulimit 可以为进程设置CPU使用率上限值并实时监控，若超出上限则暂停运行一段时间
+
+使用该命令需要先进行安装：
+
+wget -O cpulimit.zip https://github.com/opsengine/cpulimit/archive/master.zip
+unzip cpulimit.zip
+cd cpulimit-master
+make
+sudo cp src/cpulimit /usr/bin
+1
+2
+3
+4
+5
+a. 安装后使用如下命令测试：
+
+cpulimit -l 60 tar -czf 5555.tar.gz 5555         # 限制进程CPU占用率上限为60%
+1
+结果如下：
+
+cpulimit
+
+cpulimit 只针对单个进程进行限制，而gzip是另一个子进程，因此无效
+b. 使用进程号进行限制：
+
+先进行正常打包压缩操作：
+
+tar -czf 5555.tar.gz 5555
+1
+找到该任务的gzip进程，使用cpulimit：
+
+[root@mysql-test data1]$ cpulimit -l 60 -p 1695
+Process 1695 found
+1
+2
+CPU使用率被限制在60%：
+
+cpulimit_gzip
+
+3. cgroups 命令集
+Linux 内核提供的一种机制，利用它可以指定一组进程的资源分配，不限于CPU
+
+该命令只在多个进程争抢资源时才生效，因此在此不再测试，有兴趣同学可自行研究，或参考最后链接的文章。
+
+三、结论对比
+nice 与 cgroups 命令适用于多个进程任务争抢CPU资源时，进行资源的分配与限制；而只有单一进程任务时依旧会最大限度占用资源
+cpulimit 针对单个进程生效，可以设定单个进程对CPU资源的使用率上限
+四、参考文章

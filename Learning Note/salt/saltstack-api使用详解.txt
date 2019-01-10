@@ -1,0 +1,793 @@
+saltstack-api使用详解
+
+接触了saltstack感觉十分强大，非常适合做自动化运维。本文介绍下salt-api的简单使用。
+后续打算用django + saltsatck做一个web界面的自动化运维平台。
+
+salt-api介绍
+saltsatck本身就提供了一套算完整的api，使用 CherryPy 来实现 restful 的 api，供外部的程序调用。
+
+salt-api安装
+salt-api需要安装，然后进行一些配置才可以正常使用，安装方法有两种。
+方法一：
+yum安装，需要的依赖包cherry也会被补全装上。
+安装salt-api，并设置开机启动
+
+yum -y install salt-api pyOpenSSL 
+systemctl enable salt-api
+方法二：
+pip安装，首先要确认机器上有没有安装pip模块。
+
+rpm -ivh https://mirrors.aliyun.com/epel/7/x86_64/s/salt-api-2015.5.10-2.el7.noarch.rpm
+pip install cherrypy==3.2.3
+pip install cherrypy
+pip install salt-api
+配置自签名证书
+cd /etc/pki/tls/certs/
+make testcert
+
+
+
+Enter pass phrase:    ===>  输入加密短语，这里我使用salt2017
+Verifying - Enter pass phrase:    ===>  确认加密短语
+umask 77 ; \
+/usr/bin/openssl req -utf8 -new -key /etc/pki/tls/private/localhost.key -x509 -days 365 -out /etc/pki/tls/certs/localhost.crt -set_serial 0
+Enter pass phrase for /etc/pki/tls/private/localhost.key:    ===>  再次输入相同的加密短语
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:CN
+State or Province Name (full name) []:BeiJing
+Locality Name (eg, city) [Default City]:BeiJing
+Organization Name (eg, company) [Default Company Ltd]:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, your name or your server's hostname) []:
+Email Address []:
+解密key文件，生成无密码的key文件, 过程中需要输入key密码，该密码为之前生成证书时设置的密码
+
+cd /etc/pki/tls/private/
+openssl rsa -in localhost.key -out localhost_nopass.key
+修改文件权限
+
+chmod 755 /etc/pki/tls/certs/localhost.crt 
+chmod 755 /etc/pki/tls/private/localhost.key 
+chmod 755 /etc/pki/tls/private/localhost_nopass.key
+添加用户
+生产环境请使用密码复杂度高的密码，这里我使用salt2017
+
+useradd -M -s /sbin/nologin saltapi
+passwd saltapi        
+配置salt-api
+修改/etc/salt/master文件
+
+sed -i '/#default_include/s/#default/default/g' /etc/salt/master
+创建/etc/salt/master.d/目录
+
+mkdir -p /etc/salt/master.d/
+cd /etc/salt/master.d/
+touch eauth.conf
+touch api.conf
+编辑eauth.conf，添加下面内容
+
+external_auth:
+  pam:
+    saltapi:   # 用户
+      - .*     # 该配置文件给予saltapi用户所有模块使用权限，出于安全考虑一般只给予特定模块使用权限
+编辑api.conf，添加下面内容
+
+rest_cherrypy:
+  port: 8001
+  ssl_crt: /etc/pki/tls/certs/localhost.crt
+  ssl_key: /etc/pki/tls/private/localhost_nopass.key
+启动salt-api
+systemctl restart salt-master
+systemctl start salt-api
+ps -ef|grep salt-api
+netstat -lnput|grep 8001
+验证服务
+获得token
+
+curl -k https://172.16.0.19:8001/login -H "Accept: application/x-yaml"  -d username='saltapi'  -d password='salt2017'  -d eauth='pam'
+return:
+- eauth: pam
+  expire: 1494365711.173652
+  perms:
+  - .*
+  start: 1494322511.173652
+  token: f40623825ea02606bfc558c982dbbfbb923c7570
+  user: saltapi
+调用test.ping
+
+curl -k https://172.16.0.19:8001/ -H "Accept: application/x-yaml" -H "X-Auth-Token: f40623825ea02606bfc558c982dbbfbb923c7570" -d client='local' -d tgt='*' -d fun='test.ping'
+return:
+- client1: true
+  saltstack: true
+编写python脚本请求salt api接口
+自定义一个类，首先初始化时候获得token，然后使用token认证去请求相应的json文件。
+salt命令在shell中使用方式是salt 客户端 方法 参数（例子：salt 'client1' cmd.run 'free -m'）。
+这里salt命令方法我们已经封装好了，想使用salt的什么方法就传入对应的客户端、方法、参数即可。
+代码如下：
+
+#!/usr/bin/env python
+# _*_ coding:utf-8 _*_
+__author__ = 'junxi'
+
+
+import requests
+import json
+try:
+    import cookielib
+except:
+    import http.cookiejar as cookielib
+
+# 使用urllib2请求https出错，做的设置
+import ssl
+context = ssl._create_unverified_context()
+
+# 使用requests请求https出现警告，做的设置
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
+salt_api = "https://172.16.0.19:8001/"
+
+
+class SaltApi:
+    """
+    定义salt api接口的类
+    初始化获得token
+    """
+    def __init__(self, url):
+        self.url = url
+        self.username = "saltapi"
+        self.password = "salt2017"
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36",
+            "Content-type": "application/json"
+            # "Content-type": "application/x-yaml"
+        }
+        self.params = {'client': 'local', 'fun': '', 'tgt': ''}
+        # self.params = {'client': 'local', 'fun': '', 'tgt': '', 'arg': ''}
+        self.login_url = salt_api + "login"
+        self.login_params = {'username': self.username, 'password': self.password, 'eauth': 'pam'}
+        self.token = self.get_data(self.login_url, self.login_params)['token']
+        self.headers['X-Auth-Token'] = self.token
+
+    def get_data(self, url, params):
+        send_data = json.dumps(params)
+        request = requests.post(url, data=send_data, headers=self.headers, verify=False)
+        # response = request.text
+        # response = eval(response)     使用x-yaml格式时使用这个命令把回应的内容转换成字典
+        # print response
+        # print request
+        # print type(request)
+        response = request.json()
+        result = dict(response)
+        # print result
+        return result['return'][0]
+
+    def salt_command(self, tgt, method, arg=None):
+        """远程执行命令，相当于salt 'client1' cmd.run 'free -m'"""
+        if arg:
+            params = {'client': 'local', 'fun': method, 'tgt': tgt, 'arg': arg}
+        else:
+            params = {'client': 'local', 'fun': method, 'tgt': tgt}
+        print '命令参数: ', params
+        result = self.get_data(self.url, params)
+        return result
+
+def main():
+    print '=================='
+    print '同步执行命令'
+    salt = SaltApi(salt_api)
+    print salt.token
+    salt_client = '*'
+    salt_test = 'test.ping'
+    salt_method = 'cmd.run'
+    salt_params = 'free -m'
+    # print salt.salt_command(salt_client, salt_method, salt_params)
+    # 下面只是为了打印结果好看点
+    result1 = salt.salt_command(salt_client, salt_test)
+    for i in result1.keys():
+        print i, ': ', result1[i]
+    result2 = salt.salt_command(salt_client, salt_method, salt_params)
+    for i in result2.keys():
+        print i
+        print result2[i]
+        print
+
+if __name__ == '__main__':
+    main()
+查看运行结果
+第一行请求认证的token。
+从结果可以看出来我们请求了两条命令，test.ping和free -m
+
+==================
+同步执行命令
+83ad5789cf8046ff06972e1f92bb31f012609a78
+命令参数:  {'fun': 'test.ping', 'client': 'local', 'tgt': '*'}
+client1 :  True
+saltstack :  True
+命令参数:  {'fun': 'cmd.run', 'client': 'local', 'tgt': '*', 'arg': 'free -m'}
+client1
+              total        used        free      shared  buff/cache   available
+Mem:            220         153           7           2          59          31
+Swap:          2046         129        1917
+
+saltstack
+              total        used        free      shared  buff/cache   available
+Mem:            976         516          83          24         376         260
+Swap:          2046           0        2046
+请求异步执行salt命令后的jid结果，首先要修改/etc/salt/master.d/eauth.conf 配置文件，增加权限，然后重启salt-master和salt-api。
+
+cd /etc/salt/master.d/
+vi eauth.conf
+# 修改内容如下：
+external_auth:
+  pam:
+    saltapi:
+      - .*
+      - '@runner'
+      - '@wheel'
+python编写异步请求模块
+
+def salt_async_command(self, tgt, method, arg=None):  # 异步执行salt命令，根据jid查看执行结果
+    """远程异步执行命令"""
+    if arg:
+        params = {'client': 'local_async', 'fun': method, 'tgt': tgt, 'arg': arg}
+    else:
+        params = {'client': 'local_async', 'fun': method, 'tgt': tgt}
+    jid = self.get_data(self.url, params)['jid']
+    return jid
+
+def look_jid(self, jid):  # 根据异步执行命令返回的jid查看事件结果
+    params = {'client': 'runner', 'fun': 'jobs.lookup_jid', 'jid': jid}
+    print params
+    result = self.get_data(self.url, params)
+    return result
+查看执行结果
+
+def main():
+    print
+    print '=================='
+    print '异步执行命令'
+    salt1 = SaltApi(salt_api)
+    salt_client = '*'
+    salt_method = 'cmd.run'
+    salt_params = 'df -hT'
+    # 下面只是为了打印结果好看点
+    jid1 = salt1.salt_async_command(salt_client, salt_test)
+    result1 = salt1.look_jid(jid1)
+    for i in result1.keys():
+        print i, ': ', result1[i]
+
+    jid2 = salt1.salt_async_command(salt_client, salt_method, salt_params)
+    result2 = salt1.look_jid(jid2)
+    for i in result2.keys():
+        print i
+        print result2[i]
+        print
+
+
+if __name__ == '__main__':
+    main()
+==================
+异步执行命令
+{'fun': 'jobs.lookup_jid', 'jid': u'20170525095342243770', 'client': 'runner'}
+saltstack :  True
+client1 :  True
+{'fun': 'jobs.lookup_jid', 'jid': u'20170525095342994269', 'client': 'runner'}
+client1
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda2      xfs        17G   13G  4.1G  77% /
+devtmpfs       devtmpfs   97M     0   97M   0% /dev
+tmpfs          tmpfs     111M   12K  111M   1% /dev/shm
+tmpfs          tmpfs     111M  4.7M  106M   5% /run
+tmpfs          tmpfs     111M     0  111M   0% /sys/fs/cgroup
+/dev/sda1      xfs       297M  202M   96M  68% /boot
+
+saltstack
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda2      xfs        17G  7.2G  9.9G  43% /
+devtmpfs       devtmpfs  475M     0  475M   0% /dev
+tmpfs          tmpfs     489M   16K  489M   1% /dev/shm
+tmpfs          tmpfs     489M  6.9M  482M   2% /run
+tmpfs          tmpfs     489M     0  489M   0% /sys/fs/cgroup
+/dev/sda1      xfs       297M  202M   96M  68% /boot
+salt-api二次开发遇到的问题
+对salt-api进行了二次开发，通过api控制minion，可能会遇到发送命令线程就进入了等待，然后就是超时。
+解决方法：salt.netapi.rest_cherrypy包里面有一个app.py方法，修改'server.thread_pool': self.apiopts.get('thread_pool', 100)为200，修改'server.socket_queue_size': self.apiopts.get('queue_size', 30)为300 。重启salt-api 再次测试，OK。
+
+vi /usr/lib/python2.7/site-packages/salt/netapi/rest_cherrypy/app.py
+修改下面两行内容
+'server.thread_pool': self.apiopts.get('thread_pool', 100),
+'server.socket_queue_size': self.apiopts.get('queue_size', 30),
+为
+'server.thread_pool': self.apiopts.get('thread_pool', 200),
+'server.socket_queue_size': self.apiopts.get('queue_size', 300),
+重启salt-api
+
+systemctl restart salt-api
+
+
+python3 调用 salt-api
+用户1441625发表于鬼谷君订阅171
+在这篇文章中：
+使用python3调用 salt-api
+方式一
+方式二
+使用python3调用 salt-api
+ 在项目中我们不能使用命令行的模式去调用salt-api，所以我们可以写一个基于salt-api的类，方便项目代码的调用。在这里特别附上两种方式实现的python3版本的salt-api class。
+ 
+
+方式一
+#python3.x
+import pycurl
+from io import BytesIO
+import json
+
+class PyCurl(object):
+    def __init__(self, url, **kwargs):
+        # 传入url地址
+        self.url = url
+        # 取出header相关信息
+        self.header = kwargs.get("header", None)
+        # 创建一个curl对象
+        self.curl = pycurl.Curl()
+        # setopt 来设置一些请求选项
+        # 指定请求的URL
+        self.curl.setopt(self.curl.URL, self.url)
+        # 设置代理浏览器
+        self.curl.setopt(self.curl.HEADER, False)
+        # 设置请求方式
+        self.curl.setopt(self.curl.POST, True)
+        # 设置https方式
+        self.curl.setopt(pycurl.SSL_VERIFYPEER, 0)
+        self.curl.setopt(pycurl.SSL_VERIFYHOST, 0)
+        # 判断header是否存在
+        if self.header:
+            # 设置模拟浏览器
+            self.curl.setopt(self.curl.HTTPHEADER, self.header)
+
+    def request(self, data=None, timeout=None):
+        # 判断对象类型 是否为 str
+        if isinstance(data, str):
+            #将数据提交
+            self.curl.setopt(pycurl.POSTFIELDS, data)
+        header_buf = BytesIO()
+        body_buf = BytesIO()
+        # 强制获取新的连接，即替代缓存中的连接
+        self.curl.setopt(self.curl.FRESH_CONNECT, True)
+        # 完成交互后强制断开连接，不重用
+        self.curl.setopt(self.curl.FORBID_REUSE, True)
+        if str(timeout).isdigit() and timeout > 0:
+            # 设置timeout超时时间
+            self.curl.setopt(self.curl.TIMEOUT, timeout)
+        # 将返回的HTTP HEADER定向到回调函数header_buf
+        self.curl.setopt(self.curl.HEADERFUNCTION, header_buf.write)
+        # 将返回的内容定向到回调函数body_buf
+        self.curl.setopt(self.curl.WRITEFUNCTION, body_buf.write)
+        try:
+            # 服务器返回信息
+            self.curl.perform()
+        except pycurl.error:
+            return False
+        # 状态码
+        http_code = self.curl.getinfo(self.curl.HTTP_CODE)
+        # 关闭连接
+        self.curl.close()
+        # 返回状态码 header body
+        return {"http_code": http_code, "header": header_buf.getvalue(), "body": body_buf.getvalue(), "url": self.url}
+
+
+class SaltApi(object):
+
+    def __init__(self,**kwargs):
+
+        # 设置超时时间
+        self.timeout = kwargs.get("timeout", 300)
+        # 设置头信息
+        self.header = kwargs.get("header", ["Content-Type:application/json"])
+        # 获取url
+        self.__url = "https://192.168.104.76:8000"
+
+        # 获取
+        self.__username = "salt-api"
+        self.__password = "salt-api"
+
+    # token id 获取
+    def token_id(self):
+        obj = {'eauth': 'pam', 'username': self.__username, 'password': self.__password}
+        result = self.post(prefix="/login",**obj)
+        if result:
+            try:
+                self.__token_id = result['return'][0]['token']
+            except KeyError:
+                raise KeyError
+        print(self.__token_id)
+        return self.__token_id
+
+    def post(self, prefix="/",token=None,**data):
+
+        # url拼接
+        url = self.__url + prefix
+        print (data)
+        # 实例化
+        self.header.append(str(token))
+        curl = PyCurl(url, header=self.header)
+        # 发起请求
+        result = curl.request(data=json.dumps(data), timeout=self.timeout)
+        # 判断值
+        if not result:
+            return result
+        #判断状态码是否等于200
+        if result["http_code"] != 200:
+            self.response = "response code %s".format(result["info"]["http_code"])
+            return self.response
+        result = json.loads(result["body"].decode())
+        # 判断是否有error
+        if "error" in result and result["error"]:
+            self.response = "%s(%s)" % (result["error"]["data"], result["error"]["code"])
+            return self.response
+        #返回正确的数据
+        return result
+
+    def all_key(self):
+        '''
+        获取所有的minion_key
+        '''
+        token = 'X-Auth-Token:%s'%self.token_id()
+        obj = {'client': 'wheel', 'fun': 'key.list_all'}
+        content = self.post(token=token,**obj)
+        # 取出认证已经通过的
+        minions = content['return'][0]['data']['return']['minions']
+        #print('已认证',minions)
+        # 取出未通过认证的
+        minions_pre = content['return'][0]['data']['return']['minions_pre']
+        # print('未认证',minions_pre)
+        return minions,minions_pre
+
+    def accept_key(self,node_name):
+        '''
+        如果你想认证某个主机 那么调用此方法
+        '''
+        token = 'X-Auth-Token:%s' % self.token_id()
+        obj = {'client': 'wheel', 'fun': 'key.accept','match':node_name}
+        content = self.post(token=token,**obj)
+        print (content)
+        ret = content['return'][0]['data']['success']
+        return ret
+
+    # 删除认证方法
+    def delete_key(self, node_name):
+        obj = {'client': 'wheel', 'fun': 'key.delete', 'match': node_name}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+
+        ret = content['return'][0]['data']['success']
+        return ret
+
+    # 针对主机远程执行模块
+    def host_remote_func(self, tgt, fun):
+        ''' tgt是主机 fun是模块
+            写上模块名 返回 可以用来调用基本的资产
+            例如 curl -k https://ip地址:8080/ \
+        >      -H "Accept: application/x-yaml" \
+        >      -H "X-Auth-Token:b50e90485615309de0d83132cece2906f6193e43" \
+        >      -d client='local' \
+        >      -d tgt='*' \
+        >      -d fun='test.ping'  要执行的模块
+        return:
+        - iZ28r91y66hZ: true
+          node2.minion: true
+        '''
+        obj = {'client': 'local', 'tgt': tgt, 'fun': fun}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        ret = content['return'][0]
+        return ret
+
+    def group_remote_func(self,tgt,fun):
+        obj = {'client': 'local', 'tgt': tgt, 'fun': fun,'expr_form': 'nodegroup'}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        print (content)
+        ret = content['return'][0]
+        return ret
+
+    def host_remote_execution_module(self,tgt,fun,arg):
+        '执行fun 传入传入参数arg '
+        obj = {'client': 'local', 'tgt': tgt, 'fun': fun,'arg': arg}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        ret = content['return'][0]
+        return ret
+        #print(salt_aa.host_remote_execution_module('*', 'cmd.run', 'ifconfig'))
+
+    # 基于分组来执行
+    def group_remote_execution_module(self, tgt, fun, arg):
+        '''
+        根据分组来执行
+        tgt =
+        '''
+
+        obj = {'client': 'local', 'tgt': tgt, 'fun': fun, 'arg': arg, 'expr_form': 'nodegroup'}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]
+        return jid
+
+    def host_sls(self, tgt, arg):
+        '''主机进行sls'''
+        obj = {'client': 'local', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        return content
+
+    def group_sls(self, tgt, arg):
+        ''' 分组进行sls '''
+        obj = {'client': 'local', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg, 'expr_form': 'nodegroup'}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]['jid']
+        return jid
+
+    def host_sls_async(self, tgt, arg):
+        '''主机异步sls '''
+        obj = {'client': 'local_async', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]['jid']
+        return jid
+
+    def group_sls_async(self, tgt, arg):
+        '''分组异步sls '''
+        obj = {'client': 'local_async', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg, 'expr_form': 'nodegroup'}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]['jid']
+        return jid
+
+    def server_group_pillar(self, tgt, arg, **kwargs):
+        '''分组进行sls and pillar'''
+        obj = {'client': 'local', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg, 'expr_form': 'nodegroup',
+               'kwarg': kwargs}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]
+        print (jid)
+
+    def server_hosts_pillar(self, tgt, arg,**kwargs):
+        '''针对主机执行sls and pillar '''
+        obj = {"client": "local", "tgt": tgt, "fun": "state.sls", "arg": arg,"kwarg":kwargs}
+        token = 'X-Auth-Token:%s' % self.token_id()
+        content = self.post(token=token, **obj)
+        jid = content['return'][0]
+        return jid
+
+    def jobs_all_list(self):
+        '''打印所有jid缓存'''
+        token = 'X-Auth-Token:%s' % self.token_id()
+        obj = {"client": "runner", "fun": "jobs.list_jobs"}
+        content = self.post(token=token, **obj)
+        print (content)
+
+    def jobs_jid_status(self, jid):
+        '''查看jid运行状态'''
+        token = 'X-Auth-Token:%s' % self.token_id()
+        obj = {"client": "runner", "fun": "jobs.lookup_jid", "jid": jid}
+        content = self.post(token=token, **obj)
+        print (content)
+        return content
+if __name__ == '__main__':
+
+    sa = saltapi.SaltApi()
+    print (sa.host_remote_execution_module('node76','cmd.run','ifconfig'))
+    print (sa.accept_key("node76"))
+方式二
+#python3x
+import urllib,json
+import urllib.request
+import urllib.parse
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
+
+class SaltAPI(object):
+    __token_id = ''
+
+    def __init__(self,url,user,password):
+        self.__url = url
+        self.__user = user
+        self.__password = password
+
+    def token_id(self):
+        """
+            用户登陆和获取token
+        :return:
+        """
+        params = {'eauth': 'pam', 'username': self.__user, 'password': self.__password}
+        encode = urllib.parse.urlencode(params)
+        obj = urllib.parse.unquote(encode).encode('utf-8')
+        content = self.postRequest(obj, prefix='/login')
+        try:
+            self.__token_id = content['return'][0]['token']
+        except KeyError:
+            raise KeyError
+
+    def postRequest(self,obj,prefix='/'):
+        url = self.__url + prefix
+        headers = {'X-Auth-Token': self.__token_id}
+        req = urllib.request.Request(url, obj, headers)
+        opener = urllib.request.urlopen(req)
+        content = json.loads(opener.read().decode('utf-8'))
+        return content
+
+    def list_all_key(self):
+        """
+            获取包括认证、未认证salt主机
+        """
+
+        params = {'client': 'wheel', 'fun': 'key.list_all'}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        minions = content['return'][0]['data']['return']['minions']
+        minions_pre = content['return'][0]['data']['return']['minions_pre']
+        return minions, minions_pre
+
+    def delete_key(self, node_name):
+        '''
+            拒绝salt主机
+        '''
+
+        params = {'client': 'wheel', 'fun': 'key.delete', 'match': node_name}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]['data']['success']
+        return ret
+
+    def accept_key(self,node_name):
+        '''
+            接受salt主机
+        '''
+
+        params = {'client': 'wheel', 'fun': 'key.accept', 'match': node_name}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]['data']['success']
+        return ret
+
+    def salt_get_jid_ret(self,jid):
+        """
+            通过jid获取执行结果
+        :param jid: jobid
+        :return: 结果
+        """
+        params = {'client':'runner', 'fun':'jobs.lookup_jid', 'jid': jid}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]
+        return ret
+
+    def salt_running_jobs(self):
+        """
+            获取运行中的任务
+        :return: 任务结果
+        """
+        params = {'client':'runner', 'fun': 'jobs.active'}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]
+        return ret
+
+    def remote_noarg_execution_sigle(self, tgt, fun):
+        """
+            单台minin执行命令没有参数
+        :param tgt: 目标主机
+        :param fun:  执行模块
+        :return: 执行结果
+        """
+        params = {'client': 'local', 'tgt': tgt, 'fun': fun}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        # print(content)
+        # {'return': [{'salt-master': True}]}
+        ret = content['return'][0]
+        return ret
+
+    def remote_execution_single(self, tgt, fun, arg):
+        """
+            单台minion远程执行，有参数
+        :param tgt: minion
+        :param fun: 模块
+        :param arg: 参数
+        :return: 执行结果
+        """
+        params = {'client': 'local', 'tgt': tgt, 'fun': fun, 'arg': arg}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        # print(content)
+        # {'return': [{'salt-master': 'root'}]}
+        ret = content['return']
+        return ret
+
+    def remote_async_execution_module(self, tgt, fun, arg):
+        """
+            远程异步执行模块，有参数
+        :param tgt: minion list
+        :param fun: 模块
+        :param arg: 参数
+        :return: jobid
+        """
+        params = {'client': 'local_async', 'tgt': tgt, 'fun': fun, 'arg': arg, 'expr_form': 'list'}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        # print(content)
+        # {'return': [{'jid': '20180131173846594347', 'minions': ['salt-master', 'salt-minion']}]}
+        jid = content['return'][0]['jid']
+        return jid
+
+    def remote_execution_module(self, tgt, fun, arg):
+        """
+            远程执行模块，有参数
+        :param tgt: minion list
+        :param fun: 模块
+        :param arg: 参数
+        :return: dict, {'minion1': 'ret', 'minion2': 'ret'}
+        """
+        params = {'client': 'local', 'tgt': tgt, 'fun': fun, 'arg': arg, 'expr_form': 'list'}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        # print(content)
+        # {'return': [{'salt-master': 'root', 'salt-minion': 'root'}]}
+        ret = content['return'][0]
+        return ret
+
+    def salt_state(self, tgt, arg, expr_form):
+        '''
+        sls文件
+        '''
+        params = {'client': 'local', 'tgt': tgt, 'fun': 'state.sls', 'arg': arg, 'expr_form': expr_form}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]
+        return ret
+
+    def salt_alive(self, tgt):
+        '''
+        salt主机存活检测
+        '''
+        params = {'client': 'local', 'tgt': tgt, 'fun': 'test.ping'}
+        obj = urllib.parse.urlencode(params).encode('utf-8')
+        self.token_id()
+        content = self.postRequest(obj)
+        ret = content['return'][0]
+        return ret
+
+
+if __name__ == '__main__':
+        salt = SaltAPI(url="https://192.168.104.76:8000",user="salt-api",password="salt-api")
+        minions, minions_pre = salt.list_all_key()
+        # 说明如果'expr_form': 'list',表示minion是以主机列表形式执行时，需要把list拼接成字符串，如下所示
+        minions = ['node76', 'node76']
+        hosts = map(str, minions)
+        hosts = ",".join(hosts)
+        ret = salt.remote_noarg_execution_sigle('node76', 'test.ping')
+        print(ret)
+        ret = salt.remote_noarg_execution_sigle('node76', 'test.ping')
+        print(ret)
+        # print(type(ret))
