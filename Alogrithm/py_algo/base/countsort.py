@@ -47,3 +47,8 @@ def csort(data, n):
 data_set = [2, 5, 3, 0, 2, 3, 0, 3]
 print(data_set)
 csort(data_set, len(data_set))
+
+print("----------------------------------------")
+print(sorted(data_set))
+
+print(15 >> 1)

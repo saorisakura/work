@@ -30,12 +30,12 @@ class LList(object):
 
 
 llist = LList(-1)
-p = llist
+q = llist
 for i in range(10):
-    p.append(i)
+    q.append(i)
 for i in range(10):
-    p.prepend(i)
+    q.prepend(i)
 
-while p:
-    print(p.data)
-    p = p.link
+while q:
+    print(q.data)
+    q = q.link
