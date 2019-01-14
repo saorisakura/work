@@ -1,5 +1,203 @@
-Skip to Navigation
+centos 6.x driver queue multiqueue
+	[root@cactim_puppetserver ~]# ip a
+	1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+		link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+		inet 127.0.0.1/8 scope host lo
+		inet6 ::1/128 scope host 
+		   valid_lft forever preferred_lft forever
+	2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+		link/ether 00:1b:21:cf:75:c8 brd ff:ff:ff:ff:ff:ff
+		inet 42.62.27.36/24 brd 42.62.27.255 scope global eth0
+		inet6 fe80::21b:21ff:fecf:75c8/64 scope link 
+		   valid_lft forever preferred_lft forever
+	3: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN qlen 1000
+		link/ether 00:1b:21:cf:75:c9 brd ff:ff:ff:ff:ff:ff
+	4: eth2: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master bond0 state UP qlen 1000
+		link/ether 00:25:90:62:54:32 brd ff:ff:ff:ff:ff:ff
+	5: eth3: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master bond0 state UP qlen 1000
+		link/ether 00:25:90:62:54:32 brd ff:ff:ff:ff:ff:ff
+	6: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP 
+		link/ether 00:25:90:62:54:32 brd ff:ff:ff:ff:ff:ff
+		inet 172.20.27.36/16 brd 172.20.255.255 scope global bond0
+		inet6 fe80::225:90ff:fe62:5432/64 scope link 
+		   valid_lft forever preferred_lft forever
+	[root@cactim_puppetserver ~]# cat /proc/interrupts |egrep -i eth
+	  60: 3706713628          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth0
+	  62: 1127962914          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth2-rx-0
+	  63: 1768415854          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth2-tx-0
+	  64:    1133230          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth2
+	  65:  844198736          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth3-rx-0
+	  66:  898944098          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth3-tx-0
+	  67:         76          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   PCI-MSI-edge      eth3
+	[root@cactim_puppetserver ~]# lspci  -vvv|egrep -i "msi|eth" 
 
+centos 7.x driver queue multiqueue
+	A google search would have easily yielded this article from the vger kernel mailing list:
+
+	These patches contain a classful multiqueue ("mq") dummy scheduler to fix a couple of problems with the current multiqueue TC API integration. The changelogs of patch 05 and 07 contain more details.
+
+	The mq scheduler does two things:
+
+	present device TX queues as classes, allowing to attach different qdiscs to them, which are grafted to the TX queues
+
+	present accumulated statistics of all device queue root qdiscs
+
+	Its used by default for multiqueue devices instead of the regular pfifo_fast qdisc, but can also be attached manually to restore multiqueue behaviour after attaching a non-multiqueue (shared) qdisc.
+
+	Multiqueue is a feature is otherwise referenced as RSS (Receive-Side-Scaling) which basically is distributing the load of packet processing among several cores. Further reading: http://lxr.free-electrons.com/source/Documentation/networking/scaling.txt
+	
+	[root@salt-28-197 ~]# cat /proc/interrupts |egrep -i en
+	  35:          1          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0
+	  36:          5          0          0  326937826          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-0
+	  37:          4          0          0          0   23400534          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-1
+	  38:          4          0          0          0          0   23375282          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-2
+	  39:          4          0          0          0          0          0   24282523          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-3
+	  40:          5          0          0          0          0          0          0   23785520          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-4
+	  41:          4          0          0          0          0          0          0          0   24923175          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-5
+	  42:          4          0          0          0          0          0          0          0          0   23375347          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-6
+	  43:          7          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  283403683          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f0-TxRx-7
+	  47:          1          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1
+	  48:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   34853455          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-0
+	  49:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   33718564          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-1
+	  50:          7          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8775126          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-2
+	  51:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   11773525          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-3
+	  52:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   50648368          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-4
+	  53:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8774451          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-5
+	  54:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8773453          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-6
+	  55:          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   26973405          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      enp3s0f1-TxRx-7
+	  56:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0
+	  57:          0          0          0          0          0          0          0          0          0          0          5          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-0
+	  58:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-1
+	  59:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-2
+	  60:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-3
+	  61:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-4
+	  62:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-5
+	  63:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-6
+	  64:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8773130          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f0-TxRx-7
+	  66:          0          0          0          0          0          0          0          0          0          0          1          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f1
+	  67:          0          0          0          0          0          0          0          0          0          0         12          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   39400171          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-0
+	  68:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   44673074          0          0          0          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-1
+	  69:          0          0          0          0          0          0          0          0          0          0          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    9454251          0          0          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-2
+	  70:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    9453291          0          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-3
+	  71:          0          0          0          0          0          0          0          0          0          0          7          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   14936874          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-4
+	  74:          0          0          0          0          0          0          0          0          0          0          5          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8775143          0  IR-PCI-MSI-edge      ens5f1-TxRx-5
+	  75:          0          0          0          0          0          0          0          0          0          0          6          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0    8773660  IR-PCI-MSI-edge      ens5f1-TxRx-6
+	  76:          0          0          0          0          0          0          0          0          0          0   24665536          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-edge      ens5f1-TxRx-7
+	 TRM:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Thermal event interrupts
+	 PIN:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt notification event
+	 NPI:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Nested posted-interrupt event
+	 PIW:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt wakeup event
+	[root@salt-28-197 ~]# lspci -vvv|egrep -i "MSI|ETH"
+			Capabilities: [90] Express (v2) Root Port (Slot-), MSI 00
+			Capabilities: [60] MSI: Enable+ Count=1/2 Maskable+ 64bit-
+			Capabilities: [90] Express (v2) Root Port (Slot+), MSI 00
+			Capabilities: [60] MSI: Enable+ Count=1/2 Maskable+ 64bit-
+			Capabilities: [90] Express (v2) Root Port (Slot+), MSI 00
+			Capabilities: [60] MSI: Enable+ Count=1/2 Maskable+ 64bit-
+			Capabilities: [90] Express (v2) Root Port (Slot-), MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [40] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [40] Express (v1) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [40] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [44] Express (v1) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [40] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI: Enable+ Count=1/1 Maskable- 64bit-
+			Capabilities: [8c] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [8c] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [40] Express (v2) Root Port (Slot-), MSI 00
+			Capabilities: [80] MSI: Enable+ Count=1/1 Maskable- 64bit-
+			Capabilities: [40] Express (v2) Root Port (Slot+), MSI 00
+			Capabilities: [80] MSI: Enable+ Count=1/1 Maskable- 64bit-
+			Capabilities: [80] MSI: Enable+ Count=1/1 Maskable- 64bit-
+	pcilib:         Capabilities: [68] Express (v2) Endpoint, MSI 00
+	sysfs_read_vpd: read failed: Input/output error
+			Capabilities: [a8] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [c0] MSI-X: Enable+ Count=15 Masked-
+	03:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)
+			Capabilities: [50] MSI: Enable- Count=1/1 Maskable+ 64bit+
+			Capabilities: [70] MSI-X: Enable+ Count=10 Masked-
+			Capabilities: [a0] Express (v2) Endpoint, MSI 00
+	03:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)
+			Capabilities: [50] MSI: Enable- Count=1/1 Maskable+ 64bit+
+			Capabilities: [70] MSI-X: Enable+ Count=10 Masked-
+			Capabilities: [a0] Express (v2) Endpoint, MSI 00
+			Capabilities: [50] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [80] Express (v1) PCI-Express to PCI/PCI-X Bridge, MSI 00
+			Capabilities: [50] MSI: Enable- Count=1/4 Maskable- 64bit+
+			Capabilities: [60] MSI: Enable+ Count=1/2 Maskable+ 64bit-
+			Capabilities: [90] Express (v2) Root Port (Slot+), MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI-X: Enable+ Count=1 Masked-
+			Capabilities: [90] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [40] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [40] Express (v1) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [80] MSI: Enable- Count=1/1 Maskable- 64bit+
+			Capabilities: [40] Express (v2) Root Complex Integrated Endpoint, MSI 00
+			Capabilities: [44] Express (v1) Root Complex Integrated Endpoint, MSI 00
+	81:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)
+			Subsystem: Intel Corporation Ethernet Server Adapter I350-T2
+			Capabilities: [50] MSI: Enable- Count=1/1 Maskable+ 64bit+
+			Capabilities: [70] MSI-X: Enable+ Count=10 Masked-
+			Capabilities: [a0] Express (v2) Endpoint, MSI 00
+	81:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)
+			Subsystem: Intel Corporation Ethernet Server Adapter I350-T2
+			Capabilities: [50] MSI: Enable- Count=1/1 Maskable+ 64bit+
+			Capabilities: [70] MSI-X: Enable+ Count=10 Masked-
+			Capabilities: [a0] Express (v2) Endpoint, MSI 00
+	[root@salt-28-197 ~]# ip a
+	1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+		link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+		inet 127.0.0.1/8 scope host lo
+		   valid_lft forever preferred_lft forever
+		inet6 ::1/128 scope host 
+		   valid_lft forever preferred_lft forever
+	2: enp3s0f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+		link/ether 0c:c4:7a:ab:a6:34 brd ff:ff:ff:ff:ff:ff
+		inet 42.62.28.197/24 brd 42.62.28.255 scope global enp3s0f0
+		   valid_lft forever preferred_lft forever
+		inet6 fe80::ec4:7aff:feab:a634/64 scope link 
+		   valid_lft forever preferred_lft forever
+	3: enp3s0f1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond0 state UP group default qlen 1000
+		link/ether 0c:c4:7a:ab:a6:35 brd ff:ff:ff:ff:ff:ff
+	4: ens5f0: <NO-CARRIER,BROADCAST,MULTICAST,SLAVE,UP> mtu 1500 qdisc mq master bond0 state DOWN group default qlen 1000
+		link/ether 0c:c4:7a:ab:a6:35 brd ff:ff:ff:ff:ff:ff
+	5: ens5f1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond0 state UP group default qlen 1000
+		link/ether 0c:c4:7a:ab:a6:35 brd ff:ff:ff:ff:ff:ff
+	6: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+		link/ether 0c:c4:7a:ab:a6:35 brd ff:ff:ff:ff:ff:ff
+		inet 172.20.28.197/16 brd 172.20.255.255 scope global bond0
+		   valid_lft forever preferred_lft forever
+		inet6 fe80::ec4:7aff:feab:a635/64 scope link 
+		   valid_lft forever preferred_lft forever
 
 Queueing in the Linux Network Stack
 
