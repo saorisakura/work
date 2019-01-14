@@ -126,3 +126,112 @@ OPTIMIZE TABLE只对MyISAM, BDB和InnoDB表起作用。
  
 转自
 MySQL删除数据后磁盘空间的释放情况 - CSDN博客
+
+
+公司的服务器上添加了硬盘监控，收到报警后，确认是mysql的文件占用空间比较大。于是，确认是哪个表占空间比较大后，删除了部分数据（注：数据库数据为线下分析使用，非线上数据，可以删除），但服务器硬盘空间并没有释放掉，报警仍旧存在。
+
+原因及解决办法：
+
+使用delete删除的时候，mysql并没有把数据文件删除，而是将数据文件的标识位删除，没有整理文件，因此不会彻底释放空间。被删除的数据将会被保存在一个链接清单中，当有新数据写入的时候，mysql会利用这些已删除的空间再写入。即，删除操作会带来一些数据碎片，正是这些碎片在占用硬盘空间。（BTW：看官方文档上好像是innodb引擎的可以利用操作系统来帮忙回收这些碎片，MyISam的表没有办法自己回收，这里待定，后续再看下）
+
+官方推荐使用 OPTIMIZE TABLE命令来优化表，该命令会重新利用未使用的空间，并整理数据文件的碎片。
+
+语法如下：
+
+OPTIMIZE [LOCAL | NO_WRITE_TO_BINLOG] TABLE tbl_name [, tbl_name] ...
+
+注：该命令将会整理表数据和相关的索引数据的物理存储空间，用来减少占用的磁盘空间，并提高访问表时候的IO性能。但是，具体对表产生的影响是依赖于表使用的存储引擎的。该命令对视图无效。
+
+该命令目前只对MyISAM、InnoDB，ARCHIVE的表起作用，其余引擎的不起作用，不过可以设置，后面会讲到~~
+
+具体的使用例子：
+
+1、查看表占用的空间大小：
+
+大约占用了51G的空间。
+
+2、使用optimize命令
+
+使用的时间比较长，需要耐心等待。
+
+3、查看优化之后的空间占用大小。
+
+占用空间15G左右，减少了大部分。
+
+可见优化效果很好~
+
+BTW：
+
+查看表占用硬盘空间大小的SQL语句如下：（默认用M做展示单位）
+
+SELECT TABLE_NAME, (DATA_LENGTH+INDEX_LENGTH)/1048576, TABLE_ROWS FROM information_schema.tables WHERE TABLE_SCHEMA='dbname' AND TABLE_NAME='tablename'; 
+
+对于InnoDB引擎的mysql， optimize 命令，将会被映射到alter table上，具体可以参见官方文档。
+
+补充:
+
+1、如何使optimize 支持其他引擎？
+
+默认情况下，optimize不支持其他存储引擎，但是可以在启动mysqld的时候，使用 --skip-new 参数，这种情况下，optimize命令，将会被映射到alter table命令上，实现上述的功能。
+
+2、该物理删除还是逻辑删除？
+
+生产环境下，尽量不要用物理删除，一旦物理删除了，意味着数据恢复就会很麻烦。建议逻辑删除，数据仍存储在DB里。如果数据量很大的时候，可以考虑使用分库分表。但，这个仍旧是需要根据业务场景来。
+
+3、optimize执行时会将表锁住，所以不要在高峰期使用。也不要经常使用，每月一次就足够了
+
+ mysql查表空间大小的SQL语句 
+
+select concat(truncate(sum(data_length)/1024/1024,2),'MB') as data_size,
+concat(truncate(sum(max_data_length)/1024/1024,2),'MB') as max_data_size,
+concat(truncate(sum(data_free)/1024/1024,2),'MB') as data_free,
+concat(truncate(sum(index_length)/1024/1024,2),'MB') as index_size
+from information_schema.tables where TABLE_SCHEMA = 'databasename';
+
+
+
+
+
+
+
+例如查mysql数据库表空间大小:
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| db_shop            |
+| mysql              |
+| performance_schema |
+| test               |
++--------------------+
+5 rows in set (0.52 sec)
+
+
+mysql>
+mysql> select concat(truncate(sum(data_length)/1024/1024,2),'MB') as data_size,
+    -> concat(truncate(sum(max_data_length)/1024/1024,2),'MB') as max_data_size,
+    -> concat(truncate(sum(data_free)/1024/1024,2),'MB') as data_free,
+    -> concat(truncate(sum(index_length)/1024/1024,2),'MB') as index_size
+    -> from information_schema.tables where TABLE_SCHEMA = 'mysql';
++-----------+--------------------+-----------+------------+
+| data_size | max_data_size      | data_free | index_size |
++-----------+--------------------+-----------+------------+
+| 0.51MB    | 1938103992319.99MB | 0.00MB    | 0.09MB     |
++-----------+--------------------+-----------+------------+
+1 row in set (1.49 sec)
+
+
+mysql>
+
+1、drop table table_name 立刻释放磁盘空间 ，不管是 Innodb和MyISAM ;
+
+2、truncate table table_name 立刻释放磁盘空间 ，不管是 Innodb和MyISAM 。truncate table其实有点类似于drop table 然后creat,只不过这个create table 的过程做了优化，比如表结构文件之前已经有了等等。所以速度上应该是接近drop table的速度;
+
+3、delete from table_name删除表的全部数据,对于MyISAM 会立刻释放磁盘空间 （应该是做了特别处理，也比较合理）,InnoDB 不会释放磁盘空间;
+
+4、对于delete from table_name where xxx带条件的删除, 不管是innodb还是MyISAM都不会释放磁盘空间;
+
+5、delete操作以后使用optimize table table_name 会立刻释放磁盘空间。不管是innodb还是myisam 。所以要想达到释放磁盘空间的目的，delete以后执行optimize table 操作。
+
+6、delete from表以后虽然未释放磁盘空间，但是下次插入数据的时候，仍然可以使用这部分空间。 
