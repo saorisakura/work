@@ -1,0 +1,97 @@
+Skip to Navigation
+
+
+Queueing in the Linux Network Stack
+
+Queueing Disciplines (QDisc)
+The driver queue is a simple first-in, first-out (FIFO) queue. It treats all packets equally and has no capabilities for distinguishing between packets of different flows. This design keeps the NIC driver software simple and fast. Note that more advanced Ethernet and most wireless NICs support multiple independent transmission queues, but similarly, each of these queues is typically a FIFO. A higher layer is responsible for choosing which transmission queue to use.
+Sandwiched between the IP stack and the driver queue is the queueing discipline (QDisc) layer (Figure 1). This layer implements the traffic management capabilities of the Linux kernel, which include traffic classification, prioritization and rate shaping. The QDisc layer is configured through the somewhat opaque tc command. There are three key concepts to understand in the QDisc layer: QDiscs, classes and filters.
+The QDisc is the Linux abstraction for traffic queues, which are more complex than the standard FIFO queue. This interface allows the QDisc to carry out complex queue management behaviors without requiring the IP stack or the NIC driver to be modified. By default, every network interface is assigned a pfifo_fast QDisc (http://lartc.org/howto/lartc.qdisc.classless.html), which implements a simple three-band prioritization scheme based on the TOS bits. Despite being the default, the pfifo_fast QDisc is far from the best choice, because it defaults to having very deep queues (see txqueuelen below) and is not flow aware.
+The second concept, which is closely related to the QDisc, is the class. Individual QDiscs may implement classes in order to handle subsets of the traffic differently—for example, the Hierarchical Token Bucket (HTB,http://lartc.org/manpages/tc-htb.html). QDisc allows the user to configure multiple classes, each with a different bitrate, and direct traffic to each as desired. Not all QDiscs have support for multiple classes. Those that do are referred to as classful QDiscs, and those that do not are referred to as classless QDiscs.
+Filters (also called classifiers) are the mechanism used to direct traffic to a particular QDisc or class. There are many different filters of varying complexity. The u32 filter (http://www.lartc.org/lartc.html#LARTC.ADV-FILTER.U32) is the most generic, and the flow filter is the easiest to use.
+Buffering between the Transport Layer and the Queueing Disciplines
+In looking at the figures for this article, you may have noticed that there are no packet queues above the QDisc layer. The network stack places packets directly into the QDisc or else pushes back on the upper layers (for example, socket buffer) if the queue is full. The obvious question that follows is what happens when the stack has a lot of data to send? This can occur as the result of a TCP connection with a large congestion window or, even worse, an application sending UDP packets as fast as it can. The answer is that for a QDisc with a single queue, the same problem outlined in Figure 4 for the driver queue occurs. That is, the high-bandwidth or high-packet rate flow can consume all of the space in the queue causing packet loss and adding significant latency to other flows. Because Linux defaults to the pfifo_fast QDisc, which effectively has a single queue (most traffic is marked with TOS=0), this phenomenon is not uncommon.
+As of Linux 3.6.0, the Linux kernel has a feature called TCP Small Queues that aims to solve this problem for TCP. TCP Small Queues adds a per-TCP-flow limit on the number of bytes that can be queued in the QDisc and driver queue at any one time. This has the interesting side effect of causing the kernel to push back on the application earlier, which allows the application to prioritize writes to the socket more effectively. At the time of this writing, it is still possible for single flows from other transport protocols to flood the QDisc layer.
+Another partial solution to the transport layer flood problem, which is transport-layer-agnostic, is to use a QDisc that has many queues, ideally one per network flow. Both the Stochastic Fairness Queueing (SFQ, http://crpppc19.epfl.ch/cgi-bin/man/man2html?8+tc-sfq) and Fair Queueing with Controlled Delay (fq_codel, http://linuxmanpages.net/manpages/fedora18/man8/tc-fq_codel.8.html) QDiscs fit this problem nicely, as they effectively have a queue-per-network flow.
+How to Manipulate the Queue Sizes in Linux
+Driver Queue:
+The ethtool command (http://linuxmanpages.net/manpages/fedora12/man8/ethtool.8.html) is used to control the driver queue size for Ethernet devices. ethtool also provides low-level interface statistics as well as the ability to enable and disable IP stack and driver features.
+The -g flag to ethtool displays the driver queue (ring) parameters:
+
+# ethtool -g eth0
+Ring parameters for eth0:
+Pre-set maximums:
+RX:       16384
+RX Mini:    0
+RX Jumbo:    0
+TX:      16384
+Current hardware settings:
+RX:       512
+RX Mini:    0
+RX Jumbo:    0
+TX:    256
+
+You can see from the above output that the driver for this NIC defaults to 256 descriptors in the transmission queue. Early in the Bufferbloat investigation, it often was recommended to reduce the size of the driver queue in order to reduce latency. With the introduction of BQL (assuming your NIC driver supports it), there no longer is any reason to modify the driver queue size (see below for how to configure BQL).
+ethtool also allows you to view and manage optimization features, such as TSO, GSO, UFO and GRO, via the -k and -K flags. The -k flag displays the current offload settings and -K modifies them.
+As discussed above, some optimization features greatly increase the number of bytes that can be queued in the driver queue. You should disable these optimizations if you want to optimize for latency over throughput. It's doubtful you will notice any CPU impact or throughput decrease when disabling these features unless the system is handling very high data rates.
+Byte Queue Limits (BQL):
+The BQL algorithm is self-tuning, so you probably don't need to modify its configuration. BQL state and configuration can be found in a /sys directory based on the location and name of the NIC. For example: /sys/devices/pci0000:00/0000:00:14.0/net/eth0/queues/tx-0/byte_queue_limits.
+To place a hard upper limit on the number of bytes that can be queued, write the new value to the limit_max file:
+"""
+find /sys/devices/pci0000\:00/ -type d -name net 查找相关网卡硬件信息
+"""
+
+
+echo "3000" > limit_max
+
+What Is txqueuelen?
+Often in early Bufferbloat discussions, the idea of statically reducing the NIC transmission queue was mentioned. The txqueuelen field in the ifconfig command's output or the qlen field in the ip command's output show the current size of the transmission queue:
+
+$ ifconfig eth0
+eth0    Link encap:Ethernet  HWaddr 00:18:F3:51:44:10 
+       inet addr:69.41.199.58  Bcast:69.41.199.63  Mask:255.255.255.248
+       inet6 addr: fe80::218:f3ff:fe51:4410/64 Scope:Link
+       UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+       RX packets:435033 errors:0 dropped:0 overruns:0 frame:0
+       TX packets:429919 errors:0 dropped:0 overruns:0 carrier:0
+       collisions:0 txqueuelen:1000 
+       RX bytes:65651219 (62.6 MiB)  TX bytes:132143593 (126.0 MiB)
+       Interrupt:23
+
+$ ip link
+1: lo:  mtu 16436 qdisc noqueue state UNKNOWN 
+   link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0:  mtu 1500 qdisc pfifo_fast state UP qlen 1000
+   link/ether 00:18:f3:51:44:10 brd ff:ff:ff:ff:ff:ff
+
+The length of the transmission queue in Linux defaults to 1,000 packets, which is a large amount of buffering, especially at low bandwidths.
+The interesting question is what queue does this value control? One might guess that it controls the driver queue size, but in reality, it serves as a default queue length for some of the QDiscs. Most important, it is the default queue length for the pfifo_fast QDisc, which is the default. The "limit" argument on the tc command line can be used to ignore the txqueuelen default.
+The length of the transmission queue is configured with the ip or ifconfig commands:
+
+ip link set txqueuelen 500 dev eth0
+
+Queueing Disciplines:
+As introduced earlier, the Linux kernel has a large number of queueing disciplines (QDiscs), each of which implements its own packet queues and behaviour. Describing the details of how to configure each of the QDiscs is beyond the scope of this article. For full details, see the tc man page (man tc). You can find details for each QDisc in man tc qdisc-name (for example, man tc htb or man tc fq_codel).
+TCP Small Queues:
+The per-socket TCP queue limit can be viewed and controlled with the following /proc file: /proc/sys/net/ipv4/tcp_limit_output_bytes.
+You should not need to modify this value in any normal situation.
+Oversized Queues Outside Your Control
+Unfortunately, not all of the over-sized queues that will affect your Internet performance are under your control. Most commonly, the problem will lie in the device that attaches to your service provider (such as DSL or cable modem) or in the service provider's equipment itself. In the latter case, there isn't much you can do, because it is difficult to control the traffic that is sent toward you. However, in the upstream direction, you can shape the traffic to slightly below the link rate. This will stop the queue in the device from having more than a few packets. Many residential home routers have a rate limit setting that can be used to shape below the link rate. Of course, if you use Linux on your home gateway, you can take advantage of the QDisc features to optimize further. There are many examples of tc scripts on-line to help get you started.
+Summary
+Queueing in packet buffers is a necessary component of any packet network, both within a device and across network elements. Properly managing the size of these buffers is critical to achieving good network latency, especially under load. Although static queue sizing can play a role in decreasing latency, the real solution is intelligent management of the amount of queued data. This is best accomplished through dynamic schemes, such as BQL and active queue management (AQM,http://en.wikipedia.org/wiki/Active_queue_management) techniques like Codel. This article outlines where packets are queued in the Linux network stack, how features related to queueing are configured and provides some guidance on how to achieve low latency.
+Acknowledgements
+Thanks to Kevin Mason, Simon Barber, Lucas Fontes and Rami Rosen for reviewing this article and providing helpful feedback.
+Resources
+Controlling Queue Delay: http://queue.acm.org/detail.cfm?id=2209336
+Bufferbloat: Dark Buffers in the Internet:http://cacm.acm.org/magazines/2012/1/144810-bufferbloat/fulltext
+Bufferbloat Project: http://www.bufferbloat.net
+Linux Advanced Routing and Traffic Control How-To (LARTC):http://www.lartc.org/howto
+« first
+ 
+‹ previous
+ 
+1
+ 
+2
+ 
+3
