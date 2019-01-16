@@ -1,0 +1,686 @@
+2018.3.3 salt python client api
+
+    Overview
+    Tutorials
+    Documentation
+    Downloads
+    Develop
+
+Edit on GitHub
+
+    Table of Contents
+    Glossary
+    previous
+    next
+    all salt modules
+    index
+
+Python client API
+
+Salt provides several entry points for interfacing with Python applications. These entry points are often referred to as *Client() APIs. Each client accesses different parts of Salt, either from the master or from a minion. Each client is detailed below.
+
+See also
+
+There are many ways to access Salt programmatically.
+
+Salt can be used from CLI scripts as well as via a REST interface.
+
+See Salt's outputter system to retrieve structured data from Salt as JSON, or as shell-friendly text, or many other formats.
+
+See the state.event runner to utilize Salt's event bus from shell scripts.
+
+Salt's netapi module provides access to Salt externally via a REST interface. Review the netapi module documentation for more information.
+Salt's opts dictionary
+
+Some clients require access to Salt's opts dictionary. (The dictionary representation of the master or minion config files.)
+
+A common pattern for fetching the opts dictionary is to defer to environment variables if they exist or otherwise fetch the config from the default location.
+
+salt.config.client_config(path, env_var=u'SALT_CLIENT_CONFIG', defaults=None)
+
+    Load Master configuration data
+
+    Usage:
+
+    import salt.config
+    master_opts = salt.config.client_config('/etc/salt/master')
+
+    Returns a dictionary of the Salt Master configuration file with necessary options needed to communicate with a locally-running Salt Master daemon. This function searches for client specific configurations and adds them to the data from the master configuration.
+
+    This is useful for master-side operations like LocalClient.
+
+salt.config.minion_config(path, env_var=u'SALT_MINION_CONFIG', defaults=None, cache_minion_id=False, ignore_config_errors=True, minion_id=None, role=u'minion')
+
+    Reads in the minion configuration file and sets up special options
+
+    This is useful for Minion-side operations, such as the Caller class, and manually running the loader interface.
+
+    import salt.config
+    minion_opts = salt.config.minion_config('/etc/salt/minion')
+
+Salt's Loader Interface
+
+Modules in the Salt ecosystem are loaded into memory using a custom loader system. This allows modules to have conditional requirements (OS, OS version, installed libraries, etc) and allows Salt to inject special variables (__salt__, __opts__, etc).
+
+Most modules can be manually loaded. This is often useful in third-party Python apps or when writing tests. However some modules require and expect a full, running Salt system underneath. Notably modules that facilitate master-to-minion communication such as the mine, publish, and peer execution modules. The error KeyError: 'master_uri' is a likely indicator for this situation. In those instances use the Caller class to execute those modules instead.
+
+Each module type has a corresponding loader function.
+
+salt.loader.minion_mods(opts, context=None, utils=None, whitelist=None, initial_load=False, loaded_base_name=None, notify=False, static_modules=None, proxy=None)
+
+    Load execution modules
+
+    Returns a dictionary of execution modules appropriate for the current system by evaluating the __virtual__() function in each module.
+    Parameters:	
+
+        opts (dict) -- The Salt options dictionary
+        context (dict) -- A Salt context that should be made present inside generated modules in __context__
+        utils (dict) -- Utility functions which should be made available to Salt modules in __utils__. See utils_dirs in salt.config for additional information about configuration.
+        whitelist (list) -- A list of modules which should be whitelisted.
+        initial_load (bool) -- Deprecated flag! Unused.
+        loaded_base_name (str) -- A string marker for the loaded base name.
+        notify (bool) -- Flag indicating that an event should be fired upon completion of module loading.
+
+    import salt.config
+    import salt.loader
+
+    __opts__ = salt.config.minion_config('/etc/salt/minion')
+    __grains__ = salt.loader.grains(__opts__)
+    __opts__['grains'] = __grains__
+    __utils__ = salt.loader.utils(__opts__)
+    __salt__ = salt.loader.minion_mods(__opts__, utils=__utils__)
+    __salt__['test.ping']()
+
+salt.loader.raw_mod(opts, name, functions, mod=u'modules')
+
+    Returns a single module loaded raw and bypassing the __virtual__ function
+
+    import salt.config
+    import salt.loader
+
+    __opts__ = salt.config.minion_config('/etc/salt/minion')
+    testmod = salt.loader.raw_mod(__opts__, 'test', None)
+    testmod['test.ping']()
+
+salt.loader.states(opts, functions, utils, serializers, whitelist=None, proxy=None)
+
+    Returns the state modules
+    Parameters:	
+
+        opts (dict) -- The Salt options dictionary
+        functions (dict) -- A dictionary of minion modules, with module names as keys and funcs as values.
+
+    import salt.config
+    import salt.loader
+
+    __opts__ = salt.config.minion_config('/etc/salt/minion')
+    statemods = salt.loader.states(__opts__, None, None)
+
+salt.loader.grains(opts, force_refresh=False, proxy=None)
+
+    Return the functions for the dynamic grains and the values for the static grains.
+
+    Since grains are computed early in the startup process, grains functions do not have __salt__ or __proxy__ available. At proxy-minion startup, this function is called with the proxymodule LazyLoader object so grains functions can communicate with their controlled device.
+
+    import salt.config
+    import salt.loader
+
+    __opts__ = salt.config.minion_config('/etc/salt/minion')
+    __grains__ = salt.loader.grains(__opts__)
+    print __grains__['id']
+
+salt.loader.grain_funcs(opts, proxy=None)
+
+    Returns the grain functions
+
+        import salt.config
+        import salt.loader
+
+        __opts__ = salt.config.minion_config('/etc/salt/minion')
+        grainfuncs = salt.loader.grain_funcs(__opts__)
+
+Salt's Client Interfaces
+LocalClient
+
+class salt.client.LocalClient(c_path=u'/etc/salt/master', mopts=None, skip_perm_errors=False, io_loop=None, keep_loop=False, auto_reconnect=False)
+
+    The interface used by the salt CLI tool on the Salt Master
+
+    LocalClient is used to send a command to Salt minions to execute execution modules and return the results to the Salt Master.
+
+    Importing and using LocalClient must be done on the same machine as the Salt Master and it must be done using the same user that the Salt Master is running as. (Unless external_auth is configured and authentication credentials are included in the execution).
+
+    Note
+
+    The LocalClient uses a Tornado IOLoop, this can create issues when using the LocalClient inside an existing IOLoop. If creating the LocalClient in partnership with another IOLoop either create the IOLoop before creating the LocalClient, or when creating the IOLoop use ioloop.current() which will return the ioloop created by LocalClient.
+
+    import salt.client
+
+    local = salt.client.LocalClient()
+    local.cmd('*', 'test.fib', [10])
+
+    cmd(tgt, fun, arg=(), timeout=None, tgt_type=u'glob', ret=u'', jid=u'', full_return=False, kwarg=None, **kwargs)
+
+        Synchronously execute a command on targeted minions
+
+        The cmd method will execute and wait for the timeout period for all minions to reply, then it will return all minion data at once.
+
+        >>> import salt.client
+        >>> local = salt.client.LocalClient()
+        >>> local.cmd('*', 'cmd.run', ['whoami'])
+        {'jerry': 'root'}
+
+        With extra keyword arguments for the command function to be run:
+
+        local.cmd('*', 'test.arg', ['arg1', 'arg2'], kwarg={'foo': 'bar'})
+
+        Compound commands can be used for multiple executions in a single publish. Function names and function arguments are provided in separate lists but the index values must correlate and an empty list must be used if no arguments are required.
+
+        >>> local.cmd('*', [
+                'grains.items',
+                'sys.doc',
+                'cmd.run',
+            ],
+            [
+                [],
+                [],
+                ['uptime'],
+            ])
+
+        Parameters:	
+
+            tgt (string or list) -- Which minions to target for the execution. Default is shell glob. Modified by the tgt_type option.
+            fun (string or list of strings) --
+
+            The module and function to call on the specified minions of the form module.function. For example test.ping or grains.items.
+
+            Compound commands
+                Multiple functions may be called in a single publish by passing a list of commands. This can dramatically lower overhead and speed up the application communicating with Salt.
+
+                This requires that the arg param is a list of lists. The fun list and the arg list must correlate by index meaning a function that does not take arguments must still have a corresponding empty list at the expected index.
+
+            arg (list or list-of-lists) -- A list of arguments to pass to the remote function. If the function takes no arguments arg may be omitted except when executing a compound command.
+            timeout -- Seconds to wait after the last minion returns but before all minions return.
+            tgt_type --
+
+            The type of tgt. Allowed values:
+                glob - Bash glob completion - Default
+                pcre - Perl style regular expression
+                list - Python list of hosts
+                grain - Match based on a grain comparison
+                grain_pcre - Grain comparison with a regex
+                pillar - Pillar data comparison
+                pillar_pcre - Pillar data comparison with a regex
+                nodegroup - Match on nodegroup
+                range - Use a Range server for matching
+                compound - Pass a compound match string
+                ipcidr - Match based on Subnet (CIDR notation) or IPv4 address.
+
+            Changed in version 2017.7.0: Renamed from expr_form to tgt_type
+            ret -- The returner to use. The value passed can be single returner, or a comma delimited list of returners to call in order on the minions
+            kwarg -- A dictionary with keyword arguments for the function.
+            full_return -- Output the job return only (default) or the full return including exit code and other job metadata.
+            kwargs --
+
+            Optional keyword arguments. Authentication credentials may be passed when using external_auth.
+
+            For example: local.cmd('*', 'test.ping', username='saltdev', password='saltdev', eauth='pam'). Or: local.cmd('*', 'test.ping', token='5871821ea51754fdcea8153c1c745433')
+
+        Returns:	
+
+        A dictionary with the result of the execution, keyed by minion ID. A compound command will return a sub-dictionary keyed by function name.
+
+    cmd_async(tgt, fun, arg=(), tgt_type=u'glob', ret=u'', jid=u'', kwarg=None, **kwargs)
+
+        Asynchronously send a command to connected minions
+
+        The function signature is the same as cmd() with the following exceptions.
+        Returns:	A job ID or 0 on failure.
+
+        >>> local.cmd_async('*', 'test.sleep', [300])
+        '20131219215921857715'
+
+    cmd_batch(tgt, fun, arg=(), tgt_type=u'glob', ret=u'', kwarg=None, batch=u'10%', **kwargs)
+
+        Iteratively execute a command on subsets of minions at a time
+
+        The function signature is the same as cmd() with the following exceptions.
+        Parameters:	batch -- The batch identifier of systems to execute on
+        Returns:	A generator of minion returns
+
+        >>> returns = local.cmd_batch('*', 'state.highstate', batch='10%')
+        >>> for ret in returns:
+        ...     print(ret)
+        {'jerry': {...}}
+        {'dave': {...}}
+        {'stewart': {...}}
+
+    cmd_iter(tgt, fun, arg=(), timeout=None, tgt_type=u'glob', ret=u'', kwarg=None, **kwargs)
+
+        Yields the individual minion returns as they come in
+
+        The function signature is the same as cmd() with the following exceptions.
+
+        Normally cmd_iter() does not yield results for minions that are not connected. If you want it to return results for disconnected minions set expect_minions=True in kwargs.
+        Returns:	A generator yielding the individual minion returns
+
+        >>> ret = local.cmd_iter('*', 'test.ping')
+        >>> for i in ret:
+        ...     print(i)
+        {'jerry': {'ret': True}}
+        {'dave': {'ret': True}}
+        {'stewart': {'ret': True}}
+
+    cmd_iter_no_block(tgt, fun, arg=(), timeout=None, tgt_type=u'glob', ret=u'', kwarg=None, show_jid=False, verbose=False, **kwargs)
+
+        Yields the individual minion returns as they come in, or None
+            when no returns are available.
+
+        The function signature is the same as cmd() with the following exceptions.
+        Returns:	A generator yielding the individual minion returns, or None when no returns are available. This allows for actions to be injected in between minion returns.
+
+        >>> ret = local.cmd_iter_no_block('*', 'test.ping')
+        >>> for i in ret:
+        ...     print(i)
+        None
+        {'jerry': {'ret': True}}
+        {'dave': {'ret': True}}
+        None
+        {'stewart': {'ret': True}}
+
+    cmd_subset(tgt, fun, arg=(), tgt_type=u'glob', ret=u'', kwarg=None, sub=3, cli=False, progress=False, full_return=False, **kwargs)
+
+        Execute a command on a random subset of the targeted systems
+
+        The function signature is the same as cmd() with the following exceptions.
+        Parameters:	
+
+            sub -- The number of systems to execute on
+            cli -- When this is set to True, a generator is returned, otherwise a dictionary of the minion returns is returned
+
+        >>> SLC.cmd_subset('*', 'test.ping', sub=1)
+        {'jerry': True}
+
+    get_cli_returns(jid, minions, timeout=None, tgt=u'*', tgt_type=u'glob', verbose=False, show_jid=False, **kwargs)
+
+        Starts a watcher looking at the return data for a specified JID
+        Returns:	all of the information for the JID
+
+    get_event_iter_returns(jid, minions, timeout=None)
+
+        Gather the return data from the event system, break hard when timeout is reached.
+
+    run_job(tgt, fun, arg=(), tgt_type=u'glob', ret=u'', timeout=None, jid=u'', kwarg=None, listen=False, **kwargs)
+
+        Asynchronously send a command to connected minions
+
+        Prep the job directory and publish a command to any targeted minions.
+        Returns:	A dictionary of (validated) pub_data or an empty dictionary on failure. The pub_data contains the job ID and a list of all minions that are expected to return data.
+
+        >>> local.run_job('*', 'test.sleep', [300])
+        {'jid': '20131219215650131543', 'minions': ['jerry']}
+
+Salt Caller
+
+class salt.client.Caller(c_path=u'/etc/salt/minion', mopts=None)
+
+    Caller is the same interface used by the salt-call command-line tool on the Salt Minion.
+
+    Changed in version 2015.8.0: Added the cmd method for consistency with the other Salt clients. The existing function and sminion.functions interfaces still exist but have been removed from the docs.
+
+    Importing and using Caller must be done on the same machine as a Salt Minion and it must be done using the same user that the Salt Minion is running as.
+
+    Usage:
+
+    import salt.client
+    caller = salt.client.Caller()
+    caller.cmd('test.ping')
+
+    Note, a running master or minion daemon is not required to use this class. Running salt-call --local simply sets file_client to 'local'. The same can be achieved at the Python level by including that setting in a minion config file.
+
+    New in version 2014.7.0: Pass the minion config as the mopts dictionary.
+
+    import salt.client
+    import salt.config
+    __opts__ = salt.config.minion_config('/etc/salt/minion')
+    __opts__['file_client'] = 'local'
+    caller = salt.client.Caller(mopts=__opts__)
+
+    cmd(fun, *args, **kwargs)
+
+        Call an execution module with the given arguments and keyword arguments
+
+        Changed in version 2015.8.0: Added the cmd method for consistency with the other Salt clients. The existing function and sminion.functions interfaces still exist but have been removed from the docs.
+
+        caller.cmd('test.arg', 'Foo', 'Bar', baz='Baz')
+
+        caller.cmd('event.send', 'myco/myevent/something',
+            data={'foo': 'Foo'}, with_env=['GIT_COMMIT'], with_grains=True)
+
+RunnerClient
+
+class salt.runner.RunnerClient(opts)
+
+    The interface used by the salt-run CLI tool on the Salt Master
+
+    It executes runner modules which run on the Salt Master.
+
+    Importing and using RunnerClient must be done on the same machine as the Salt Master and it must be done using the same user that the Salt Master is running as.
+
+    Salt's external_auth can be used to authenticate calls. The eauth user must be authorized to execute runner modules: (@runner). Only the master_call() below supports eauth.
+
+    asynchronous(fun, low, user=u'UNKNOWN', pub=None)
+
+        Execute the function in a multiprocess and return the event tag to use to watch for the return
+
+    cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
+
+        Execute a function
+
+    cmd_async(low)
+
+        Execute a runner function asynchronously; eauth is respected
+
+        This function requires that external_auth is configured and the user is authorized to execute runner functions: (@runner).
+
+        runner.eauth_async({
+            'fun': 'jobs.list_jobs',
+            'username': 'saltdev',
+            'password': 'saltdev',
+            'eauth': 'pam',
+        })
+
+    cmd_sync(low, timeout=None, full_return=False)
+
+        Execute a runner function synchronously; eauth is respected
+
+        This function requires that external_auth is configured and the user is authorized to execute runner functions: (@runner).
+
+        runner.eauth_sync({
+            'fun': 'jobs.list_jobs',
+            'username': 'saltdev',
+            'password': 'saltdev',
+            'eauth': 'pam',
+        })
+
+WheelClient
+
+class salt.wheel.WheelClient(opts=None)
+
+    An interface to Salt's wheel modules
+
+    Wheel modules interact with various parts of the Salt Master.
+
+    Importing and using WheelClient must be done on the same machine as the Salt Master and it must be done using the same user that the Salt Master is running as. Unless external_auth is configured and the user is authorized to execute wheel functions: (@wheel).
+
+    Usage:
+
+    import salt.config
+    import salt.wheel
+    opts = salt.config.master_config('/etc/salt/master')
+    wheel = salt.wheel.WheelClient(opts)
+
+    asynchronous(fun, low, user=u'UNKNOWN', pub=None)
+
+        Execute the function in a multiprocess and return the event tag to use to watch for the return
+
+    cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
+
+        Execute a function
+
+        >>> wheel.cmd('key.finger', ['jerry'])
+        {'minions': {'jerry': '5d:f6:79:43:5e:d4:42:3f:57:b8:45:a8:7e:a4:6e:ca'}}
+
+    cmd_async(low)
+
+        Execute a function asynchronously; eauth is respected
+
+        This function requires that external_auth is configured and the user is authorized
+
+        >>> wheel.cmd_async({
+            'fun': 'key.finger',
+            'match': 'jerry',
+            'eauth': 'auto',
+            'username': 'saltdev',
+            'password': 'saltdev',
+        })
+        {'jid': '20131219224744416681', 'tag': 'salt/wheel/20131219224744416681'}
+
+    cmd_sync(low, timeout=None, full_return=False)
+
+        Execute a wheel function synchronously; eauth is respected
+
+        This function requires that external_auth is configured and the user is authorized to execute runner functions: (@wheel).
+
+        >>> wheel.cmd_sync({
+        'fun': 'key.finger',
+        'match': 'jerry',
+        'eauth': 'auto',
+        'username': 'saltdev',
+        'password': 'saltdev',
+        })
+        {'minions': {'jerry': '5d:f6:79:43:5e:d4:42:3f:57:b8:45:a8:7e:a4:6e:ca'}}
+
+CloudClient
+
+class salt.cloud.CloudClient(path=None, opts=None, config_dir=None, pillars=None)
+
+    The client class to wrap cloud interactions
+
+    action(fun=None, cloudmap=None, names=None, provider=None, instance=None, kwargs=None)
+
+        Execute a single action via the cloud plugin backend
+
+        Examples:
+
+        client.action(fun='show_instance', names=['myinstance'])
+        client.action(fun='show_image', provider='my-ec2-config',
+            kwargs={'image': 'ami-10314d79'}
+        )
+
+    create(provider, names, **kwargs)
+
+        Create the named VMs, without using a profile
+
+        Example:
+
+        client.create(provider='my-ec2-config', names=['myinstance'],
+            image='ami-1624987f', size='t1.micro', ssh_username='ec2-user',
+            securitygroup='default', delvol_on_destroy=True)
+
+    destroy(names)
+
+        Destroy the named VMs
+
+    extra_action(names, provider, action, **kwargs)
+
+        Perform actions with block storage devices
+
+        Example:
+
+        client.extra_action(names=['myblock'], action='volume_create',
+            provider='my-nova', kwargs={'voltype': 'SSD', 'size': 1000}
+        )
+        client.extra_action(names=['salt-net'], action='network_create',
+            provider='my-nova', kwargs={'cidr': '192.168.100.0/24'}
+        )
+
+    full_query(query_type=u'list_nodes_full')
+
+        Query all instance information
+
+    list_images(provider=None)
+
+        List all available images in configured cloud systems
+
+    list_locations(provider=None)
+
+        List all available locations in configured cloud systems
+
+    list_sizes(provider=None)
+
+        List all available sizes in configured cloud systems
+
+    low(fun, low)
+
+        Pass the cloud function and low data structure to run
+
+    map_run(path=None, **kwargs)
+
+        Pass in a location for a map to execute
+
+    min_query(query_type=u'list_nodes_min')
+
+        Query select instance information
+
+    profile(profile, names, vm_overrides=None, **kwargs)
+
+        Pass in a profile to create, names is a list of vm names to allocate
+
+            vm_overrides is a special dict that will be per node options overrides
+
+        Example:
+
+        >>> client= salt.cloud.CloudClient(path='/etc/salt/cloud')
+        >>> client.profile('do_512_git', names=['minion01',])
+        {'minion01': {'backups_active': 'False',
+                'created_at': '2014-09-04T18:10:15Z',
+                'droplet': {'event_id': 31000502,
+                             'id': 2530006,
+                             'image_id': 5140006,
+                             'name': 'minion01',
+                             'size_id': 66},
+                'id': '2530006',
+                'image_id': '5140006',
+                'ip_address': '107.XXX.XXX.XXX',
+                'locked': 'True',
+                'name': 'minion01',
+                'private_ip_address': None,
+                'region_id': '4',
+                'size_id': '66',
+                'status': 'new'}}
+
+    query(query_type=u'list_nodes')
+
+        Query basic instance information
+
+    select_query(query_type=u'list_nodes_select')
+
+        Query select instance information
+
+SSHClient
+
+class salt.client.ssh.client.SSHClient(c_path=u'/etc/salt/master', mopts=None, disable_custom_roster=False)
+
+    Create a client object for executing routines via the salt-ssh backend
+
+    New in version 2015.5.0.
+
+    cmd(tgt, fun, arg=(), timeout=None, tgt_type=u'glob', kwarg=None, **kwargs)
+
+        Execute a single command via the salt-ssh subsystem and return all routines at once
+
+        New in version 2015.5.0.
+
+    cmd_iter(tgt, fun, arg=(), timeout=None, tgt_type=u'glob', ret=u'', kwarg=None, **kwargs)
+
+        Execute a single command via the salt-ssh subsystem and return a generator
+
+        New in version 2015.5.0.
+
+Generated on January 15, 2019 at 06:42:37 MST.
+
+You are viewing docs for the latest stable release, 2018.3.3. Switch to docs for the previous stable release, 2017.7.8, or to a recent doc build from the develop branch.
+
+saltstack.com
+
+© 2019 SaltStack. All Rights Reserved, SaltStack Inc. | Privacy Policy
+
+    Introduction to Salt
+    Installation
+    Configuring Salt
+    Using Salt
+    Remote Execution
+    Configuration Management
+    Utility Modules - Code Reuse in Custom Modules
+    Events & Reactor
+    Orchestration
+    Solaris
+    Salt SSH
+    Thorium Complex Reactor
+    Salt Cloud
+    Salt Proxy Minion
+    Network Automation
+    Salt Virt
+    Command Line Reference
+    Pillars
+    Master Tops
+    Salt Module Reference
+    APIs
+        Python client API
+            client_config
+            minion_config
+            minion_mods
+            raw_mod
+            states
+            grains
+            grain_funcs
+            LocalClient
+            cmd
+            cmd_async
+            cmd_batch
+            cmd_iter
+            cmd_iter_no_block
+            cmd_subset
+            get_cli_returns
+            get_event_iter_returns
+            run_job
+            Caller
+            cmd
+            RunnerClient
+            asynchronous
+            cmd
+            cmd_async
+            cmd_sync
+            WheelClient
+            asynchronous
+            cmd
+            cmd_async
+            cmd_sync
+            CloudClient
+            action
+            create
+            destroy
+            extra_action
+            full_query
+            list_images
+            list_locations
+            list_sizes
+            low
+            map_run
+            min_query
+            profile
+            query
+            select_query
+            SSHClient
+            cmd
+            cmd_iter
+            Salt's opts dictionary
+            Salt's Loader Interface
+            Salt's Client Interfaces
+                LocalClient
+                Salt Caller
+                RunnerClient
+                WheelClient
+                CloudClient
+                SSHClient
+        netapi modules
+    Architecture
+    Minion Data Cache
+    Slots
+    Windows
+    Developing Salt
+    Release Notes
+    Venafi Tools for Salt
+    Glossary
+
