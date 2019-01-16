@@ -1,0 +1,133 @@
+"""
+wget是一个从网络上自动下载文件的自由工具。它支持HTTP，HTTPS和FTP协议，可以使用HTTP代理。
+安装wget
+pip install wget
+
+从网络或本地硬盘下载文件（并解压）
+
+# -*- coding: utf-8 -*-
+ 
+import wget, tarfile
+import os
+ 
+# 网络地址
+DATA_URL = 'http://www.robots.ox.ac.uk/~ankush/data.tar.gz'
+# 本地硬盘文件
+# DATA_URL = '/home/xxx/book/data.tar.gz'
+ 
+out_fname = 'abc.tar.gz'
+ 
+wget.download(DATA_URL, out=out_fname)
+# 提取压缩包
+tar = tarfile.open(out_fname)
+tar.extractall()
+tar.close()
+# 删除下载文件
+os.remove(out_fname)
+
+"""
+
+如何来下载zip文件的：
+方法一：
+    import urllib 
+    import urllib2 
+    import requests
+    print "downloading with urllib" 
+    url = 'http://www.pythontab.com/test/demo.zip'  
+    print "downloading with urllib"
+    urllib.urlretrieve(url, "demo.zip")
+
+方法二：
+    import urllib2
+    print "downloading with urllib2"
+    url = 'http://www.pythontab.com/test/demo.zip' 
+    f = urllib2.urlopen(url) 
+    data = f.read() 
+    with open("demo2.zip", "wb") as code:     
+        code.write(data)
+
+方法三：
+    import requests 
+    print "downloading with requests"
+    url = 'http://www.pythontab.com/test/demo.zip' 
+    r = requests.get(url) 
+    with open("demo3.zip", "wb") as code:
+         code.write(r.content)
+
+
+
+看起来使用urllib最为简单，一句语句即可。当然你可以把urllib2缩写成：
+  f = urllib2.urlopen(url) 
+  with open("demo2.zip", "wb") as code:
+     code.write(f.read())
+
+
+利用Python下载文件也是十分方便的：
+
+小文件下载
+下载小文件的话考虑的因素比较少，给了链接直接下载就好了：
+
+import requests
+image_url = "https://www.python.org/static/community_logos/python-logo-master-v3-TM.png"
+
+r = requests.get(image_url) # create HTTP response object
+
+with open("python_logo.png",'wb') as f:
+    f.write(r.content)
+
+大文件下载
+如果是小文件的话，一次性下载就OK了，但是如果文件比较大的话，那么下载下来的文件先放在内存中，内存还是比较有压力的。所以为了防止内存不够用的现象出现，我们要想办法把下载的文件分块写到磁盘中：
+
+import requests
+
+file_url = "http://codex.cs.yale.edu/avi/db-book/db4/slide-dir/ch1-2.pdf"
+
+r = requests.get(file_url, stream=True)
+
+with open("python.pdf", "wb") as pdf:
+    for chunk in r.iter_content(chunk_size=1024):
+        if chunk:
+            pdf.write(chunk)
+
+批量文件下载：
+批量文件下载的思路也很简单，首先读取网页的内容，再从网页中抽取链接信息，比如通过a标签，然后再从抽取出的链接中过滤出我们想要的链接，比如在本例中，我们只想下载MP4文件，那么我们可以通过文件名过滤所有链接：
+
+import requests
+from bs4 import BeautifulSoup
+
+archive_url = "http://www-personal.umich.edu/~csev/books/py4inf/media/"
+
+
+def get_video_links():
+    r = requests.get(archive_url)
+    soup = BeautifulSoup(r.content, 'html5lib')
+    links = soup.findAll('a')
+    video_links = [archive_url + link['href'] for link in links if link['href'].endswith('mp4')]
+
+    return video_links
+
+
+def download_video_series(video_links):
+    for link in video_links:
+        file_name = link.split('/')[-1]
+
+        print("Downloading file:%s" % file_name)
+        r = requests.get(link, stream=True)
+
+        # download started
+        with open(file_name, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+        print("%s downloaded!\n" % file_name)
+
+
+    print("All videos downloaded!")
+
+    return
+
+
+if __name__ == "__main__":
+    video_links = get_video_links()
+    download_video_series(video_links)

@@ -1,0 +1,33 @@
+Python的「zero length field name in format」错误
+ASPIRE 2016-06-24 1116 阅读
+Python L
+=Start=
+
+缘由：
+在写一个splitter的时候总是得不到正确的结果，但是本地测试又总是OK的，最后的最后发现是因为「zero length field name in format」错误。由Python版本问题导致的错误，调试起来真的是很坑爹啊！
+
+参考解答：
+Python官方推荐使用 str.format() 的方式来进行字符串的格式化，所以我也跟随潮流使用 "{}\n".format(x) 的方式处理字符串，平时也没有碰到什么问题，但是这次，因为不够谨慎，犯了个错误把自己给坑了……
+
+在Python2(>=2.7)和Python3(>=3.1)中，str.format()方法中的位置参数默认是可以省略的，但是在Python2(<2.7)和Python3(<3.1)中，你必须显示指定（下标从0开始），否则就会出现「zero length field name in format」错误。
+
+"{}CMD".format(os.sep)    #在Python 2.7中可以正常运行
+#
+"{0}CMD".format(os.sep)  #在Python<=2.6/3.1中，必须显示指定下标，即便只有一个元素
+我很少在Python2.6的环境中编程，笔记本上装了Python2.7和Python3.5，即便是在CentOS 6.x的服务器上也会手动编译安装一个Python2.7，然后将编译安装的Python2.7放在自己的环境变量$PATH的最前面所以自己用的就是Python2.7，服务器上的命令比如yum这种用的就是默认的Python2.6.6。但是，splitter是放下Hadoop集群上跑的，用的是Python2.6.6环境，然后就悲剧了……
+
+虽然说这是Python的一个bug，但是自己也必须明确「你写的程序会运行在什么环境中？是否有用到和版本强相关的特性？用得是否正确？测试是否全面、完整？」，否则，你自己就是在给自己和别人挖一个大坑！还不容易爬出来。
+
+Changed in version 3.1: The positional argument specifiers can be omitted, so ‘{} {}’ is equivalent to ‘{0} {1}’.
+
+另：虽然说一般建议是少去考虑Python2.6的环境（升级到Python2.7或Python3.2），一切向前看；但是，CentOS 6.x默认装的就是Python2.6.6，也很少有公司会去整体升级服务器上的Python版本，所以忘了这个建议吧，自己多留个心眼。
+
+参考链接：
+http://stackoverflow.com/questions/10054122/valueerror-zero-length-field-name-in-format-python
+http://stackoverflow.com/questions/5446964/valueerror-zero-length-field-name-in-format-error-in-python-3-0-3-1-3-2
+http://stackoverflow.com/questions/24739980/python-zero-length-field-name-in-format/24740068#24740068
+#
+http://blog.xiayf.cn/2013/01/26/python-string-format/
+https://docs.python.org/2/library/stdtypes.html#str.format
+https://docs.python.org/2/library/string.html#formatstrings
+=END=

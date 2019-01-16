@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+# -*- Author:Seiya -*-
+import requests
+import json
+
+"""
+headers = {'Accept': 'text/html, application/xhtml+xml, image/jxr, */*',
+               'Accept - Encoding':'gzip, deflate',
+               'Accept-Language':'zh-Hans-CN, zh-Hans; q=0.5',
+               'Connection':'Keep-Alive',
+               'Host':'zhannei.baidu.com',
+               'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36 Edge/15.15063'}
+r = requests.get('http://zhannei.baidu.com/cse/search', params=keyword, headers=headers, timeout=3)
+"""
+headers = {'Accept': 'application/x-yaml',
+           'X-Auth-Token': 'ed5155df4ff3807ebfebb9a00e1852292a256016'}
+params = {"path": [{"file":"items/stream/liveservers.lua","md5":"xxx"}], "host": ["https://6roomskeylua1.6.cn:38081/a691b/config","https://6roomskeylua.6.cn:38081/a691b/config"], "pwd": "xxx", "user": "xxxt"}
+data = {"client": "local", "tgt": "me", "fun": "cmdb_stream_op.download", "arg": json.dumps(params)}
+r = requests.post("https://192.168.21.11:9800", verify=False, headers=headers, data=data, timeout=5)
+print(r.text)

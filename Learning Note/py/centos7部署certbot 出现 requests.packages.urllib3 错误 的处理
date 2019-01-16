@@ -1,0 +1,22 @@
+现今使用SSL加密已经是大趋势,在自己的网站看见小绿锁总是让人开心的事情~而且https能增加网站的排名,流行的方式是使用certbot
+所以想给网站添加HTTPS支持时,按照certbot的指引安装到
+
+sudo certbot --nginx
+这一步时,出现问题
+ImportError: No module named 'requests.packages.urllib3'
+查了万能的谷歌,发现是python的模块版本的问题,运行以下命令后,成功解决
+pip install requests urllib3 pyOpenSSL --force --upgrade
+pip install --upgrade --force-reinstall 'requests==2.6.0'
+最后在说一句,https网站上的所有链接都必须是https连接,否则浏览器会提示安全风险,包括websocket的链接也必须是wss,如何将ws改成wss连接可以参考以下链接
+nginx 中ws如何使用wss 连接 websocket
+
+最近遇见问题,自己的服务器专成HTTPS后,总显示不安全,后来发现是ws连接的问题
+ws 即 websocket ,在HTTPS 网页中,必须使用 wss 否则会说页面不安全,不需要修改ws,直接使用NGINX反向代理就可以实现wss连接
+修改nginx的设置,加入一下的设置,通过nginx反向代理,实现 SSL 加密,客户端 连接时 使用 域名/websocket 连接不在需要 IP与端口
+
+location /websocket {
+proxy_pass http://127.0.0.1:8001;//websocket 的端口
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+}
