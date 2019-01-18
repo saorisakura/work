@@ -1,0 +1,72 @@
+实用运维之gitlab主从实时同步
+
+使用lsyncd配置gitlab主从实时同步
+此文档是使用lsyncd配置gitlabg主从实时同步;
+这个需求的缘由是要通过walle做自动化发布，而walle需要访问git仓库，若是git仓库g放在异地必定影响发布时长，所以需要将办公网的git仓库同步至生产环境。
+
+操作系统版本：CentOS Linux release 7.2.1511（主） Ubuntu 14.04.5 LTS (从)
+gitlab版本：gitlab-ce_8.12.6-ce.0_amd64.deb
+lsyncd版本：lsyncd-2.2.2-1.el7.x86_64```
+1.安装gitlab (从)
+[root@gitlab-slave ~]# wget https://packages.gitlab.com/gitlab/gitlab-ce/packages/ubuntu/trusty/gitlab-ce_8.12.6-ce.0_amd64.deb
+[root@gitlab-slave ~]# dpkg -i gitlab-ce_8.12.6-ce.0_amd64.deb
+[root@gitlab-slave ~]# gitlab-ctl reconfigure
+[root@gitlab-slave ~]# gitlab-ctl restart
+2.安装lsyncd（主）
+由于本人实验环境主服务器已经装gitlab了所以就不再赘述；
+lsyncd参考文档 https://linux.cn/article-5849-1.html；
+lysncd介绍:
+Lysncd 实际上是lua语言封装了 inotify 和 rsync 工具，采用了 Linux 内核（2.6.13 及以后）里的 inotify 触发机制，然后通过rsync去差异同步，达到实时的效果。
+我认为它最令人称道的特性是，完美解决了 inotify + rsync海量文件同步带来的文件频繁发送文件列表的问题 —— 通过时间延迟或累计触发事件次数实现。
+另外，它的配置方式很简单，lua本身就是一种配置语言，可读性非常强。
+lsyncd也有多种工作模式可以选择，本地目录cp，本地目录rsync，远程目录rsyncssh。
+
+[root@gitlab-master ~]# yum install epel-release
+[root@gitlab-master ~]# yum install lsyncd
+[root@gitlab-master ~]# rpm -qa|grep lsync
+lsyncd-2.2.2-1.el7.x86_64
+[root@gitlab-master ~]# cat /etc/lsyncd.conf 
+----
+-- User configuration file for lsyncd.
+--
+-- Simple example for default rsync, but executing moves through on the target.
+--
+-- For more examples, see /usr/share/doc/lsyncd*/examples/
+-- 
+-- sync{default.rsyncssh, source="/var/www/html", host="localhost", targetdir="/tmp/htmlcopy/"}
+
+
+settings {
+    logfile ="/var/log/lsyncd/lsyncd.log",
+    statusFile ="/var/log/lsyncd/lsyncd.status",
+    inotifyMode = "CloseWrite",
+    maxProcesses = 8,
+    }
+
+
+-- IV. 远程目录同步，rsync模式 + ssh shell
+sync {
+    default.rsync,
+    source    = "/var/opt/gitlab",
+    target    = "root@172.16.0.255:/var/opt/gitlab/",
+    -- target    = "root@172.29.88.223:/remote/dest",
+    -- 上面target，注意如果是普通用户，必须拥有写权限
+    exclude = { "backups", "gitlab-ci", "sockets", "gitlab.yml", "redis", "postmaster.pid" },
+    maxDelays = 5,
+    delay = 30,
+    -- init = true,
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true,
+        bwlimit   = 2000
+        -- rsh = "/usr/bin/ssh -p 22 -o StrictHostKeyChecking=no"
+        -- 如果要指定其它端口，请用上面的rsh
+        }
+    }
+
+[root@gitlab-master ~]# ssh-copy-id -i /root/.ssh/id_rsa.pub root@172.16.0.255
+[root@gitlab-master ~]# systemctl restart lsyncd
+3.同步完成后需要重起postgresql （从）
+[root@gitlab-slave ~]# gitlab-ctl stop postgresql
+[root@gitlab-slave ~]# gitlab-ctl start postgresql
