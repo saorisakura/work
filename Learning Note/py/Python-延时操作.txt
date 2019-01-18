@@ -1,0 +1,48 @@
+Python-延时操作
+
+在日常的开发中，往往会遇到这样的需求，需要某一个函数在一段时间之后才执行以达到某种特定的效果。此时，我们就需要某种机制，使一个函数延后执行。接下来简单介绍一下两种实现此类效果的方法：
+
+sched
+import sched,time
+
+def func(a):
+    print time.time(),"Hello Sched!",a
+
+print time.time()
+s = sched.scheduler(time.time,time.sleep)
+
+# 2为延后时间，1为优先级，func为函数名，("test1",)为函数参数
+s.enter(2,1,func,("test1",))
+s.enter(2,0,func,("test2",))
+s.run()
+print time.time()
+
+输出结果如下：
+
+1519443179.4
+1519443181.4 Hello Sched! test2
+1519443181.4 Hello Sched! test1
+1519443181.4
+
+从结果可以看出,函数果真延后了2s执行，并且test2比test1先执行，是因为同样是2s后执行，并且test2的优先级比test1高
+
+timer
+import threading,time
+
+def func(a):
+    print time.time(),"Hello Timer!",a
+
+print time.time()
+s = threading.Timer(2,func,("test",))
+s.start()
+print time.time()
+
+输出结果如下：
+
+1519443055.69
+1519443055.69
+1519443057.69 Hello Timer! test
+
+从结果可以看出,函数果真延后了2s执行。
+
+从两种方式的输出结果可以看出，timer是异步执行的，并不卡住下面代码的执行，而sched会等到执行函数完成后才会往下执行。
