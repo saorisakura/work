@@ -1,0 +1,113 @@
+最小生成树之prim算法（优先队列优化）
+2017年07月13日 09:31:00 i-unique 阅读数：1714
+ 版权声明：欢迎转载，转载请注明原博客网址	https://blog.csdn.net/qq_37497322/article/details/75043491
+    prim算法适合稠密图，即边数较多而点较少的情况，时间复杂度为n^2，堆优化的情况下，如果点数为m，边数为n，可以达到nlongm，我还是习惯用优先队列写这个算法，思想很简单，就是每次寻找一条由已加入集合的点和与它们相邻的没加入集合的点的权值最小边（有点绕理解下），进行n-1次就找出来了，也是贪心的思想，实现就是随便找一个初始节点，然后建一个最小堆（边小的先pop出来），把该节点的vis值置为1，遍历该节点相邻的节点，如果没有被vis标记过，就加入边到堆中，扫完了以后处理堆中数据，如果弹出的边被标记过就pop，没有就取出来，把边通往的节点置为key，下次就加入key节点有关没有标记过的边。。一直循环，由于最小生成树边数与节点的关系为m=n-1，所以要循环n-1次，把每一次堆弹出边的值累加起来就是最小生成树的值了
+
+下面是例题：
+
+1943: 最优布线问题
+Time Limit: 1 Sec  Memory Limit: 128 MB  64bit IO Format: %lld
+Submitted: 19  Accepted: 10
+[Submit][Status][Web Board]
+Description
+　　学校有n台计算机，为了方便数据传输，现要将它们用数据线连接起来。两台计算机被连接是指它们间有数据线连接。由于计算机所处的位置不同，因此不同的两台计算机的连接费用往往是不同的。
+    当然，如果将任意两台计算机都用数据线连接，费用将是相当庞大的。为了节省费用，我们采用数据的间接传输手段，即一台计算机可以间接的通过若干台计算机（作为中转）来实现与另一台计算机的连接。
+　　现在由你负责连接这些计算机，任务是使任意两台计算机都连通（不管是直接的或间接的）。
+Input
+多组测试数据。
+第一行为整数n（2<=n<=100），表示计算机的数目。
+此后的n行，每行n个整数。第x+1行y列的整数表示直接连接第x台计算机和第y台计算机的费用。
+Output
+输出一个整数，表示最小的连接费用。
+Sample Input 
+3
+0 1 2
+1 0 1
+2 1 0
+
+
+
+
+Sample Output
+2
+
+
+
+[Submit][Status][Web Board]
+
+题解：
+
+这题因为边数较多，最好用prim算法，然后下面代码里面有注释
+
+代码：
+
+#include<algorithm>
+#include<iostream>
+#include<cstring>
+#include<stdio.h>
+#include<math.h>
+#include<string>
+#include<stdio.h>
+#include<queue>
+#include<stack>
+#include<map>
+#include<deque>
+using namespace std;
+struct edge//保存边的情况，to为通往的边，不需要保存from
+{
+    int to;
+    int v;
+    friend bool operator<(const edge& x,const edge& y)//优先队列即最小堆
+    {
+        return x.v>y.v;
+    }
+};
+priority_queue<edge>q;
+int vis[105];//判断是否标记数组
+int p[105][105];//存图
+int n;
+int main()
+{
+    int i,j,x,y,d2,d1,s,key;
+    edge now;
+    while(scanf("%d",&n)!=EOF)
+    {
+        for(i=0;i<n;i++)
+        {
+            vis[i]=0;//初始化一下
+            for(j=0;j<n;j++)
+            {
+                scanf("%d",&p[i][j]);
+            }
+        }
+        s=0;
+        vis[0]=1;//标记起始点
+        key=0;//随便找起始点
+        while(!q.empty())q.pop();
+        for(i=0;i<n-1;i++)//n-1次
+        {
+            for(j=0;j<n;j++)//记入新加入点的情况
+            {
+                if(!vis[j])//没标记过的点就加入全家桶套餐
+                {
+                    now.to=j;
+                    now.v=p[key][j];
+                    q.push(now);
+                }
+            }
+            while(!q.empty()&&vis[q.top().to])//最小边但是标记过就放弃
+            {
+                q.pop();
+            }
+            if(q.empty())
+                break;
+            now=q.top();
+            key=now.to;
+            s+=now.v;//累加最小边的和
+            vis[key]=1;
+            q.pop();
+        }
+        printf("%d\n",s);
+    }
+    return 0;
+}
