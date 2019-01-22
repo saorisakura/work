@@ -1,0 +1,99 @@
+Python获取本机 IP/MAC（多网卡）
+
+　　Python获取本机IP地址的一般方法为
+
+import socket
+
+IP = socket.gethostbyname(socket.gethostname())
+　　通过gethostname获取主机名，再用gethostbyname将主机名转换为IP地址。
+
+　　那么，问题来了。如果主机有多个网卡/IP，怎样获取某个指定的IP地址呢？
+
+　　一个方法是通过socket.gethostbyname_ex获取主机IP地址列表，然后遍历列表取得自己需要的IP。
+
+import socket
+
+#多网卡情况下，根据前缀获取IP（Windows 下适用）
+def GetLocalIPByPrefix(prefix):
+	localIP = ''
+	for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+		if ip.startswith(prefix):
+			localIP = ip
+	
+	return localIP
+	
+	
+print(GetLocalIPByPrefix('192.168'))
+　　更简单的方法（不用修改代码，还是用socket.gethostname函数），是通过配置hosts文件改变IP优先级。
+
+　　上面的方法只支持IPv4，如果要获取IPv6信息，参考socket.getaddrinfo。
+
+
+
+*** Updated 2018-03-08 ***
+
+1、用系统库获取单机 mac 地址。
+
+import uuid
+
+# 针对单网卡
+def GetMAC():
+	addr = hex(uuid.getnode())[2:].upper()
+	
+	return '-'.join(addr[i:i+2] for i in range(0, len(addr), 2))
+2、用第三方库 psutil 打印网络适配器信息。
+
+import psutil
+
+# 打印多网卡 mac 和 ip 信息
+def PrintNetIfAddr():
+    dic = psutil.net_if_addrs()
+    for adapter in dic:
+        snicList = dic[adapter]
+        mac = '无 mac 地址'
+        ipv4 = '无 ipv4 地址'
+        ipv6 = '无 ipv6 地址'
+        for snic in snicList:
+            if snic.family.name in {'AF_LINK', 'AF_PACKET'}:
+                mac = snic.address
+            elif snic.family.name == 'AF_INET':
+                ipv4 = snic.address
+            elif snic.family.name == 'AF_INET6':
+                ipv6 = snic.address
+        print('%s, %s, %s, %s' % (adapter, mac, ipv4, ipv6))
+
+
+*** Updated 2018-07-28 ***
+
+跨平台的根据前缀获取 ip 的方法
+
+import psutil
+
+# 多网卡情况下，根据前缀获取IP
+# 测试可用：Windows、Linux，Python 3.6.x，psutil 5.4.x
+# ipv4/ipv6 地址均适用
+# 注意如果有多个相同前缀的 ip，只随机返回一个
+def GetLocalIPByPrefix(prefix):
+	localIP = ''
+	dic = psutil.net_if_addrs()
+	for adapter in dic:
+		snicList = dic[adapter]
+		for snic in snicList:
+			if not snic.family.name.startswith('AF_INET'):
+				continue				
+			ip = snic.address
+			if ip.startswith(prefix):
+				localIP = ip
+	 
+	return localIP
+	 
+	 
+print(GetLocalIPByPrefix('192.168'))
+
+
+相关阅读：
+
+1、socket — Low-level networking interface
+
+2、用Python获取自己的外网IP
+
