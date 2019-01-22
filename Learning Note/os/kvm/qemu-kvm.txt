@@ -1,0 +1,28 @@
+Build instructions
+To download and build QEMU 3.1.0:
+
+wget https://download.qemu.org/qemu-3.1.0.tar.xz
+tar xvJf qemu-3.1.0.tar.xz
+cd qemu-3.1.0
+./configure
+make
+To download and build QEMU from git:
+
+git clone https://git.qemu.org/git/qemu.git
+cd qemu
+git submodule init
+git submodule update --recursive
+./configure
+make
+The latest development happens on the master branch. The stable trees are located in branches named stable-X.YY branch, where X.YY is the release version.
+
+Version numbering
+Since version 3.0.0, QEMU uses a time based version numbering scheme:
+
+major
+incremented by 1 for the first release of the year
+minor
+reset to 0 with every major increment, otherwise incremented by 1 for each release from git master
+micro
+always 0 for releases from git master, incremented by 1 for each stable branch release
+The implication of this is that changes in major version number do not have any bearing on the scope of changes included in the release. Non-backward compatible changes may be made in any master branch release, provided they have followed the deprecation policy which calls for warnings to be emitted for a minimum of two releases prior to the change.
