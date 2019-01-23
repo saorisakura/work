@@ -1,0 +1,62 @@
+python经典面试题：列表和元组有什么异同？
+
+python经典面试题：列表和元组有什么异同？
+列表和元组是Python中最常用的两种数据结构，字典是第三种。 相同点：
+
+python经典面试题：列表和元组有什么异同？
+都是序列
+都可以存储任何数据类型
+可以通过索引访问
+python经典面试题：列表和元组有什么异同？
+语法差异
+
+使用方括号[]创建列表，而使用括号()创建元组。 请看以下示例：
+
+>>> l = ["https://china-testing.github.io/", "https://www.oscobo.com/"]
+>>> t = ("https://china-testing.github.io/", "https://www.oscobo.com/")
+>>> print(l)
+['https://china-testing.github.io/', 'https://www.oscobo.com/']
+>>> print(t)
+('https://china-testing.github.io/', 'https://www.oscobo.com/')
+>>> print(type(l))
+<class 'list'>
+>>> print(type(t))
+<class 'tuple'>
+是否可变
+
+列表是可变的，而元组是不可变的，这标志着两者之间的关键差异。
+
+我们可以修改列表的值，但是不修改元组的值。
+
+由于列表是可变的，我们不能将列表用作字典中的key。 但可以使用元组作为字典key。
+
+>>> l[1] = "https://www.jianshu.com/u/69f40328d4f0"
+>>> l
+['https://china-testing.github.io/', 'https://www.jianshu.com/u/69f40328d4f0']
+>>> t[1] = "https://www.jianshu.com/u/69f40328d4f0"
+Traceback (most recent call last):
+ File "<stdin>", line 1, in <module>
+TypeError: 'tuple' object does not support item assignment
+重用与拷贝
+
+元组无法复制。 原因是元组是不可变的。 如果运行tuple(tuple_name)将返回自己。
+
+>>> copy_t = tuple(t)
+>>> print(t is copy_t)
+True
+>>> copy_l = list(l)
+>>> print(l is copy_l)
+False
+大小差异
+
+Python将低开销的较大的块分配给元组，因为它们是不可变的。 对于列表则分配小内存块。 与列表相比，元组的内存更小。 当你拥有大量元素时，元组比列表快。列表的长度是可变的。
+
+>>> l = ["https://china-testing.github.io/", "https://www.oscobo.com/"]
+>>> t = ("https://china-testing.github.io/", "https://www.oscobo.com/")
+>>> print(l.__sizeof__())
+56
+>>> print(t.__sizeof__())
+40
+同构与异构
+
+习惯上元组多用于用于存储异构元素，异构元素即不同数据类型的元素，比如(ip,port)。 另一方面，列表用于存储异构元素，这些元素属于相同类型的元素，比如[int1,in2,in3]。

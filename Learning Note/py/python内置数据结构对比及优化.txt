@@ -1,0 +1,627 @@
+python list/tuple/dict/set/deque的简单比较、优化和时间复杂度（表格）
+
+参考：（以下很多地方有参考的链接我统一放在这里）
+
+基于python2.7，不是完全完整，基于目前所学分析，后面有其他会补充，主要也是为了可观性；
+关于时间复杂度，参考： 
+· 英文：https://wiki.python.org/moin/TimeComplexity 
+· 中文：http://www.orangecube.net/python-time-complexity
+前四种算是基本数据结构，最后一种是from collections这个内置库，是双向队列。它相当于队列和列表的结合，并且支持两端增删。它其实更常用于和多线程，redis使用，之所以放在这里，是因为它和list的相似性；
+关于tuple的优点，知乎有很好的答案：https://www.zhihu.com/question/60574107
+关于dict的删除： 
+1). http://www.runoob.com/python/python-dictionary.html 
+2). http://www.iplaypy.com/jinjie/jj116.html
+关于dict的插入：https://www.zhihu.com/question/62050494
+关于set的删除： http://blog.csdn.net/jcjc918/article/details/9359503
+性能比较：https://www.cnblogs.com/cfang90/p/6220956.html
+优化建议：http://www.jb51.net/article/56699.htm
+算法时间复杂度：https://www.ibm.com/developerworks/cn/linux/l-cn-python-optim/
+一、关于增删改查
+序列	list	tuple	dict	set	deque
+能否增加元素	√	×	√	√	√
+是否有序	√	√	×	×	√
+能否删除	√	×	√	√	√
+可否哈希	×	√	√	√	×
+序列	list	tuple	dict	set	deque
+增加方法	append、extend、insert	×	update	add、update	append/appendleft、extend/extendleft
+删除方法	pop、remove	× (tuple只有count和index两个方法)	pop、clear(这两个是方法)/del（函数） del dict/dict[key]	pop、remove	和list类似，但多一个popleft（它和其他的区别在于双端，append/extend/pop都多一个left）
+优点（只是部分）	功能相对比较齐全	可以生成器，占内存小，安全，遍历速度比list快，可一赋多值	查找和插入速度快	不用判断重复的元素	插入速度快
+缺点	相对tuple占内存，查找和insert时间较慢	不能添加和更改元素	占内存大	不能存储可变对象，例如list	remove和获取索引的时候比较慢
+二、关于时间复杂度
+这里简单说一下相对序列关于时间复杂度的意思：
+
+·
+
+· O(1)：常数级别，意思即时间保持在一个固定的范围内，不会随序列的长度和大小而增长。* 
+· O(n)：线性级别，时间与序列的大小成正比，即序列元素越多，越长，所花时间越多* 
+· O(k)：官网上说，“n”是容器中当前的元素的数量。’k’是参数的值或参数中元素的数量。但是目前我还不太清楚它是什么意思，我看到第一个例子用在了pop上，所以猜测是随它变化，具体求哪位大神能给解释一下* 
+· 还有一些类似O(n log n)和O(n^2) ，你画个图就知道了，具体日后有时间补
+
+注意：
+
+因为tuple不能增删改，所以这里不做比较。
+
+因为deque只是和list样子相似，但作用和queue相似，看名字就知道了，所以它只能从两端增删，不能从中间增删，它也就没有insert或者update这样的方法。
+
+pop各种方法有些不一样，另外我们知道pop的时候它会返回被删掉的数据。因此，pop我们会分为pop last、pop(index[list]/key[dict])，但实际上他们的命令都是pop：
+
+deque：popleft是其独有，但它的pop不能从指定的位置删
+list：list/dict都可以从指定位置删，list简单直接给pop(index)即可
+set：set其实有pop，但它既不能指定，且没有所谓最后一个，也是随机，其他得用remove或者discard（区别在于如果元素不存在，前者会报错而后者不会）
+dict： 根据官网来看，dict的复杂度平均是O(1)，最坏的结果才是O(n)。只是占内存一些，dict的pop比较特殊： 
+- popitem()：这个尤其特别，它随机返回并删除字典中的一对键和值。为什么随机呢，因为dict是无序的，没有所谓最后一个
+- pop(key[,default])：删除字典给定键 key 所对应的值，返回值为被删除的值。key值必须给出。 否则，返回default值。
+由于无序序列的存在，设置了中括号标注下哪个方法是对应哪个序列的，这里的中括号不代表索引，这里索引直接用index代替
+
+平均情况下：
+
+序列	list	deque	dict	set
+insert	√ O(n)	×	×	×
+append	√ O(1)	√ O(1)	×	×
+appendleft	×	√ O(1)	×	×
+extend	√ O(k)	√ O(1)	×	×
+extendleft	×	√ O(1)	×	×
+add	×	×	×	√ O(1)
+update	×	×	√ O(1)	√O(1)
+remove	√	√O(n)	×	√
+clear	×	√	√	√
+del	√ O(n)	√	√ O(1)	√
+popleft	×	√ O(1)	×	×
+pop last（pop()[list]）	√ O(1)	√ O(1)	×	×
+pop（index[list]/key[dict]）	√ O(k)	√ O(1)	√ O(1)	×
+popitem()	×	×	√ O(1)	×
+Iteration(迭代)	√ O(n)	√	√ O(n)	√ O(n)
+x in s （查找）	√ O(n)	√ O(n)	√ O(1)	√ O(1)
+特点：
+list:
+	pop(0) is slower than pop(): 
+	When pop is called on the end of the list it takes O(1) but when pop is called on the first element in the list or anywhere in the middle it is O(n). The reason for this lies in how Python chooses to implement lists. When an item is taken from the front of the list, in Python’s implementation, all the other elements in the list are shifted one position closer to the beginning. This may seem silly to you now, but if you look at Table 2 you will see that this implementation also allows the index operation to be O(1). This is a tradeoff that the Python implementors thought was a good one.
+
+tuple：
+
+tuple可哈希，所以它可转换成dict和set，它做dict——{():value}
+tuple的优点： 
+2.1. 函数返回多个值， 
+2.2. 字符串里有多个元素，如果刚好这些元素处于一个列表或tuple内，可以直接用，但是列表需转换， 
+2.3. 可以快速调换赋值，如a,b = b,a
+定义只有一个元素的tuple时候，必须写成这种格式，即加个逗号， 如a = (1,)，否则默认为进行()的运算。
+dict：
+
+dict的最好和平均时间是O(1)，最差是O(n)，set大多和dict差不多
+set：
+
+set存储的元素和dict的key类似，必须是不变对象，所以set不支持list/dict，它可以通过update的方式将list的元素一个个添加到set里，但不支持整个list，set 和dict转换只会用到它的key而不是value）
+你在最初set([1,2,3])时，它会转换为{1,2,3}。
+不过它转换成list很方便，只需要list(set())即可，而不用遍历set中的元素
+set(i for i in range(n))比set([i for i in range(n)])要快一些，因为前者用到了生成器，来源于，但是如果要遍历，后者可能更快（参考链接9）
+查找（即x in s）：dict，set是常数查找时间（O(1)），list、tuple是线性查找时间（O(n)）
+
+优化：
+
+list因为占用的内存会随着元素的增大而增大，所以最好不要用 List 来保存中间结果，而是通过 iterable 对象来迭代。（参考链接）
+由表3可知，在判断某个元素是否在某个序列中的时候，dict是O(1)，list需要遍历，所以是O(n)，这时候尽量不要用list，能够用字典进行存储，尽量不要用list。如果觉得list和dict转换麻烦，可以用set，set和list的转换比较方便，总之可以避开直接用list。存储的时候似情况而定用list还是set，这样可以省去转换。
+
+元组运算符
+与字符串一样，元组之间可以使用 + 号和 * 号进行运算。这就意味着他们可以组合和复制，运算后会生成一个新的元组。
+
+Python 表达式	结果	描述
+len((1, 2, 3))	3	计算元素个数
+(1, 2, 3) + (4, 5, 6)	(1, 2, 3, 4, 5, 6)	连接
+('Hi!',) * 4	('Hi!', 'Hi!', 'Hi!', 'Hi!')	复制
+3 in (1, 2, 3)	True	元素是否存在
+for x in (1, 2, 3): print x,	1 2 3	迭代
+元组索引，截取
+因为元组也是一个序列，所以我们可以访问元组中的指定位置的元素，也可以截取索引中的一段元素，如下所示：
+
+元组：
+
+L = ('spam', 'Spam', 'SPAM!')
+Python 表达式	结果	描述
+L[2]	'SPAM!'	读取第三个元素
+L[-2]	'Spam'	反向读取，读取倒数第二个元素
+L[1:]	('Spam', 'SPAM!')	截取元素
+无关闭分隔符
+任意无符号的对象，以逗号隔开，默认为元组，如下实例：
+
+实例(Python 2.0+)
+#!/usr/bin/python
+ 
+print 'abc', -4.24e93, 18+6.6j, 'xyz'
+x, y = 1, 2
+print "Value of x , y : ", x,y
+以上实例运行结果：
+
+abc -4.24e+93 (18+6.6j) xyz
+Value of x , y : 1 2
+元组内置函数
+Python元组包含了以下内置函数
+
+序号	方法及描述
+1	cmp(tuple1, tuple2)
+比较两个元组元素。
+2	len(tuple)
+计算元组元素个数。
+3	max(tuple)
+返回元组中元素最大值。
+4	min(tuple)
+返回元组中元素最小值。
+5	tuple(seq)
+将列表转换为元组。
+
+Python列表截取
+Python 的列表截取实例如下：
+
+>>>L = ['Google', 'Runoob', 'Taobao']
+>>> L[2]
+'Taobao'
+>>> L[-2]
+'Runoob'
+>>> L[1:]
+['Runoob', 'Taobao']
+>>>
+描述：
+
+Python 表达式	结果	描述
+L[2]	'Taobao'	读取列表中第三个元素
+L[-2]	'Runoob'	读取列表中倒数第二个元素
+L[1:]	['Runoob', 'Taobao']	从第二个元素开始截取列表
+Python列表函数&方法
+Python包含以下函数:
+
+序号	函数
+1	cmp(list1, list2)
+比较两个列表的元素
+2	len(list)
+列表元素个数
+3	max(list)
+返回列表元素最大值
+4	min(list)
+返回列表元素最小值
+5	list(seq)
+将元组转换为列表
+Python包含以下方法:
+
+序号	方法
+1	list.append(obj)
+在列表末尾添加新的对象
+2	list.count(obj)
+统计某个元素在列表中出现的次数
+3	list.extend(seq)
+在列表末尾一次性追加另一个序列中的多个值（用新列表扩展原来的列表）
+4	list.index(obj)
+从列表中找出某个值第一个匹配项的索引位置
+5	list.insert(index, obj)
+将对象插入列表
+6	list.pop([index=-1])
+移除列表中的一个元素（默认最后一个元素），并且返回该元素的值
+7	list.remove(obj)
+移除列表中某个值的第一个匹配项
+8	list.reverse()
+反向列表中元素
+9	list.sort(cmp=None, key=None, reverse=False)
+对原列表进行排序
+
+
+字典键的特性
+字典值可以没有限制地取任何python对象，既可以是标准的对象，也可以是用户定义的，但键不行。
+
+两个重要的点需要记住：
+
+1）不允许同一个键出现两次。创建时如果同一个键被赋值两次，后一个值会被记住，如下实例：
+
+实例
+#!/usr/bin/python
+ 
+dict = {'Name': 'Zara', 'Age': 7, 'Name': 'Manni'} 
+ 
+print "dict['Name']: ", dict['Name']
+以上实例输出结果：
+
+dict['Name']:  Manni
+2）键必须不可变，所以可以用数字，字符串或元组充当，所以用列表就不行，如下实例：
+
+实例
+#!/usr/bin/python
+ 
+dict = {['Name']: 'Zara', 'Age': 7} 
+ 
+print "dict['Name']: ", dict['Name']
+以上实例输出结果：
+
+Traceback (most recent call last):
+  File "test.py", line 3, in <module>
+    dict = {['Name']: 'Zara', 'Age': 7} 
+TypeError: list objects are unhashable
+字典内置函数&方法
+Python字典包含了以下内置函数：
+
+序号	函数及描述
+1	cmp(dict1, dict2)
+比较两个字典元素。
+2	len(dict)
+计算字典元素个数，即键的总数。
+3	str(dict)
+输出字典可打印的字符串表示。
+4	type(variable)
+返回输入的变量类型，如果变量是字典就返回字典类型。
+Python字典包含了以下内置方法：
+
+序号	函数及描述
+1	dict.clear()
+删除字典内所有元素
+2	dict.copy()
+返回一个字典的浅复制
+3	dict.fromkeys(seq[, val])
+创建一个新字典，以序列 seq 中元素做字典的键，val 为字典所有键对应的初始值
+4	dict.get(key, default=None)
+返回指定键的值，如果值不在字典中返回default值
+5	dict.has_key(key)
+如果键在字典dict里返回true，否则返回false
+6	dict.items()
+以列表返回可遍历的(键, 值) 元组数组
+7	dict.keys()
+以列表返回一个字典所有的键
+8	dict.setdefault(key, default=None)
+和get()类似, 但如果键不存在于字典中，将会添加键并将值设为default
+9	dict.update(dict2)
+把字典dict2的键/值对更新到dict里
+10	dict.values()
+以列表返回字典中的所有值
+11	pop(key[,default])
+删除字典给定键 key 所对应的值，返回值为被删除的值。key值必须给出。 否则，返回default值。
+12	popitem()
+随机返回并删除字典中的一对键和值。
+
+
+Python性能优化的20条建议
+ 更新时间：2014年10月25日 18:40:52   投稿：mdxy-dxy     我要评论
+
+
+不论什么语言我们都需要注意性能优化问题，提高执行效率，这里就为大家分享下Python的性能优化技巧,需要的朋友可以参考下
+
+优化算法时间复杂度
+算法的时间复杂度对程序的执行效率影响最大，在Python中可以通过选择合适的数据结构来优化时间复杂度，如list和set查找某一个元素的时间复杂度分别是O(n)和O(1)。不同的场景有不同的优化方式，总得来说，一般有分治，分支界限，贪心，动态规划等思想。
+
+减少冗余数据
+如用上三角或下三角的方式去保存一个大的对称矩阵。在0元素占大多数的矩阵里使用稀疏矩阵表示。
+
+合理使用copy与deepcopy
+对于dict和list等数据结构的对象，直接赋值使用的是引用的方式。而有些情况下需要复制整个对象，这时可以使用copy包里的copy和deepcopy，这两个函数的不同之处在于后者是递归复制的。效率也不一样：（以下程序在ipython中运行）
+
+import copy
+a = range(100000)
+%timeit -n 10 copy.copy(a) # 运行10次 copy.copy(a)
+%timeit -n 10 copy.deepcopy(a)
+10 loops, best of 3: 1.55 ms per loop
+10 loops, best of 3: 151 ms per loop
+timeit后面的-n表示运行的次数，后两行对应的是两个timeit的输出，下同。由此可见后者慢一个数量级。
+
+使用dict或set查找元素
+python dict和set都是使用hash表来实现(类似c++11标准库中unordered_map)，查找元素的时间复杂度是O(1)
+
+a = range(1000)
+s = set(a)
+d = dict((i,1) for i in a)
+%timeit -n 10000 100 in d
+%timeit -n 10000 100 in s
+10000 loops, best of 3: 43.5 ns per loop
+10000 loops, best of 3: 49.6 ns per loop
+dict的效率略高(占用的空间也多一些)。
+
+合理使用生成器（generator）和yield
+
+%timeit -n 100 a = (i for i in range(100000))
+%timeit -n 100 b = [i for i in range(100000)]
+100 loops, best of 3: 1.54 ms per loop
+100 loops, best of 3: 4.56 ms per loop
+使用()得到的是一个generator对象，所需要的内存空间与列表的大小无关，所以效率会高一些。在具体应用上，比如set(i for i in range(100000))会比set([i for i in range(100000)])快。
+
+但是对于需要循环遍历的情况：
+
+%timeit -n 10 for x in (i for i in range(100000)): pass
+%timeit -n 10 for x in [i for i in range(100000)]: pass
+10 loops, best of 3: 6.51 ms per loop
+10 loops, best of 3: 5.54 ms per loop
+后者的效率反而更高，但是如果循环里有break,用generator的好处是显而易见的。yield也是用于创建generator：
+
+def yield_func(ls):
+ for i in ls:
+ yield i+1
+ 
+def not_yield_func(ls):
+ return [i+1 for i in ls]
+ 
+ls = range(1000000)
+%timeit -n 10 for i in yield_func(ls):pass
+%timeit -n 10 for i in not_yield_func(ls):pass
+10 loops, best of 3: 63.8 ms per loop
+10 loops, best of 3: 62.9 ms per loop
+对于内存不是非常大的list，可以直接返回一个list，但是可读性yield更佳(人个喜好)。
+
+python2.x内置generator功能的有xrange函数、itertools包等。
+
+优化循环
+循环之外能做的事不要放在循环内，比如下面的优化可以快一倍：
+
+a = range(10000)
+size_a = len(a)
+%timeit -n 1000 for i in a: k = len(a)
+%timeit -n 1000 for i in a: k = size_a
+1000 loops, best of 3: 569 µs per loop
+1000 loops, best of 3: 256 µs per loop
+优化包含多个判断表达式的顺序
+对于and，应该把满足条件少的放在前面，对于or，把满足条件多的放在前面。如：
+
+a = range(2000) 
+%timeit -n 100 [i for i in a if 10 < i < 20 or 1000 < i < 2000]
+%timeit -n 100 [i for i in a if 1000 < i < 2000 or 100 < i < 20] 
+%timeit -n 100 [i for i in a if i % 2 == 0 and i > 1900]
+%timeit -n 100 [i for i in a if i > 1900 and i % 2 == 0]
+100 loops, best of 3: 287 µs per loop
+100 loops, best of 3: 214 µs per loop
+100 loops, best of 3: 128 µs per loop
+100 loops, best of 3: 56.1 µs per loop
+使用join合并迭代器中的字符串
+
+In [1]: %%timeit
+ ...: s = ''
+ ...: for i in a:
+ ...:  s += i
+ ...:
+10000 loops, best of 3: 59.8 µs per loop
+ 
+In [2]: %%timeit
+s = ''.join(a)
+ ...:
+100000 loops, best of 3: 11.8 µs per loop
+join对于累加的方式，有大约5倍的提升。
+
+选择合适的格式化字符方式
+
+s1, s2 = 'ax', 'bx'
+%timeit -n 100000 'abc%s%s' % (s1, s2)
+%timeit -n 100000 'abc{0}{1}'.format(s1, s2)
+%timeit -n 100000 'abc' + s1 + s2
+100000 loops, best of 3: 183 ns per loop
+100000 loops, best of 3: 169 ns per loop
+100000 loops, best of 3: 103 ns per loop
+三种情况中，%的方式是最慢的，但是三者的差距并不大（都非常快）。(个人觉得%的可读性最好)
+
+不借助中间变量交换两个变量的值
+
+In [3]: %%timeit -n 10000
+ a,b=1,2
+ ....: c=a;a=b;b=c;
+ ....:
+10000 loops, best of 3: 172 ns per loop
+ 
+In [4]: %%timeit -n 10000
+a,b=1,2
+a,b=b,a
+ ....:
+10000 loops, best of 3: 86 ns per loop
+使用a,b=b,a而不是c=a;a=b;b=c;来交换a,b的值，可以快1倍以上。
+
+使用if is
+
+a = range(10000)
+%timeit -n 100 [i for i in a if i == True]
+%timeit -n 100 [i for i in a if i is True]
+100 loops, best of 3: 531 µs per loop
+100 loops, best of 3: 362 µs per loop
+使用 if is True 比 if == True 将近快一倍。
+
+使用级联比较x < y < z
+
+x, y, z = 1,2,3
+%timeit -n 1000000 if x < y < z:pass
+%timeit -n 1000000 if x < y and y < z:pass
+1000000 loops, best of 3: 101 ns per loop
+1000000 loops, best of 3: 121 ns per loop
+x < y < z效率略高，而且可读性更好。
+
+while 1 比 while True 更快
+
+def while_1():
+ n = 100000
+ while 1:
+ n -= 1
+ if n <= 0: break
+def while_true():
+ n = 100000
+ while True:
+ n -= 1
+ if n <= 0: break
+ 
+m, n = 1000000, 1000000
+%timeit -n 100 while_1()
+%timeit -n 100 while_true()
+100 loops, best of 3: 3.69 ms per loop
+100 loops, best of 3: 5.61 ms per loop
+while 1 比 while true快很多，原因是在python2.x中，True是一个全局变量，而非关键字。
+
+使用**而不是pow
+
+%timeit -n 10000 c = pow(2,20)
+%timeit -n 10000 c = 2**20
+10000 loops, best of 3: 284 ns per loop
+10000 loops, best of 3: 16.9 ns per loop
+**就是快10倍以上！
+
+使用 cProfile, cStringIO 和 cPickle等用c实现相同功能（分别对应profile, StringIO, pickle）的包
+
+import cPickle
+import pickle
+a = range(10000)
+%timeit -n 100 x = cPickle.dumps(a)
+%timeit -n 100 x = pickle.dumps(a)
+100 loops, best of 3: 1.58 ms per loop
+100 loops, best of 3: 17 ms per loop
+由c实现的包，速度快10倍以上！
+
+使用最佳的反序列化方式
+下面比较了eval, cPickle, json方式三种对相应字符串反序列化的效率：
+
+import json
+import cPickle
+a = range(10000)
+s1 = str(a)
+s2 = cPickle.dumps(a)
+s3 = json.dumps(a)
+%timeit -n 100 x = eval(s1)
+%timeit -n 100 x = cPickle.loads(s2)
+%timeit -n 100 x = json.loads(s3)
+100 loops, best of 3: 16.8 ms per loop
+100 loops, best of 3: 2.02 ms per loop
+100 loops, best of 3: 798 µs per loop
+可见json比cPickle快近3倍，比eval快20多倍。
+
+使用C扩展(Extension)
+目前主要有CPython(python最常见的实现的方式)原生API, ctypes,Cython，cffi三种方式，它们的作用是使得Python程序可以调用由C编译成的动态链接库，其特点分别是：
+
+CPython原生API: 通过引入Python.h头文件，对应的C程序中可以直接使用Python的数据结构。实现过程相对繁琐，但是有比较大的适用范围。
+
+ctypes: 通常用于封装(wrap)C程序，让纯Python程序调用动态链接库（Windows中的dll或Unix中的so文件）中的函数。如果想要在python中使用已经有C类库，使用ctypes是很好的选择，有一些基准测试下，python2+ctypes是性能最好的方式。
+
+Cython: Cython是CPython的超集，用于简化编写C扩展的过程。Cython的优点是语法简洁，可以很好地兼容numpy等包含大量C扩展的库。Cython的使得场景一般是针对项目中某个算法或过程的优化。在某些测试中，可以有几百倍的性能提升。
+
+cffi: cffi的就是ctypes在pypy（详见下文）中的实现，同进也兼容CPython。cffi提供了在python使用C类库的方式，可以直接在python代码中编写C代码，同时支持链接到已有的C类库。
+
+使用这些优化方式一般是针对已有项目性能瓶颈模块的优化，可以在少量改动原有项目的情况下大幅度地提高整个程序的运行效率。
+
+并行编程
+因为GIL的存在，Python很难充分利用多核CPU的优势。但是，可以通过内置的模块multiprocessing实现下面几种并行模式：
+
+多进程：对于CPU密集型的程序，可以使用multiprocessing的Process,Pool等封装好的类，通过多进程的方式实现并行计算。但是因为进程中的通信成本比较大，对于进程之间需要大量数据交互的程序效率未必有大的提高。
+
+多线程：对于IO密集型的程序，multiprocessing.dummy模块使用multiprocessing的接口封装threading，使得多线程编程也变得非常轻松(比如可以使用Pool的map接口，简洁高效)。
+
+分布式：multiprocessing中的Managers类提供了可以在不同进程之共享数据的方式，可以在此基础上开发出分布式的程序。
+
+不同的业务场景可以选择其中的一种或几种的组合实现程序性能的优化。
+
+终级大杀器：PyPy
+PyPy是用RPython(CPython的子集)实现的Python，根据官网的基准测试数据，它比CPython实现的Python要快6倍以上。快的原因是使用了Just-in-Time(JIT)编译器，即动态编译器，与静态编译器(如gcc,javac等)不同，它是利用程序运行的过程的数据进行优化。由于历史原因，目前pypy中还保留着GIL，不过正在进行的STM项目试图将PyPy变成没有GIL的Python。
+
+如果python程序中含有C扩展(非cffi的方式)，JIT的优化效果会大打折扣，甚至比CPython慢（比Numpy）。所以在PyPy中最好用纯Python或使用cffi扩展。
+
+随着STM，Numpy等项目的完善，相信PyPy将会替代CPython。
+
+使用性能分析工具
+除了上面在ipython使用到的timeit模块，还有cProfile。cProfile的使用方式也非常简单： python -m cProfile filename.py，filename.py 是要运行程序的文件名，可以在标准输出中看到每一个函数被调用的次数和运行的时间，从而找到程序的性能瓶颈，然后可以有针对性地优化。
+
+参考
+[1] http://www.ibm.com/developerworks/cn/linux/l-cn-python-optim/
+
+[2] http://maxburstein.com/blog/speeding-up-your-python-code/
+
+Python是一门非常酷的语言，因为很少的Python代码可以在短时间内做很多事情，并且，Python很容易就能支持多任务和多重处理。
+
+py
+
+  1、关键代码可以依赖于扩展包
+
+Python使许多编程任务变得简单，但是对于很关键的任务并不总是提供最好的性能。使用C、C++或者机器语言扩展包来执行关键任务能极大改善性能。这些包是依赖于平台的，也就是说，你必须使用特定的、与你使用的平台相关的包。简而言之,该解决方案提供了一些应用程序的可移植性,以换取性能,您可以获得只有通过直接向底层主机编程。下面这些扩展包你可以考虑添加到你的个人扩展库中：
+
+Cython
+PyInlne
+PyPy
+Pyrex
+
+这些包有不同的作用和执行方式。例如，Pyrex 让Python处理一些内存任务变得简单高效；PyInline可以直接让你在Python应用程序中使用C代码，虽然内联代码被单独编译，但是如果你能高效的利用C代码，它可以在同一个地方处理每一件事情。
+
+  2、使用关键字排序
+
+有很多古老的Python代码在执行时将花费额外的时间去创建一个自定义的排序函数。最好的排序方式是使用关键字和默认的sort()方法，看看下面的示例：
+
+复制代码 代码如下:
+
+import operator
+somelist = [(1, 5, 8), (6, 2, 4), (9, 7, 5)]
+somelist.sort(key=operator.itemgetter(0))
+somelist
+#Output = [(1, 5, 8), (6, 2, 4), (9, 7, 5)]
+somelist.sort(key=operator.itemgetter(1))
+somelist
+#Output = [(6, 2, 4), (1, 5, 8), (9, 7, 5)]
+somelist.sort(key=operator.itemgetter(2))
+somelist
+#Output = [(6, 2, 4), (9, 7, 5), (1, 5, 8)],
+每一个案例的列表是根据你选择作为关键字参数的索引排序的，这种方式对字符串和数字排序同样适用。
+
+  3、优化循环
+
+每一种编程语言都强调循环语句的优化，Python也是一样的。尽管你可以依赖于丰富的技术让循环运行的更快，然而，开发者经常忽略的一个方法是避免在循环内部使用点拼接字符串。对于下面的示例：
+
+复制代码 代码如下:
+
+lowerlist = ['this', 'is', 'lowercase']
+upper = str.upper
+upperlist = []
+append = upperlist.append
+for word in lowerlist:
+    append(upper(word))
+    print(upperlist)
+    #Output = ['THIS', 'IS', 'LOWERCASE']
+每一次调用str.upper，Python都会去求这个方法的值。但是如果你把求值的结果放入一个变量中，就能提高程序的性能。这个关键是减少Python内执行的循环次数,因为Python解析这些实例是比较慢的。
+
+  4、使用新版本
+
+任何一个在线上搜索Python资料的人都会发现无数关于Python版本迁移的信息。通常，Python每一个版本都针对之前的一个版本做了优化和改进，以让Python运行的更快。限制因素是你喜欢的函数库是否也针对Python的新版本做了改进。
+
+当你使用了新的函数库，获得了Python的新版本，你需要保证代码依然能够运行，检查应用，修正差异。
+
+然后，如果你仅仅是保证应用能够在新版本上运行，你可能错过新功能的更新。一旦你做了改进，在新版本下配置应用程序，检查问题区域并优先使用新功能更新，对于之前的升级，用户将看到更大性能的提升。
+
+  5、尝试多种编程方法
+
+每一次你创建应用的时候，都使用同一种编程方法，在某些情况下降导致程序运行会比预期的慢。在分析的过程中做一些小试验。例如，当管理字典中的数据项时，可以采用安全的方法确定数据项是否已经存在并需要更新它，或者你可以直接添加条目,然后处理项目根本不存在的情况。
+
+复制代码 代码如下:
+
+n = 16
+myDict = {}
+for i in range(0, n):
+    char = 'abcd'[i%4]
+    if char not in myDict:
+        myDict[char] = 0
+        myDict[char] += 1
+        print(myDict)
+当myDict是空时，上述的代码通常会运行的更快。但当myDict已经有数据填充时，就有更好的方法可以选择：
+
+复制代码 代码如下:
+
+n = 16
+myDict = {}
+for i in range(0, n):
+    char = 'abcd'[i%4]
+    try:
+        myDict[char] += 1
+    except KeyError:
+        myDict[char] = 1
+    print(myDict)
+两种情况下都输出{'d': 4, 'c': 4, 'b': 4, 'a': 4}，唯一的差异是输出是怎么获得的。站在盒子外考虑和创建新的编程技巧都能让你的程序获得更快的运行速度。
+
+  6、交叉编译程序
+
+        开发者有时会忘记计算机不能识别任何一种现在应用程序语言，它只识别机器代码。为了运行程序，需要一个应用将人类可读的代码转换成计算机能识别的代码。当用一种语言写程序时，例如Python，然后用另外一种语言来运行它，例如C++，从性能角度看是有道理的。这个取决于你想要用这个应用做什么和主机系统能够提供什么资源。
+
+        一个有趣的交叉编译器，Nuitka, 能将Python转换成C++代码，结果是你可以再本机模式下执行应用，而不是依赖于解释器。根据平台和任务中,你可以看到显著的性能提高。
+
+1.使用测量工具，量化性能才能改进性能，常用的timeit和memory_profiler，此外还有profile、cProfile、hotshot等，memory_profiler用了psutil，所以不能跟踪cpython的扩展；
+
+2.用C来解决费时的处理，c是效率的代名词，也是python用来解决效率问题的主要途径，甚至有时候我都觉得python是c的完美搭档。常用的是Cython，直接把py代码c化然后又能像使用py包一样使用，其次是ctypes，效率最最高的存在，最后还有CPython和cffi都是屌屌的存在；
+
+3.优化算法，所有语言通病，算法的提升我觉得是在所有提升之上的，但也是最难的，好在现在大部分常用的算法都已经封包，除非自己给自己挖坑，所以弄懂标准库里的数据结构和常用api是如何实现的很重要；
+
+4.2里的实现有人做了更高效的包用以替换python中常见的一些实现，如果瓶颈在stringio、pickle、profile这类上的可以考虑替换为c的版本；
+5.数据结构尽量使用元组tuple，特别是数据量大的时候，实在不行list也可以，尽量不要用class，如果一定要用可以加slot，效率再不够就只能结合2来加速了；
+
+6.延迟加载，import不是一定要写在一页的开始，哪里都可以，越碎片越能把包的加载延迟甚至不被加载；
+
+7.用multiprocessing来实现多线程，可以跳出GIL的限制；
+
+8.python处理循环很烂，解释性语言就这样，跟其它编译型语言比就是蜗牛，所以减少循环次数和嵌套次数能显著提升性能，当然了使用pypy就没有这个问题了；
+
+9.使用加速器，很喜欢psyco的使用方式，如果用2.7-的版本那么不失为一个懒人的选择，现在已经不再维护，创始人去了pypy，pypy是用Python实现的python，底层转为平台依赖的c、.net、java的中间语言，方式非常聪明，大爱，但是缺点是库的支持还不完善，我的项目基本都能支持，解决几个小问题即可，如果性能瓶颈在循环和内存上可以试试，最大的好处是不需要更改一句代码和做另外的设置，没有任何侵入。
+
