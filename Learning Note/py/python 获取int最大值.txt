@@ -1,0 +1,28 @@
+python3 获取int最大值
+python2 中获取int最大值
+
+import sys
+
+i = sys.maxint
+
+print i
+
+ 
+
+但是在python3中，报错：
+
+AttributeError: module 'sys' has no attribute 'maxint'
+
+ 
+
+看了官网文档后了解python3中没有maxint了，只有maxsize
+
+import sys
+
+i = sys.maxsize
+
+print(i)
+
+ 
+
+官网说明文档：https://docs.python.org/3.1/whatsnew/3.0.html#integers
