@@ -1,0 +1,93 @@
+[mysql]原理之auto_increment
+
+引言
+MySQL中auto_increment字段估计大家都经常用到，特别是innodb引擎。我也经常用，只知道mysql可以保证这个字段在多进程操作时的原子性，具体原理又是什么，后来查阅了MySQL手册以及相关资料，了解了个大概。
+
+本文只探究了mysql5.5中innodb引擎auto_increment的问题。
+
+定义
+使用auto_increment的字段可能生成唯一的标识。
+
+如何使用
+可在建表时可用“AUTO_INCREMENT=n”选项来指定一个自增的初始值。
+
+可用alter table table_name AUTO_INCREMENT=n命令来重设自增的起始值。
+
+使用规范
+AUTO_INCREMENT是数据列的一种属性，只适用于整数类型数据列。
+
+设置AUTO_INCREMENT属性的数据列应该是一个正数序列，所以应该把该数据列声明为UNSIGNED，这样序列的编号个可增加一倍。
+
+AUTO_INCREMENT数据列必须有唯一索引，以避免序号重复(即是主键或者主键的一部分)。
+
+AUTO_INCREMENT数据列必须具备NOT NULL属性。
+
+AUTO_INCREMENT数据列序号的最大值受该列的数据类型约束，如TINYINT数据列的最大编号是127,如加上UNSIGNED，则最大为255。一旦达到上限，AUTO_INCREMENT就会失效。
+
+当进行全表删除时，MySQL AUTO_INCREMENT会从1重新开始编号。全表删除的意思是发出以下两条语句时：
+
+delete from table_name;或者truncate table table_name
+
+原理（这里面是重点）
+
+传统auto_increment原理
+mysql innodb引擎的表中的auto_increment字段是通过在内存中维护一个auto-increment计数器，来实现该字段的赋值，注意自增字段必须是索引,而且是索引的第一列,不一定要是主键。例如我现在在我的数据库test中创建一个表t，语句如下:
+
+```
+
+CREATE TABLE`t_test`(
+
+`id`int(10)unsignedNOTNULLAUTO_INCREMENTCOMMENT'自增id',  
+
+PRIMARYKEY(`id`)
+
+  )ENGINE=InnoDBDEFAULTCHARSET=utf8mb4COMMENT='测试表'
+
+```
+
+则字段a为auto_increment类型，在mysql服务器启动后，第一次插入数据到表t_test时，InnoDB引擎会执行等价于下面的语句:
+
+```
+
+SELECT MAX(id) FROM t FOR UPDATE;
+
+```
+
+Innodb获取到当前表中id字段的最大值并将增加1(默认是增加1，如果要调整为增加其他数目，可以设置auto_increment_increment这个配置的设置)然后赋值给该列以及内存中该表对应的计数器
+
+在传统的auto_increment设置中,每次访问auto-increment计数器的时候, INNODB都会加上一个名为AUTO-INC锁直到该语句结束(注意锁只持有到语句结束,不是事务结束).AUTO-INC锁是一个特殊的表级别的锁,用来提升包含auto_increment列的并发插入性能.因此,两个事务不能同时获取同一个表上面的AUTO-INC锁,如果持有AUTO-INC锁太长时间可能会影响到数据库性能(比如INSERT INTO t1... SELECT ... FROM t2这类语句).
+
+改进后
+基于上面传统方式的问题（性能太差），在mysql5.1开始,新增加了一个配置项innodb_autoinc_lock_mode来设定auto_increment方式.
+
+可以设置的值为0,1,2.其中0就是第一节中描述的传统auto_increment机制,而1和2则是新增加的模式,默认该值为1,可以中mysql配置文件中修改该值.这里主要来看看这两种新的方式的差别；
+
+在描述差别前需要先明确几个插入类型：
+
+simple inserts
+
+能够确定具体的插入行数的语句。
+
+bulk inserts
+
+事先无法确定插入行数的语句
+
+mixed-mode inserts
+
+有些行指定了auto_increment列的值有些没有指定
+
+下面看看设置innodb_autoinc_lock_mode为不同值时的情况：
+
+innodb_autoinc_lock_mode=0（traditional lock mode）
+
+传统的auto_increment机制，这种模式下所有针对auto_increment列的插入操作都会加AUTO-INC锁，分配的值也是一个个分配，是连续的，正常情况下也不会有间隙（当然如果事务rollback了这个auto_increment值就会浪费掉，从而造成间隙）。
+
+innodb_autoinc_lock_mode=1（consecutive lock mode）
+
+这种情况下，针对bulk inserts才会采用AUTO-INC锁这种方式，而针对simple inserts，则采用了一种新的轻量级的互斥锁来分配auto_increment列的值。当然，如果其他事务已经持有了AUTO-INC锁，则simple inserts需要等待.
+
+需要注意的是，在innodb_autoinc_lock_mode=1时，语句之间是可能出现auto_increment值的间隔的。比如mixed-mode inserts以及bulk inserts中都有可能导致一些分配的auto_increment值被浪费掉从而导致间隙。后面会有例子。
+
+innodb_autoinc_lock_mode=2（interleaved lock mode）
+
+这种模式下任何类型的inserts都不会采用AUTO-INC锁，性能最好，但是在同一条语句内部产生auto_increment值间隙。此外，这种模式对statement-based replication也不安全。

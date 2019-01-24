@@ -1,0 +1,90 @@
+MySQL表行数查询最佳实践
+　　日常应用运维工作中，Dev或者db本身都需要统计表的行数，以此作为应用或者维护的一个信息参考。也许很多人会忽略select count(*) from table_name类似的sql对数据库性能的影响，可当你在慢日志平台看到执行了数千次，每次执行4秒左右的查询，你还会无动于衷吗？作为一个有担当敢于挑战的dba，你们应该勇于说no，我觉得类似的需求不可避免但不应该是影响数据库性能的因素，如果连这个都摆不平公司还能指望你干什么。经过几番深思总结，我根据查询的需求，分为模糊查询和精确查询，可以通过下面的三种方式来择优选择。下面测试是线上一个日志表，表大小在6个G左右。
+
+　　1、精确查询知晓表中数据行数，这个时候我们就要使用count（）函数来统计表中行数的大小了。在innodb存储引擎中count（*）函数是先从内存中读取表中的数据到内存缓冲区，然后全表扫描获得记录行数的。但是这种方式过于简单、直接暴力，对于小表查询比较合适，对于频繁的大表查询就不适用了。尤其是在生产中表很大，且表除了聚集索引（主键索引）外，没有其他非聚集索引（二级索引）的时候，无疑是一种巨大的灾难。
+
+复制代码
+mysql> select count(*) from operation_log;
++----------+
+| count(*) |
++----------+
+| 21049180 |
++----------+
+1 row in set (10.92 sec)
+
+mysql> explain select count(*) from rule_ceshi.operation_log;
++----+-------------+---------------+-------+---------------+----------+---------+------+----------+-------------+
+| id | select_type | table         | type  | possible_keys | key      | key_len | ref  | rows     | Extra       |
++----+-------------+---------------+-------+---------------+----------+---------+------+----------+-------------+
+|  1 | SIMPLE      | operation_log | index | NULL          | user_key | 194     | NULL | 20660338 | Using index |
++----+-------------+---------------+-------+---------------+----------+---------+------+----------+-------------+
+1 row in set (0.00 sec)
+
+mysql> show index from rule_ceshi.operation_log;
++---------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| Table         | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
++---------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| operation_log |          0 | PRIMARY  |            1 | id          | A         |    20660338 |     NULL | NULL   |      | BTREE      |         |               |
+| operation_log |          1 | user_key |            1 | user_key    | A         |     2951476 |     NULL | NULL   |      | BTREE      |         |               |
++---------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+2 rows in set (0.00 sec)
+
+mysql> drop index user_key on rule_ceshi.operation_log;
+Query OK, 0 rows affected (0.19 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+mysql> select count(*) from rule_ceshi.operation_log; 
++----------+
+| count(*) |
++----------+
+| 21049180 |
++----------+
+1 row in set (23.39 sec)
+复制代码
+ 　　上面的测试结果表明，count（*）走聚集索引和非聚集索引都是索引全扫描，但是走非聚集索引比走聚集索引获取记录数更快，这是为什么呢？我们通常不是说走主键索引是最快，难道这个原则在这里不适用还是优化器出现bug。当我产生这个疑问的时候，也曾这样怀疑，经过几次度娘和FQ后，排除错误答案 ，终于可以很遗憾的告诉你主键索引确实是最快的，只是主键索引查询是有前提条件的，至于什么条件烦请查看我下一篇关于count（*）怎么走索引，走那种索引分析。
+
+ 
+
+　　2、上面的方式对单次查询，在足够配置的物理机上，显然我们还是可以接受的。然而很多次的类似sql出现，对数据库的性能也是一种不必要的损耗，因为这对业务发展并没有很深的意义。我们知道对于select count（*） from table_name这样的sql是没有办法通过索引优化的，那么只能通过改写sql进行优化了，这也是一个精通sql优化高手必备的技能。
+
+　　如果你也想精确查询表中的行数，又想查询的时间能尽可能短，这个时候我们就要想到max（）和min（）函数了，通常我们统计最大值和最小值都是很快返回结果的。
+
+复制代码
+ 1 mysql> select ifnull(max(id),0)-ifnull(min(id),0)+1 as rows from rule_ceshi.operation_log;
+ 2 +----------+
+ 3 | rows     |
+ 4 +----------+
+ 5 | 21124162 |
+ 6 +----------+
+ 7 1 row in set (0.02 sec)
+ 8 
+ 9 mysql> explain select ifnull(max(id),0)-ifnull(min(id),0)+1 as rows from rule_ceshi.operation_log;
+10 +----+-------------+-------+------+---------------+------+---------+------+------+------------------------------+
+11 | id | select_type | table | type | possible_keys | key  | key_len | ref  | rows | Extra                        |
+12 +----+-------------+-------+------+---------------+------+---------+------+------+------------------------------+
+13 |  1 | SIMPLE      | NULL  | NULL | NULL          | NULL | NULL    | NULL | NULL | Select tables optimized away |
+14 +----+-------------+-------+------+---------------+------+---------+------+------+------------------------------+
+15 1 row in set (0.01 sec)
+复制代码
+　　当然使用这种优化改写的前提是你的上产中表中有主键且是整数类型的，主键还需是连续的，也就是你的上产中没有进行过delete from table where xxx=xxx的删除行记录操作，否则这样统计还是不精准的。
+
+ 
+
+　　3、我们知道MySQL自带一个统计信息，平时我们的show命令之类的都来源数据库中的统计表。如果我们的Dev告诉我们，只需要模糊查询知晓表中数据行数呢？这个时候，你就可以通过MySQL自带的information_schema.tables表的统计信息，初步判断表的数据行大小。
+
+复制代码
+mysql> select table_schema,table_name,table_type,table_rows from information_schema.tables where table_schema='rule_ceshi' and table_name='operation_log';
++--------------+---------------+------------+------------+
+| table_schema | table_name    | table_type | table_rows |
++--------------+---------------+------------+------------+
+| rule_ceshi   | operation_log | BASE TABLE |   20660338 |
++--------------+---------------+------------+------------+
+1 row in set (0.01 sec)
+
+mysql> explain select table_schema,table_name,table_type,table_rows from information_schema.tables where table_schema='rule_ceshi' and table_name='operation_log';
++----+-------------+--------+------+---------------+-------------------------+---------+------+------+---------------------------------------------------+
+| id | select_type | table  | type | possible_keys | key                     | key_len | ref  | rows | Extra                                             |
++----+-------------+--------+------+---------------+-------------------------+---------+------+------+---------------------------------------------------+
+|  1 | SIMPLE      | tables | ALL  | NULL          | TABLE_SCHEMA,TABLE_NAME | NULL    | NULL | NULL | Using where; Open_full_table; Scanned 0 databases |
++----+-------------+--------+------+---------------+-------------------------+---------+------+------+---------------------------------------------------+
+1 row in set (0.00 sec)
