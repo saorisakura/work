@@ -1,0 +1,64 @@
+关于linux tmp下文件自动删除的问题
+
+主题 Linux Unix
+关于linux tmp下文件自动删除的问题
+
+近日发现有一台机器tmp 下放置的文件无辜丢失，而且排查发现是自动丢失，并且，只是删除10天之前的文件….
+
+本来以为是哪位写了一个自动执行脚本， find 了一下10天前的文件删除了….
+
+结果，排查所有用户的crontab 计划，没有任何用户执行了自动脚本
+
+监测了一下服务器登录情况，在删除文件期间也没有任何人登录
+
+最终，通过不懈的百度，终于找到正解
+
+从/var/log/cron 日志中发现，服务器除了调用用户的计划任务外，还会执行系统自己的，比如：
+
+/etc/cron.hourly
+
+/etc/cron.daily
+
+进入 /etc/cron.daily
+
+可以看到一个tmpwatch
+
+cat  tmpwatch
+
+flags=-umc
+
+/usr/sbin/tmpwatch “$flags” -x /tmp/.X11-unix -x /tmp/.XIM-unix \
+
+-x /tmp/.font-unix -x /tmp/.ICE-unix -x /tmp/.Test-unix 240 /tmp
+
+/usr/sbin/tmpwatch “$flags” 720 /var/tmp
+
+for d in /var/{cache/man,catman}/{cat?,X11R6/cat?,local/cat?}; do
+
+if [ -d "$d" ]; then
+
+/usr/sbin/tmpwatch “$flags” -f 720 “$d”
+
+fi
+
+done
+
+可以看到调用了一个叫tmpwatch 的脚本，并且，我们可以看到传入参数中 对我们有意义的有 /tmp  240
+
+然后我们 man tmpwatch
+
+SYNOPSIS
+
+tmpwatch [-u|-m|-c] [-MUadfqstvx] [--verbose] [--force] [--all]
+
+[--nodirs] [--nosymlinks] [--test] [--fuser] [--quiet]
+
+[--atime|--mtime|--ctime] [--dirmtime] [--exclude <path>]
+
+[--exclude-user <user>] <hours> <dirs>
+
+有一个 hours
+
+240 = 10*24 整好是10天
+
+具体原因是 tmp是一个特殊的文件夹，系统会自动清理，所以大家最好不要把文件放到这个地方，被清理了就不好了
