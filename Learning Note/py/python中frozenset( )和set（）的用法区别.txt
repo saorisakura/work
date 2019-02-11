@@ -1,0 +1,265 @@
+python中frozenset( )和set（）的用法区别
+
+1. Python frozenset() 函数
+frozenset() 返回一个冻结的集合，冻结后集合不能再添加或删除任何元素。
+
+frozenset() 函数语法：
+
+class frozenset([iterable]) 
+iterable – 可迭代的对象，比如列表、字典、元组等等 
+返回新的 frozenset 对象，如果不提供任何参数，默认会生成空集合。
+
+示例：
+
+>>> a = frozenset(range(10))     # 生成一个新的不可变集合
+>>> a
+frozenset([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+>>> b = frozenset('runoob')
+>>> b
+frozenset(['b', 'r', 'u', 'o', 'n'])
+
+2. set(可变集合)与frozenset(不可变集合)的区别
+set无序排序且不重复，是可变的，有add（），remove（）等方法。既然是可变的，所以它不存在哈希值。基本功能包括关系测试和消除重复元素. 集合对象还支持union(联合), intersection(交集),difference(差集)和sysmmetric difference(对称差集)等数学运算。不支持索引、切片等序列操作，但仍支持成员关系运算符in-not in、推导式等操作。
+
+frozenset是冻结的集合，它是不可变的，存在哈希值，好处是它可以作为字典的key，也可以作为其它集合的元素。缺点是一旦创建便不能更改，没有add，remove方法。
+
+2.1 集合创建的区别：
+set()和 frozenset()分别用来生成可变和不可变的集合。如果不提供任何参数，默认会生成空集合。如果提供一个参数，则该参数必须是可迭代的，即，一个序列，或迭代器，或支持迭代的一个对象。如：set()函数只能接受迭代器(String、Tuple、List、Dict、set)作为参数。
+
+set()创建集合
+>>> s = set([1,2,3])
+>>> s
+set([1, 2, 3])
+>>> type(s)
+<type 'set'>
+>>> s2 = set('jmilk')
+>>> s2
+set(['i', 'k', 'j', 'm', 'l'])
+>>> 
+
+frozenset()创建集合
+>>> t=frozenset('bookshop')
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> 
+
+2.2 更新可变集合的区别：
+set（）用各种集合内建的方法和操作符添加和删除集合的成员，只有可变集合能被修改。而对于frozenset()函数试图修改不可变集合会引发异常。 
+- set（）
+
+>>> s=set('cheeseshop')
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> s.add('z')  #添加
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's', 'z'])
+>>> s.update()
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's', 'z'])
+>>> s.update('pypi') #添加
+>>> s
+set(['c', 'e', 'i', 'h', 'o', 'p', 's', 'y', 'z'])
+>>> s.remove('z') #删除
+>>> s
+set(['c', 'e', 'i', 'h', 'o', 'p', 's', 'y'])
+>>> s =s-set('pypi')#删除
+>>> s
+set(['h', 'c', 'e', 's', 'o'])
+>>> del s #删除集合
+>>> s
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 's' is not defined
+>>> 
+
+frozenset（）
+>>> t=frozenset('bookshop')
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> t.add('z')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'frozenset' object has no attribute 'add'
+>>> 
+
+2.3 成员关系 (in, not in)的区别：
+set()和 frozenset()在这点上用法相同
+
+set（）
+>>> s=set('cheeseshop')
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> 'k' in s
+False
+>>> 'h' in s
+True
+
+frozenset()
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> 'k' in t
+True
+>>> 'c' in t
+False
+
+2.4 集合等价/不等价的区别：
+>>> s=set('cheeseshop')
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t=frozenset('cheeseshop')
+>>> t
+frozenset(['c', 'e', 'h', 'o', 'p', 's'])
+>>> s == t
+True
+>>> set('posh') == set('shop')
+True
+>>> 
+
+2.5 子集/超集的区别：
+>>> set('posh') == set('shop')
+True
+>>> set('shop') < set('cheeseshop')
+True
+>>> frozenset('shop') < set('cheeseshop')
+True
+>>> set('bookshop') >= set('shop')
+True
+>>> frozenset('bookshop') >= set('shop')
+True
+>>> 
+
+2.6 遍历访问集合中的值的无别：
+这里可变集合set（）和非可变集合frozenset（）都支持
+
+>>> s=set('cheeseshop')
+>>> for i in s:
+...     print i
+... 
+c
+e
+h
+o
+p
+s
+>>> t=frozenset('bookshop')
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> for i in t:
+...     print i
+... 
+b
+h
+k
+o
+p
+s
+>>> 
+
+2.7 集合类型操作符的区别：
+这里set（）和frozenset（）相同
+
+联合( | )
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> t_1=set('bhm')
+>>> s_1=frozenset('cer')
+>>> t_1
+set(['h', 'b', 'm'])
+>>> s_1
+frozenset(['c', 'r', 'e'])
+>>> s|s_1
+set(['p', 'c', 'r', 'e', 'h', 's', 'o'])
+>>> t|t_1
+frozenset(['p', 's', 'b', 'h', 'k', 'm', 'o'])
+>>> s |t
+set(['c', 'b', 'e', 'h', 'k', 'o', 'p', 's'])
+>>> 
+
+交集（&）
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> s&t
+set(['h', 's', 'o', 'p'])
+>>> 
+
+差补/相对补集( – )
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> s-t  
+set(['c', 'e'])  # 该集合中的元素，只属于集合 s，而不属于集合 t
+>>> 
+
+对称差分( ^ ) 
+对称差分是集合的 XOR(又称”异或 “)。得到的集合只能是属于集合 s 或者集合 t的成员，不能同时属于两个集合。
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> s^t
+set(['b', 'e', 'k', 'c'])
+>>> 
+
+混合集合类型操作 
+上面的示例中，左边的 s 是可变集合，而右边的 t 是一个不可变集合. 注意上面使用集合操作运算符所产生的仍然是可变集合,但是如果左右操作数的顺序反过来，结果就不一样了。
+如果左右两个操作数的类型相同， 既都是可变集合或不可变集合, 则所产生的结果类型是相同的，但如果左右两个操作数的类型不相同(左操作数是 set，右操作数是 frozenset，或相反情况)，则所产生的结果类型与左操作数的类型相同
+
+>>> t
+frozenset(['b', 'h', 'k', 'o', 'p', 's'])
+>>> s
+set(['c', 'e', 'h', 'o', 'p', 's'])
+>>> t|s
+frozenset(['c', 'b', 'e', 'h', 'k', 'o', 'p', 's'])
+>>> s|t
+set(['c', 'b', 'e', 'h', 'k', 'o', 'p', 's'])
+>>> t-s
+frozenset(['k', 'b'])
+>>> t^s
+frozenset(['c', 'b', 'e', 'k'])
+>>> 
+
+2.8 可变集合set（）的方法
+s.update(t)：用 t 中的元素修改 s, 即s 现在包含 s 或 t 的成员 
+s.intersection_update(t)： s 中的成员是共同属于 s 和 t 的元素。 
+s.difference_update(t)： s 中的成员是属于 s 但不包含在 t 中的元素 
+s.symmetric_difference_update(t) ：s 中的成员更新为那些包含在 s 或 t 中，但不是s和t 共有的元素 
+s.add(obj)：在集合 s 中添加对象 obj 
+s.remove(obj)：从集合 s 中删除对象 obj，如果 obj 不是集合 s 中的元素(obj not in s)，将引发 KeyError 错误。 
+s.discard(obj)：如果 obj 是集合 s 中的元素，从集合 s 中删除对象 obj 
+s.pop() ：删除集合 s 中的任意一个对象，并返回它 
+s.clear() ：删除集合 s 中的所有元素
+
+2.9 集合类型操作符、函数和方法
+set（）和frozenset（）都适用
+len(s) ：集合基数: 集合 s 中元素的个数 
+set([obj]) ：可变集合工厂函数; obj 必须是支持迭代的，由 obj 中的元素创建集合，否则创建一个空集合 
+frozenset([obj])：不可变集合工厂函数; 执行方式和 set()方法相同，但它返回的是不可变集合 
+obj in s 成员测试：obj 是 s 中的一个元素吗? 
+obj not in s 非成员测试：obj 不是 s 中的一个元素吗? 
+s == t 等价测试: 测试 s 和 t 是否具有相同的元素? 
+s != t 不等价测试: 与==相反 
+s < t (严格意义上)子集测试： s != t 而且 s 中 所 有 的元素都是 t 的成员 
+s.issubset(t) s <= t 子集测试(允许不严格意义上的子集): s 中所有的元素都是 t 的成员 
+s > t (严格意义上)超集测试: s != t 而且 t 中所有的元素都是 s 的成员 
+s.issuperset(t) s >= t 超集测试(允许不严格意义上的超集): t 中所有的元素 都是 s 的成员 
+s.union(t) s | t 合并操作： s 或 t 中的元素 
+s.intersec- tion(t) s & t 交集操作： s 和 t 中的元素 
+s.difference(t) s - t 差分操作: s 中的元素，而不是 t 中的元素 
+s.symmetric_difference(t)s ^ t 对称差分操作：s 或 t 中的元素，但不是 s 和 t 共有的元素 
+s.copy() 复制操作:返回 s 的(浅复制)副本
+
+适用于set（）集合
+s.update(t) s |= t (Union) 修改操作: 将 t 中的成员添加 s。 
+s.intersection_update(t) s &= t 交集修改操作: s 中仅包括 s 和 t 中共有的成员。 
+s.difference_update(t) s -= t 差修改操作: s 中包括仅属于 s 但不属于 t 的成员。 
+s.symmetric_difference_update(t) s ^= t 对称差分修改操作: s 中包括仅属于 s 或仅属于 t 的成员。 
+s.add(obj) 加操作: 将 obj 添加到 s。 
+s.remove(obj) 删除操作: 将 obj 从 s 中删除；如果 s 中不存在obj,将引发 KeyError。 
+s.discard(obj) 丢弃操作: remove() 的 友 好 版 本 - 如果 s 中存在 obj,从 s 中删除它。 
+s.pop() Pop 操作: 移除并返回 s 中的任意一个元素。 
+s.clear() 清除操作: 移除 s 中的所有元素。
