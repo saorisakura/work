@@ -1,0 +1,180 @@
+怎样才能写出 Pythonic 的代码？
+
+本来我觉得这个问题很简单，没有回答的必要，但是，到目前我也没有看到一个很好的解释Pythonic的答案。所以，我准备撸袖子自己上。
+
+首先，我们要回答什么是Pythonic？
+
+我们先来看一下，Python程序员每天津津乐道的the zen of python（Python之禅）
+>>> import this
+The Zen of Python, by Tim Peters
+
+Beautiful is better than ugly.
+Explicit is better than implicit.
+Simple is better than complex.
+Complex is better than complicated.
+Flat is better than nested.
+Sparse is better than dense.
+Readability counts.
+Special cases aren't special enough to break the rules.
+Although practicality beats purity.
+Errors should never pass silently.
+Unless explicitly silenced.
+In the face of ambiguity, refuse the temptation to guess.
+There should be one-- and preferably only one --obvious way to do it.
+Although that way may not be obvious at first unless you're Dutch.
+Now is better than never.
+Although never is often better than *right* now.
+If the implementation is hard to explain, it's a bad idea.
+If the implementation is easy to explain, it may be a good idea.
+Namespaces are one honking great idea -- let's do more of those!
+我简单翻译几句：
+优美胜于丑陋
+明了胜于晦涩
+简介胜于复杂
+……
+可读性很重要
+……
+
+难道只有我一个人觉得这是正确的废话吗？难道只有我一个人觉得这是正确的废话吗？难道只有我一个人觉得这是正确的废话吗？
+
+它只告诉你什么是好，什么是不好，但是，却没有告诉你通往成功彼岸的方法。从这个角度来说，我更推荐：
+
+
+
+Pythonic一直以来都是只能意会，不能言传的东西，然而，为了帮助新同学理解，我准备给出确切的定义：Pythonic就是以Python的方式写出简洁优美的代码！
+
+首先，不管用什么语言，你都应该努力写出简洁优美的代码，如果不能，那我推荐你看看《重构》和《代码整洁之道》，虽然这两本书使用的是java语言，但是，并不影响作者要传递的思想。
+
+比如，我们知道，Python里面的字符串、列表和元组，都称之为序列，序列支持索引操作和切片操作，切片操作可以指定起点、终点和步长，步长也可以为负数。我们看下面的切片：
+L = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+L[-2::-2]
+L[-2:2:-2]
+L[2:2:-2]
+谁能快速的回答我上面几个切片的答案？没有人！所以，Python也有很多语法，但是，并不能乱用。就这个例子来说：
+在同一个切片操作中，不要同时使用start、end和stride
+尽量使用stride为正数，且不要带start和end索引的切割操作
+在你已经能够写出简洁优美的代码的前提下，要写出Pythonic的代码，还需要对Python的语言有比较好的了解。我举几个在Python里面与在C、C++和Java里面有显著差别的例子。
+
+
+
+1. 交换两个数字
+在其他语言里面
+t = a
+a = b
+b = t
+在Python语言里面
+a, b = b, a
+
+2. 列表推导
+
+列表推导是C、C++、Java里面没有的语法，但是，是Python里面使用非常广泛，是特别推荐的用法。
+
+与列表推导对应的，还有集合推导和字典推导。我们来演示一下。
+列表：30~40 所有偶数的平方
+[ i*i for i in range(30, 41) if i% 2 == 0 ]
+集合：1~20所有奇数的平方的集合
+{ i*i for i in range(1, 21) if i % 2 != 0 }
+字典：30~40 所有奇数的平方
+{ i:i*i for i in range(30, 40) if i% 2 != 0 }
+
+再举两个实用的例子：
+当前用户home目录下所有的文件列表
+[ item for item in os.listdir(os.path.expanduser('~')) if os.path.isfile(item) ]
+当前用户home目录下所有的目录列表
+[ item for item in os.listdir(os.path.expanduser('~')) if os.path.isdir(item) ]
+当前用户home目录下所有目录的目录名到绝对路径之间的字典
+{ item: os.path.realpath(item) for item in os.listdir(os.path.expanduser('~')) if os.path.isdir(item) }
+
+3. 上下文管理器
+
+我们要打开文件进行处理，在处理文件过程中可能会出错，但是，我们需要在处理文件出错的情况下，也顺利关闭文件。
+
+Java风格/C++风格的Python代码：
+myfile= open(r'C:\misc\data.txt')
+try:
+    for line in myfile:
+        ...use line here...
+finally:
+    myfile.close()
+
+Pythonic的代码：
+with open(r'C:\misc\data.txt') as myfile:
+    for line in myfile:
+        ...use line here...
+这里要说的是，上下文管理器是Python里面比较推荐的方式，如果用try...finally而不用with，就会被认为不够Pythonic。此外，上下文管理器还可以应用于锁和其他很多类似必须需要关闭的地方。
+
+4. 装饰器
+
+装饰器并不是Python特有的，只是，在Python里面应用非常广泛，我们来看一个例子。
+
+考虑这样一组函数，它们在被调用时需要对某些参数进行检查，在本例中，需要对用户名进行检查，以判断用户是否有相应的权限进行某些操作。
+class Store(object):
+    def get_food(self, username, food):
+        if username != 'admin':
+            raise Exception("This user is not allowed to get food")
+        return self.storage.get(food)
+
+    def put_food(self, username, food):
+        if username != 'admin':
+            raise Exception("This user is not allowed to put food")
+        self.storage.put(food)
+显然，代码有重复，作为一个有追求的工程师，我们严格遵守DRY(Don’t repeat yourself)原则，于是，代码被改写成了这样：
+def check_is_admin(username):
+    if username != 'admin':
+        raise Exception("This user is not allowed to get food")
+
+class Store(object):
+    def get_food(self, username, food):
+        check_is_admin(username)
+        return self.storage.get(food)
+
+    def put_food(self, username, food):
+        check_is_admin(username)
+        return self.storage.put(food)
+现在代码整洁一点了，但是，有装饰器能够做的更好：
+def check_is_admin(f):
+    def wrapper(*args, **kwargs):
+        if kwargs.get('username') != 'admin':
+            raise Exception("This user is not allowed to get food")
+        return f(*arg, **kargs)
+    return wrapper
+
+class Storage(object):
+    @check_is_admin
+    def get_food(self, username, food):
+        return self.storage.get(food)
+
+    @check_is_admin
+    def put_food(self, username, food):
+        return storage.put(food)
+在这里，我们使用装饰器，就可以把参数检查和业务逻辑完全分离开来，让代码显得更加清晰。这也是比较Pythonic的代码。
+
+5. 动态类型语言
+
+我们再来看一个例子，该例子充分演示了动态类型语言与静态类型语言编程之间的差异。
+
+在这个例子中，我们会收到很多不同的请求，对于不同的请求，调用不同的请求处理函数，这个需求如此常见，相信大家应该见过这样的代码：
+if (cmd == 'a')
+    processA()
+else if (cmd == 'b')
+    processB()
+else if (cmd == 'c')
+    processC()
+else if (cmd == 'd')
+    processD()
+……
+else
+    raise NotImplementException
+在Python里面，我们可以先判断一个类，有没有这个函数，如果有，则获取这个函数，然后再调用。所以，我们的代码可以写成这样：
+class A:
+    def fetch_func(self, action_name):
+        func= getattr(self, action_name, None)
+        return func
+
+    def execute(self, action, msg):
+        func= self.fetch_func(action)
+        if func is None:
+            return False, "Action not found"
+        return func(action, msg)
+
+结论：所谓的Pythonic，其实并没有大家想的那么神秘，最终目的都是写出简洁优美的代码。写出简洁优美代码的思想在各个语言中都是一样的。如果你用其他编程语言写不出简洁优美的代码，那么，你也没办法用Python写出简介优美的代码。如果你能用其他语言写出很好的代码，那么，还是需要了解Python这门语言特有的一些语法和语言特性，充分利用Python里面比较好语言特性。这样，就能够写出Pythonic的代码了。

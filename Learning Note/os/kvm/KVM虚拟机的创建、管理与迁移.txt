@@ -1,0 +1,291 @@
+KVM虚拟机的创建、管理与迁移
+
+kvm虚拟机管理
+一、环境
+role         hostname    ip                  OS
+kvm_server   target      192.168.32.40/24    rhel6.0_x64
+vir_guest1   node4       192.168.32.34/24    rhel5.5_i386
+vir_guest2   node5       192.168.32.35/24    rhel5.5_i386
+manager      manager     192.168.32.33/24    rhel5.5_i386
+ESXi         ESXi        192.168.2.251/24    ESXi 3.5
+二、安裝kvm
+[root@target ~]# yum install -y qemu-kvm.x86_64 qemu-kvm-tools.x86_64  #安装kvm内核
+[root@target ~]# yum install libvirt.x86_64 libvirt-cim.x86_64 libvirt-client.x86_64 libvirt-java.noarch  libvirt-python.x86_64 #安装virt管理工具
+[root@target ~]# modprobe kvm         #加载kvm内核
+[root@target ~]# modprobe kvm-intel   #intel cpu加载kvm-intel内核，要支持全虚拟化，必须开启；要求cpu支持，通过bios可设置。
+[root@target ~]# modprobe kvm-amd     #amd cpu加载kvm-intel
+
+[root@target ~]# modprobe -ls | grep kvm   #查看内核是否开启
+kernel/arch/x86/kvm/kvm.ko
+kernel/arch/x86/kvm/kvm-intel.ko
+kernel/arch/x86/kvm/kvm-amd.ko
+[root@target ~]# modprobe -ls | grep kvm-intel
+kernel/arch/x86/kvm/kvm-intel.ko
+
+三、安装guest虚拟机
+1、直接通过virt-manager安装、管理虚拟机（略）
+
+2、通过命令行安装guest虚拟机
+[root@target ~]# yum install virt-viewer   #开启图形控制台安装虚拟客户机需要，
+[root@target ~]# virt-install \            #安装选项可用virt-install --help查看
+--name node4 \           #虚拟机名
+--ram=1024 \             #分配内存大小，MB
+--arch=x86_64 \          #模拟的CPU 构架
+--vcpus=1 \              #配置虚拟机的vcpu 数目
+--check-cpu \            #检查确定vcpu是否超过物理 CPU数目，如果超过则发出警告。
+--os-type=linux \        #要安装的操作系统类型，例如：'linux'、'unix'、'windows'
+--os-variant=rhel5 \     #操作系统版本，如：'fedora6', 'rhel5', 'solaris10', 'win2k'
+--disk path=/virhost/node7.img,device=disk,bus=virtio,size=20,sparse=true \   #虚拟机所用磁盘或镜像文件，size大小G
+--bridge=br0 \           #指定网络，采用透明网桥
+--noautoconsole \        #不自动开启控制台
+--pxe                    #网络安装
+
+四、利用virsh对虚拟机管理
+1、开关机
+[root@target ~]# virsh start node4      #开机
+[root@target ~]# virsh create /etc/libvirt/qemu/node4.xml #直接通过主机配置文档启动主机
+[root@target ~]# virsh shutdown node4   #关机
+[root@target ~]# virsh destroy node4    #强制关闭电源
+[root@target ~]# virsh list --all       #查看虚拟机状态         
+ Id 名称               状态
+----------------------------------
+ 18 node4                running
+  - node5                关闭
+  - win8                 关闭
+
+2、添加删除虚拟机
+[root@target ~]# virsh define /etc/libvirt/qemu/node5.xml   #根据主机配置文档添加虚拟机
+[root@target ~]# virsh list --all        #node5已经添加
+ Id 名称               状态
+----------------------------------
+ 18 node4                running
+  - node5                关闭
+  - win8                 关闭
+ 
+[root@target ~]# virsh undefine node5     #移除虚拟机
+[root@target ~]# ls /etc/libvirt/qemu
+networks  node4.xml  win8.xml
+[root@target ~]# virsh list --all         #node5已经被移除
+ Id 名称               状态
+----------------------------------
+ 18 node4                running
+  - win8                 关闭
+
+3、远程管理虚拟机（qemu+ssh连接）
+[root@target ~]# yum install virt-viewer
+[root@target ~]# export DISPLAY=192.168.40.18:0.0
+[root@target ~]# virt-viewer -c qemu///system node4                          #本地管理虚拟机，system：获取system权限，注意qemu后是三个/
+[root@manager ~]# virt-viewer -c qemu+ssh://root@192.168.32.40/system node4  #远程linux通过virt-viewer+ssh管理虚拟机
+Xlib:  extension "RANDR" missing on display "192.168.40.18:0.0".
+root@192.168.32.40's password:
+root@192.168.32.40's password:
+#会弹出virt-viwer的gtk管理界面
+
+4、使用已存在的虚拟机配置文档安裝新的虚拟机
+[root@target ~]# qemu-img create -f qcow2 /virhost/kvm_node/node6.img 20G
+#为新建虚拟机生产磁盘镜像文件
+
+[root@target ~]# virsh list
+ Id 名称               状态
+----------------------------------
+ 18 node4                running
+
+[root@target ~]# virsh dumpxml node4 >/etc/libvirt/qemu/node6.xml
+#导出虚拟机node6的硬件配置信息为/etc/libvirt/qemu/node6.xml
+
+[root@target ~]# vim /etc/libvirt/qemu/node6.xml 
+<domain type='kvm' id='20'>    #修改node6的id号
+  <name>node6</name>           #虚拟机node6的name
+  <uuid>4b7e91eb-6521-c2c6-cc64-c1ba72707fc7</uuid>  #uuid必须修改，否则会和node4的冲突
+  <memory>524288</memory>
+  <currentMemory>524288</currentMemory>
+  <vcpu>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='rhel5.4.0'>hvm</type>
+    <boot dev='network'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2' cache='none'/>
+      <source file='/virhost/node4.img'/>         #指定新虚拟机的硬盘文件
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <interface type='bridge'>
+      <mac address='54:52:00:69:d5:c7'/>
+      <source bridge='br0'/>
+      <target dev='vnet0'/>
+      <model type='virtio'/>
+    </interface>
+    <interface type='bridge'>
+      <mac address='54:52:00:69:d5:d7'/>
+      <source bridge='br0'/>
+      <target dev='vnet1'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'>
+      <source path='/dev/pts/4'/>
+      <target port='0'/>
+    </serial>
+    <console type='pty' tty='/dev/pts/4'>
+      <source path='/dev/pts/4'/>
+      <target port='0'/>
+    </console>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='vnc' port='5900' autoport='yes' keymap='en-us'/>
+  </devices>
+</domain>
+
+[root@target ~]# virsh define /etc/libvirt/qemu/node6.xml
+#使用虚拟描述文档建立虚拟机，可用virsh edit node6修改node6的配置文件
+
+[root@target ~]# virsh start node6
+#启动虚拟机
+
+5 为虚拟机开启vnc
+[root@target ~]# virsh edit node4     #编辑node4的配置文件；不建议直接通过vim node4.xml修改。
+<graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1' keymap='en-us'/>
+   #port='-1' autoport='yes'：port自动分配，监听回环网络（virt-manager管理需要listen='127.0.0.1'）,无密码
+改为
+<graphics type='vnc' port='5904' autoport='no' listen='0.0.0.0' keymap='en-us' passwd='xiaobai'/>
+   #固定vnc管理端口5904，不自动分配，vnc密码xiaobai，监听所有网络
+
+2. 远程vnc访问地址：192.168.32.40:5904
+
+五、存储池和存储卷的管理
+1.创建 KVM主机存储池
+1).创建基于文件夹（目录）的存储池
+[root@target virhost]# virsh pool-define-as vmware_pool --type dir --target /virhost/vmware
+#定义存储池vmware_pool
+或
+[root@target virhost]# virsh pool-create-as --name vmware_pool --type dir --target /virhost/vmware    
+#创建存储池vmware_pool，类型为文件目录,/virhost/vmware，与pool-define-as结果一样
+
+2).创建基于文件系统的存储池
+[root@target virhost]#virsh pool-define-as --name vmware_pool --type fs --source-dev /dev/vg_target/LogVol02 --source-format ext4 --target /virhost/vmware
+或
+[root@target virhost]#virsh pool-create-as --name vmware_pool --type fs --source-dev /dev/vg_target/LogVol02 --source-format ext4 --target /virhost/vmware
+
+3).查看存储池信息
+[root@target virhost]# virsh pool-info vmware_pool  #查看存储域（池）信息
+名称：       vmware_pool
+UUID:           2e9ff708-241f-fd7b-3b57-25df273a55db
+状态：       running
+Persistent:     no
+自动启动： no
+容量：       98.40 GB
+分配：       18.39 GB
+可用：       80.01 GB
+4).启动存储池
+[root@target virhost]# virsh pool-start vmware_pool   #启动存储池
+[root@target virhost]# virsh pool-list
+名称               状态     自动开始
+-----------------------------------------
+default              活动     yes      
+virhost              活动     yes      
+vmware_pool          活动     no
+5)销毁存储域,取消存储池
+[root@target virhost]# virsh pool-destroy vmware_pool  #销毁存储池
+[root@target virhost]# virsh pool-list --all
+名称               状态     自动开始
+-----------------------------------------
+default              活动     yes      
+virhost              活动     yes      
+vmware_pool          不活跃  no         
+[root@target virhost]# virsh pool-undefine vmware_pool  #取消存储池的定义
+[root@target virhost]# virsh pool-list --all          
+名称               状态     自动开始
+-----------------------------------------
+default              活动     yes      
+virhost              活动     yes 
+
+2.创建了存储池后，就可以创建一个卷，这个卷是用来做虚拟机的硬盘
+[root@target virhost]# virsh vol-create-as --pool vmware_pool --name node6.img --capacity 10G --allocation 1G --format qcow2
+#创建卷 node6.img,所在存储池为vmware_pool，容量10G，初始分配1G，文件格式类型qcow2
+
+[root@target virhost]# virsh vol-info /virhost/vmware/node6.img  #查看卷信息
+名称：       node6.img
+类型：       文件
+容量：       10.00 GB
+分配：       136.00 KB
+
+3.在存储卷上安装虚拟主机
+[root@target virhost]#virt-install --connect qemu:///system \
+-n node7 \
+-r 512 \
+-f /virhost/vmware/node7.img \
+--vnc \
+--os-type=linux \
+--os-variant=rhel6  \
+--vcpus=1 \
+--network bridge=br0 \
+-c /mnt/rhel-server-6.0-x86_64-dvd.iso
+
+六、虚拟机的迁移（vmware 2 kvm）
+1.安装软件
+[root@target ~]# yum install -y virt-v2v.x86_64
+[root@target ~]# rpm -ivh libguestfs-winsupport-1.0-7.el6.x86_64.rpm  virtio-win-1.2.0-1.el6.noarch.rpm 
+#虚拟机为windows时需要libguestfs-winsupport 包来支持 NTFS 文件系统和 virtio-win 包来支持 Windows para-virtualized 存储和网络设备驱动
+
+2.创建 KVM 主机存储域（略）
+virt-v2v 在迁移虚拟机的过程中，需要拷贝被迁移虚拟机到 KVM 主机预先定义的存储池中。
+
+3.创建 KVM 主机网络接口（略）
+虚拟机在迁移之后将连接 KVM 主机网络， 因此主机必须有一个与之相匹配的网络接口，比如说网桥。
+
+4.在 KVM 主机上创建或修改 $HOME/.netrc 文件，添加 VMware ESXi 服务器的用户名和密码。
+[root@target ~]# cat ~/.netrc
+machine 192.168.2.251 login root password xxxxxx
+[root@target ~]# chmod 0600 ~/.netrc
+
+5.Vmware ESXi到KVM的迁移
+[root@target ~]# virt-v2v -ic esx://192.168.2.251/?no_verify=1 -op virhost -b br0 ipserver  
+** HEAD https://192.168.2.251/folder/tserver21/RHEL4.6-flat.vmdk?dcPath=ha-datacenter&dsName=ESX35-bak%3Astorage1 ==> 401 Unauthorized
+** HEAD https://192.168.2.251/folder/tserver21/RHEL4.6-flat.vmdk?dcPath=ha-datacenter&dsName=ESX35-bak%3Astorage1 ==> 200 OK
+** GET https://192.168.2.251/folder/tserver21/RHEL4.6-flat.vmdk?dcPath=ha-datacenter&dsName=ESX35-bak%3Astorage1 ==> 200 OK (2084s)
+unknown filesystem /dev/hda
+unknown filesystem /dev/fd0
+virt-v2v: Installation failed because the following files referenced in the configuration file are required, but missing: rhel/4/kernel-smp-2.6.9-89.EL.i686.rpm
+virt-v2v: 非 virtio 驱动程序配置的 tserver21
+
+#所有选项可通过配置文件/etc/virt-v2v.conf来指定
+#-op：指定用于转换后的存储域（pool)，virhost
+#-b：指定网络为网桥br0
+#-ic：指定要转换的源地址
+
+[root@target kvm_node]# virsh list --all
+ Id 名称               状态
+----------------------------------
+  1 node4                running
+  - node5                关闭
+  - tserver21            关闭
+  - win8                 关闭
+[root@target kvm_node]# virsh start tserver21
+
+6.KVM到KVM迁移
+[root@target kvm_node]# virt-v2v -ic qemu+ssh://192.168.32.179/system -op virhost -b br0 node6
+root@192.168.32.179's password:
+root@192.168.32.179's password:
+unknown filesystem label SWAP-vda3
+virt-v2v: The connected hypervisor does not support a machine type of rhel5.4.0. It will be set to the current default.
+virt-v2v: virtio 驱动程序配置的 node6
+
+[root@target kvm_node]# virsh list --all
+ Id 名称               状态
+----------------------------------
+  1 node4                running
+  - node5                关闭
+  - node6                关闭
+  - tserver21            关闭
+  - win8                 关闭
+
+[root@target kvm_node]# virsh start node6
