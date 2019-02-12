@@ -1,0 +1,49 @@
+size_t 编辑 讨论
+size_t 类型定义在cstddef头文件中，该文件是C标准库的头文件stddef.h的C++版。它是一个与机器相关的unsigned类型，其大小足以保证存储内存中对象的大小。
+例如：bitset的size操作返回bitset对象中二进制位中1的个数，返回值类型是size_t。
+例如：在用下标访问元素时，vector使用vector::size_type作为下标类型，而数组下标的正确类型则是size_t。vector使用的下标实际也是size_t，源码是typedef size_t size_type。
+中文名 size_t 外文名 unsigned int 定    义 在cstddef头文件中 64位系统中 long unsigned int
+目录
+1 来源
+2 使用
+3 实现方式
+4 详细解释
+5 示例代码
+来源编辑
+size_t是标准C库中定义的，应为unsigned int，在64位系统中为 long unsigned int。
+数据类型"socklen_t"和int应该具有相同的长度，否则就会破坏 BSD套接字层的填充。POSIX开始的时候用的是size_t, Linus Torvalds(他希望有更多的人,但显然不是很多) 努力向他们解释使用size_t是完全错误的，因为在64位结构中 size_t和int的长度是不一样的，而这个参数的长度必须和int一致，因为这是BSD套接字接口标准。最终POSIX的那帮家伙找到了解决的办法，那就是创造了一个新的类型"socklen_t"。Linus Torvalds说这是由于他们发现了自己的错误但又不好意思向大家伙儿承认，所以另外创造了一个新的数据类型 。
+使用编辑
+一个基本的无符号整数的C / C + +类型， 它是sizeof操作符返回的结果类型， 该类型的大小可选择。因此，它可以存储在理论上是可能的任何类型的数组的最大大小。 换句话说，一个指针可以被安全地放进为size_t类型（一个例外是类的函数指针，但是这是一个特殊的情况下）。 size_t类型通常用于循环、数组索引、大小的存储和地址运算。 虽然size_t可以存储一个指针，它的目的是更好地使用另一个unsinged整数类型uintptr_t形式。 在某些情况下，使用size_t类型是更为有效，比习惯性使用无符号类型的程序会更安全。
+size_t是在基于无符号整数memsize类型的C / C + +的标准库中定义的。 C语言中，此类型位于头文件stddef.h中，而在C++中，则位于cstddef中。
+[1] 
+实现方式编辑
+在C++中，设计 size_t 就是为了适应多个平台的 。size_t的引入增强了程序在不同平台上的可移植性。size_t是针对系统定制的一种数据类型，一般是整型，因为C/C++标准只定义一最低的位数，而不是必需的固定位数。而且在内存里，对数的高位对齐存储还是低位对齐存储各系统都不一样。为了提高代码的可移植性，就有必要定义这样的数据类型。一般这种类型都会定义到它具体占几位内存等。当然，有些是编译器或系统已经给定义好的。经测试发现，在32位系统中size_t是4字节的，而在64位系统中，size_t是8字节的，这样利用该类型可以增强程序的可移植性。
+详细解释编辑
+size_t在C语言中就有了。
+它是一种“整型”类型，里面保存的是一个整数，就像int, long那样。这种整数用来记录一个大小(size)。size_t的全称应该是size type，就是说“一种用来记录大小的数据类型”。
+通常我们用sizeof(XXX)操作，这个操作所得到的结果就是size_t类型。
+因为size_t类型的数据其实是保存了一个整数，所以它也可以做加减乘除，也可以转化为int并赋值给int类型的变量。
+类似的还有wchar_t, ptrdiff_t。
+wchar_t就是wide char type，“一种用来记录一个宽字符的数据类型”。
+ptrdiff_t就是pointer difference type，“一种用来记录两个指针之间的距离的数据类型”。
+通常，size_t和ptrdiff_t都是用typedef来实现的。你可能在某个头文件里面找到类似的语句：
+typedef unsigned int size_t;
+而wchar_t则稍有不同。在一些旧的编译器中，wchar_t也可能是用typedef来实现，但是新的标准中wchar_t已经是C/C++语言的关键字，wchar_t类型的地位已经和char, int的地位等同了。
+在标准C/C++的语法中，只有int float char bool等基本的数据类型，至于size_t,或size_type都是以后的编程人员为了方便记忆所定义的一些便于理解的由基本数据类型的变体类型。
+例如：typedef int size_t;定义了size_t为整型。
+示例代码编辑
+
+int i;//定义一个int类型的变量i
+size_t size=sizeof(i);//用sizeof操作得到变量i的类型的大小
+//这是一个size_t类型的值
+//可以用来对一个size_t类型的变量做初始化
+i=(int)size;//size_t类型的值可以转化为int类型的值
+char c='a';//c保存了字符a，占一个字节
+wchar_t wc=L'a';//wc保存了宽字符a，占两个字节
+//注意'a'表示字符a，L'a'表示宽字符a
+int arr[]={1,2,3,4,5};//定义一个数组
+int *p1=&arr[0];//取得数组中元素的地址，赋值给指针
+int *p2=&arr[3];
+ptrdiff_t diff=p2-p1;//指针的减法可以计算两个指针之间相隔的元素个数
+//所得结果是一个ptrdiff_t类型
+i=(int)diff;//ptrdiff_t类型的值可以转化为int类型的值
