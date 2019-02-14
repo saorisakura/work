@@ -1,0 +1,1022 @@
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/disk
+Found 1 nodes:
+-- NODE --
+<disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" cache="none" io="native" />
+      <source file="/home/images/node3.qcow2" />
+      <target dev="vda" bus="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x07" function="0x0" />
+    </disk>
+[root@template ~]# virsh dumpxml node3|xpath /domain/interface
+No nodes found
+[root@template ~]# virsh dumpxml node3|xpath /domain/interfaces
+No nodes found
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/interface
+Found 1 nodes:
+-- NODE --
+<interface type="network">
+      <mac address="52:54:00:8e:51:0b" />
+      <source network="default" />
+      <model type="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x0" />
+    </interface>
+[root@template ~]# virt-filesystems -d node3 -l -h --extra
+Name              Type        VFS  Label  Size  Parent
+/dev/sda1         filesystem  xfs  -      500M  -
+/dev/centos/root  filesystem  xfs  -      2.6G  -
+[root@template ~]# virt-filesystems -d node3 -l -h --extra -a /dev/centos/root 
+Name              Type        VFS  Label  Size  Parent
+/dev/sdb          filesystem  xfs  -      50G   -
+/dev/sda1         filesystem  xfs  -      500M  -
+/dev/centos/root  filesystem  xfs  -      2.6G  -
+[root@template ~]# virt-filesystems -d node3 -l -h --extra -a /dev/centos/root  --parts --blkdevs
+Name              Type        VFS  Label  MBR  Size  Parent
+/dev/sdb          filesystem  xfs  -      -    50G   -
+/dev/sda1         filesystem  xfs  -      -    500M  -
+/dev/centos/root  filesystem  xfs  -      -    2.6G  -
+/dev/sda1         partition   -    -      83   500M  /dev/sda
+/dev/sda2         partition   -    -      8e   2.6G  /dev/sda
+/dev/sda          device      -    -      -    3.2G  -
+/dev/sdb          device      -    -      -    50G   -
+[root@template ~]# truncate --help
+Usage: truncate OPTION... FILE...
+Shrink or extend the size of each FILE to the specified size
+
+A FILE argument that does not exist is created.
+
+If a FILE is larger than the specified size, the extra data is lost.
+If a FILE is shorter, it is extended and the extended part (hole)
+reads as zero bytes.
+
+Mandatory arguments to long options are mandatory for short options too.
+  -c, --no-create        do not create any files
+  -o, --io-blocks        treat SIZE as number of IO blocks instead of bytes
+  -r, --reference=RFILE  base size on RFILE
+  -s, --size=SIZE        set or adjust the file size by SIZE bytes
+      --help     display this help and exit
+      --version  output version information and exit
+
+SIZE is an integer and optional unit (example: 10M is 10*1024*1024).  Units
+are K, M, G, T, P, E, Z, Y (powers of 1024) or KB, MB, ... (powers of 1000).
+
+SIZE may also be prefixed by one of the following modifying characters:
+'+' extend by, '-' reduce by, '<' at most, '>' at least,
+'/' round down to multiple of, '%' round up to multiple of.
+
+GNU coreutils online help: <http://www.gnu.org/software/coreutils/>
+For complete documentation, run: info coreutils 'truncate invocation'
+[root@template ~]# df -h
+Filesystem               Size  Used Avail Use% Mounted on
+/dev/mapper/centos-root   50G   18G   33G  36% /
+devtmpfs                 7.8G     0  7.8G   0% /dev
+tmpfs                    7.8G   16M  7.8G   1% /dev/shm
+tmpfs                    7.8G   98M  7.7G   2% /run
+tmpfs                    7.8G     0  7.8G   0% /sys/fs/cgroup
+/dev/sda1                497M  243M  254M  49% /boot
+/dev/mapper/centos-home  194G   16G  179G   8% /home
+tmpfs                    1.6G   32K  1.6G   1% /run/user/0
+/dev/sr0                 7.1G  7.1G     0 100% /run/media/root/CentOS 7 x86_64
+[root@template ~]# virsh pool-list
+ Name                 State      Autostart 
+-------------------------------------------
+ default              active     yes       
+ storage              active     yes       
+
+[root@template ~]# virsh pool-info storage
+Name:           storage
+UUID:           86f77971-4b12-48d2-b02e-195c3b3a9650
+State:          running
+Persistent:     yes
+Autostart:      yes
+Capacity:       193.48 GiB
+Allocation:     15.27 GiB
+Available:      178.21 GiB
+
+[root@template ~]# virsh pool-show storage
+error: unknown command: 'pool-show'
+[root@template ~]# virsh vol-create-as storage testvol 1G
+Vol testvol created
+
+[root@template ~]# virsh vol-list
+error: command 'vol-list' requires <pool> option
+[root@template ~]# virsh vol-list storage
+ Name                 Path                                    
+------------------------------------------------------------------------------
+ node1-vdb.qcow2      /home/images/node1-vdb.qcow2            
+ node2-vdb.qcow2      /home/images/node2-vdb.qcow2            
+ node3.qcow2          /home/images/node3.qcow2                
+ template-1-clone-1.qcow2 /home/images/template-1-clone-1.qcow2   
+ template-1-clone.qcow2 /home/images/template-1-clone.qcow2     
+ template-1.qcow2     /home/images/template-1.qcow2           
+ test_libvirt.py      /home/images/test_libvirt.py            
+ testvol              /home/images/testvol                    
+
+[root@template ~]# virsh vol-info testvol
+error: failed to get vol 'testvol', specifying --pool might help
+error: Storage volume not found: no storage vol with matching path 'testvol'
+
+[root@template ~]# virsh vol-info testvol --pool storage
+Name:           testvol
+Type:           file
+Capacity:       1.00 GiB
+Allocation:     1.00 GiB
+
+[root@template ~]# virsh vol-info node3.qcow2 --pool storage
+Name:           node3.qcow2
+Type:           file
+Capacity:       3.20 GiB
+Allocation:     1.77 GiB
+
+[root@template ~]# 
+[root@template ~]# virt-filesystems -d node3 -l -h --extra -a /dev/centos/root  --parts --blkdevs
+Name              Type        VFS  Label  MBR  Size  Parent
+/dev/sdb          filesystem  xfs  -      -    50G   -
+/dev/sda1         filesystem  xfs  -      -    500M  -
+/dev/centos/root  filesystem  xfs  -      -    2.6G  -
+/dev/sda1         partition   -    -      83   500M  /dev/sda
+/dev/sda2         partition   -    -      8e   2.6G  /dev/sda
+/dev/sda          device      -    -      -    3.2G  -
+/dev/sdb          device      -    -      -    50G   -
+[root@template ~]# virt-resize --help
+virt-resize: resize a virtual machine disk
+
+A short summary of the options is given below.  For detailed help please
+read the man page virt-resize(1).
+
+Options:
+  --align-first <never|always|auto>   Align first partition (default: auto)
+  --alignment <sectors>               Set partition alignment (default: 128 sectors)
+  --color, --colors, --colour, --colours
+                                      Use ANSI colour sequences even if not tty
+  -d, --debug                         Enable debugging messages
+  --delete <part>                     Delete partition
+  -n, --dry-run, --dryrun             Don't perform changes
+  --expand <part>                     Expand partition
+  --format <format>                   Format of input disk
+  --help                              Display brief help
+  --ignore <part>                     Ignore partition
+  --lv-expand, --LV-expand, --lvexpand, --LVexpand <lv>
+                                      Expand logical volume
+  --machine-readable                  Make output machine readable
+  --no-copy-boot-loader               Don't copy boot loader
+  --no-expand-content                 Don't expand content
+  --no-extra-partition                Don't create extra partition
+  --no-sparse                         Turn off sparse copying
+  --ntfsresize-force                  Force ntfsresize
+  --output-format <format>            Format of output disk
+  -q, --quiet                         Don't print progress messages
+  --resize <part=size>                Resize partition
+  --resize-force <part=size>          Forcefully resize partition
+  --shrink <part>                     Shrink partition
+  --unknown-filesystems <ignore|warn|error>
+                                      Behaviour on expand unknown filesystems (default: warn)
+  -V, --version                       Display version and exit
+  -v, --verbose                       Enable libguestfs debugging messages
+  -x                                  Enable tracing of libguestfs calls
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/interface
+Found 1 nodes:
+-- NODE --
+<interface type="network">
+      <mac address="52:54:00:8e:51:0b" />
+      <source network="default" />
+      <model type="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x0" />
+    </interface>
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/dicks
+No nodes found
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/disks
+No nodes found
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/disk
+Found 1 nodes:
+-- NODE --
+<disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" cache="none" io="native" />
+      <source file="/home/images/node3.qcow2" />
+      <target dev="vda" bus="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x07" function="0x0" />
+    </disk>
+[root@template ~]# virt-resize --resize /dev/sda1=+200M --expand /dev/sda2 /home/images/node3.qcow2 /home/images/testvol 
+[   0.0] Examining /home/images/node3.qcow2
+**********
+
+Summary of changes:
+
+virt-resize: warning: unknown/unavailable method for expanding the xfs 
+filesystem on /dev/sda1
+/dev/sda1: This partition will be resized from 500.0M to 700.0M.
+
+/dev/sda2: This partition will be resized from 2.6G to 4.3G.  The LVM PV on 
+/dev/sda2 will be expanded using the 'pvresize' method.
+
+**********
+[   5.1] Setting up initial partition table on /home/images/testvol
+[   5.5] Copying /dev/sda1
+$<2>◑ 22% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════════⟧ --$<2>◒ 25% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════⟧ --$<2>◐ 25% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════⟧ 00$<2>◓ 27% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════════⟧ 00$<2>◑ 29% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════⟧ 00$<2>◒ 33% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════⟧ 00$<2>◐ 37% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════⟧ 00$<2>◓ 39% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════⟧ 00$<2>◑ 41% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════⟧ 00$<2>◒ 46% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════⟧ 00$<2>◐ 56% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════⟧ 00$<2> 100% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒⟧ --:--
+[  11.7] Copying /dev/sda2
+$<2>◑  3% ⟦▒▒▒═════════════════════════════════════════════════════════════════════════════════════════⟧ --$<2>◒  4% ⟦▒▒▒═════════════════════════════════════════════════════════════════════════════════════════⟧ --$<2>◐  4% ⟦▒▒▒▒════════════════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◓  5% ⟦▒▒▒▒════════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◑  5% ⟦▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◒  6% ⟦▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════════⟧ --$<2>◐  6% ⟦▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════════⟧ --$<2>◓  6% ⟦▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════════⟧ --$<2>◑  6% ⟦▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◒  6% ⟦▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◐  6% ⟦▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◓  7% ⟦▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◑  7% ⟦▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◒  8% ⟦▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◐  8% ⟦▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◓  9% ⟦▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◑ 10% ⟦▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◒ 10% ⟦▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◐ 11% ⟦▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◓ 12% ⟦▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◑ 12% ⟦▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◒ 13% ⟦▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◐ 14% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════⟧ 01$<2>◓ 14% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◑ 15% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◒ 16% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◐ 17% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◓ 18% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════════════⟧ 00$<2>◑ 25% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════⟧ --$<2>◒ 25% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════════⟧ --$<2>◐ 26% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════⟧ --$<2>◓ 27% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════════⟧ 00$<2>◑ 28% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════════⟧ 00$<2>◒ 28% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════════⟧ 00$<2>◐ 29% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════════⟧ 00$<2>◓ 30% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════⟧ 00$<2>◑ 31% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════════⟧ 00$<2>◒ 32% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════════⟧ 00$<2>◐ 32% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════⟧ 00$<2>◓ 33% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════════⟧ 00$<2>◑ 34% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════════⟧ 00$<2>◒ 34% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════⟧ 00$<2>◐ 35% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════⟧ 00$<2>◓ 35% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════⟧ 00$<2>◑ 35% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════════⟧ 00$<2>◒ 36% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════⟧ 00$<2>◐ 36% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════⟧ 00$<2>◓ 36% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════════⟧ 00$<2>◑ 37% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════⟧ 00$<2>◒ 37% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════════════════⟧ 00$<2>◐ 38% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════⟧ 00$<2>◓ 38% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════⟧ 00$<2>◑ 39% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════⟧ 00$<2>◒ 39% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════════⟧ 00$<2>◐ 39% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════⟧ 00$<2>◓ 39% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════⟧ 00$<2>◑ 40% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════════════════⟧ 00$<2>◒ 40% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════════════════⟧ 00$<2>◐ 43% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════════════⟧ 00$<2>◓ 50% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════════⟧ 00$<2>◑ 51% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════════════⟧ 00$<2>◒ 52% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════════⟧ 00$<2>◐ 54% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════════⟧ 00$<2>◓ 55% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════════⟧ 00$<2>◑ 56% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════════⟧ 00$<2>◒ 57% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════════════════════⟧ 00$<2>◐ 59% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════════⟧ 00$<2>◓ 60% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════════════════════⟧ 00$<2>◑ 61% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════════════════════⟧ 00$<2>◒ 63% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════════⟧ 00$<2>◐ 68% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════════════⟧ 00$<2>◓ 75% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════⟧ 00$<2>◑ 75% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════════⟧ 00$<2>◒ 76% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════════⟧ 00$<2>◐ 77% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════⟧ 00$<2>◓ 77% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════════⟧ 00$<2>◑ 78% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════⟧ 00$<2>◒ 78% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════════⟧ 00$<2>◐ 80% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════════⟧ 00$<2>◓ 81% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════════⟧ 00$<2>◑ 82% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════════⟧ 00$<2>◒ 83% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════════⟧ 00$<2>◐ 83% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════════⟧ 00$<2>◓ 84% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════⟧ 00$<2>◑ 85% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════⟧ 00$<2>◒ 85% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══════════════⟧ 00$<2>◐ 86% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═════════════⟧ 00$<2>◓ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◑ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◒ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◐ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◓ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◑ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◒ 87% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════════⟧ 00$<2>◐ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◓ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◑ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◒ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◐ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◓ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◑ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◒ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◐ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◓ 88% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒═══════════⟧ 00$<2>◑ 91% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒════════⟧ 00$<2>◒ 98% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒══⟧ 00$<2> 100% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒⟧ 00:00
+[  53.3] Expanding /dev/sda2 using the 'pvresize' method
+
+Resize operation completed with no errors.  Before deleting the old disk, 
+carefully check that the resized disk boots and works correctly.   # take it carefully attention please
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/disk
+Found 1 nodes:
+-- NODE --
+<disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" cache="none" io="native" />
+      <source file="/home/images/node3.qcow2" />
+      <target dev="vda" bus="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x07" function="0x0" />
+    </disk>
+[root@template ~]# virt-filesystems -d node3 -l -h --extra -a /dev/centos/root  --parts --blkdevs
+Name              Type        VFS  Label  MBR  Size  Parent
+/dev/sdb          filesystem  xfs  -      -    50G   -
+/dev/sda1         filesystem  xfs  -      -    500M  -
+/dev/centos/root  filesystem  xfs  -      -    2.6G  -
+/dev/sda1         partition   -    -      83   500M  /dev/sda
+/dev/sda2         partition   -    -      8e   2.6G  /dev/sda
+/dev/sda          device      -    -      -    3.2G  -
+/dev/sdb          device      -    -      -    50G   -
+[root@template ~]# 
+[root@template ~]# virsh dumpxml node3|xpath /domain/devices/disk
+Found 1 nodes:
+-- NODE --
+<disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" cache="none" io="native" />
+      <source file="/home/images/node3.qcow2" />
+      <target dev="vda" bus="virtio" />
+      <address type="pci" domain="0x0000" bus="0x00" slot="0x07" function="0x0" />
+    </disk>
+[root@template ~]# virsh vol-info node3.qcow2 --pool storage
+Name:           node3.qcow2
+Type:           file
+Capacity:       3.20 GiB
+Allocation:     1.77 GiB
+
+[root@template ~]# virsh vol-info testvol --pool storage
+Name:           testvol
+Type:           file
+Capacity:       5.00 GiB
+Allocation:     2.33 GiB
+
+virt-filesystems - List filesystems, partitions, block devices, LVM in a virtual machine or disk image
+
+SYNOPSIS
+ virt-filesystems [--options] -d domname
+
+ virt-filesystems [--options] -a disk.img [-a disk.img ...]
+DESCRIPTION
+This tool allows you to discover filesystems, partitions, logical volumes, and their sizes in a disk image or virtual machine. It is a replacement for virt-list-filesystems(1) and virt-list-partitions(1).
+
+One use for this tool is from shell scripts to iterate over all filesystems from a disk image:
+
+ for fs in $(virt-filesystems -a disk.img); do
+   # ...
+ done
+Another use is to list partitions before using another tool to modify those partitions (such as virt-resize(1)). If you are curious about what an unknown disk image contains, use this tool along with virt-inspector(1).
+
+Various command line options control what this program displays. You need to give either -a or -d options to specify the disk image or libvirt guest respectively. If you just specify that then the program shows filesystems found, one per line, like this:
+
+ $ virt-filesystems -a disk.img
+ /dev/sda1
+ /dev/vg_guest/lv_root
+If you add -l or --long then the output includes extra information:
+
+ $ virt-filesystems -a disk.img -l
+ Name                   Type         VFS   Label  Size
+ /dev/sda1              filesystem   ext4  boot   524288000
+ /dev/vg_guest/lv_root  filesystem   ext4  root   10212081664
+If you add --extra then non-mountable (swap, unknown) filesystems are shown as well:
+
+ $ virt-filesystems -a disk.img --extra
+ /dev/sda1
+ /dev/vg_guest/lv_root
+ /dev/vg_guest/lv_swap
+ /dev/vg_guest/lv_data
+If you add --partitions then partitions are shown instead of filesystems:
+
+ $ virt-filesystems -a disk.img --partitions
+ /dev/sda1
+ /dev/sda2
+Similarly you can use --logical-volumes, --volume-groups, --physical-volumes, --block-devices to list those items.
+
+You can use these options in combination as well (if you want a combination including filesystems, you have to add --filesystems). Notice that some items fall into several categories (eg. /dev/sda1 might be both a partition and a filesystem). These items are listed several times. To get a list which includes absolutely everything that virt-filesystems knows about, use the --all option.
+
+UUIDs (because they are quite long) are not shown by default. Add the --uuid option to display device and filesystem UUIDs in the long output.
+
+--all --long --uuid is a useful combination to display all possible information about everything.
+
+ $ virt-filesystems -a win.img --all --long --uuid -h
+ Name      Type       VFS  Label           Size Parent   UUID
+ /dev/sda1 filesystem ntfs System Reserved 100M -        F81C92571C92112C
+ /dev/sda2 filesystem ntfs -               20G  -        F2E8996AE8992E3B
+ /dev/sda1 partition  -    -               100M /dev/sda -
+ /dev/sda2 partition  -    -               20G  /dev/sda -
+ /dev/sda  device     -    -               20G  -        -
+For machine-readable output, use --csv to get Comma-Separated Values.
+
+OPTIONS
+--help
+Display brief help.
+
+-a file
+--add file
+Add file which should be a disk image from a virtual machine. If the virtual machine has multiple block devices, you must supply all of them with separate -a options.
+
+The format of the disk image is auto-detected. To override this and force a particular format use the --format=.. option.
+
+-a URI
+--add URI
+Add a remote disk. See "ADDING REMOTE STORAGE" in guestfish(1).
+
+--all
+Display everything. This is currently the same as specifying these options: --filesystems, --extra, --partitions, --block-devices, --logical-volumes, --volume-groups, --physical-volumes. (More may be added to this list in future).
+
+See also --long.
+
+--blkdevs
+--block-devices
+Display block devices.
+
+-c URI
+--connect URI
+If using libvirt, connect to the given URI. If omitted, then we connect to the default libvirt hypervisor.
+
+If you specify guest block devices directly (-a), then libvirt is not used at all.
+
+--csv
+Write out the results in CSV format (comma-separated values). This format can be imported easily into databases and spreadsheets, but read "NOTE ABOUT CSV FORMAT" below.
+
+-d guest
+--domain guest
+Add all the disks from the named libvirt guest. Domain UUIDs can be used instead of names.
+
+--echo-keys
+When prompting for keys and passphrases, virt-filesystems normally turns echoing off so you cannot see what you are typing. If you are not worried about Tempest attacks and there is no one else in the room you can specify this flag to see what you are typing.
+
+--extra
+This causes filesystems that are not ordinary, mountable filesystems to be displayed. This category includes swapspace, and filesystems that are empty or contain unknown data.
+
+This option implies --filesystems.
+
+--filesystems
+Display mountable filesystems. If no display option was selected then this option is implied.
+
+With --extra, non-mountable filesystems are shown too.
+
+--format=raw|qcow2|..
+--format
+The default for the -a option is to auto-detect the format of the disk image. Using this forces the disk format for -a options which follow on the command line. Using --format with no argument switches back to auto-detection for subsequent -a options.
+
+For example:
+
+ virt-filesystems --format=raw -a disk.img
+forces raw format (no auto-detection) for disk.img.
+
+ virt-filesystems --format=raw -a disk.img --format -a another.img
+forces raw format (no auto-detection) for disk.img and reverts to auto-detection for another.img.
+
+If you have untrusted raw-format guest disk images, you should use this option to specify the disk format. This avoids a possible security problem with malicious guests (CVE-2010-3851).
+
+-h
+--human-readable
+In --long mode, display sizes in human-readable format.
+
+--keys-from-stdin
+Read key or passphrase parameters from stdin. The default is to try to read passphrases from the user by opening /dev/tty.
+
+-l
+--long
+Display extra columns of data ("long format").
+
+A title row is added unless you also specify --no-title.
+
+The extra columns displayed depend on what output you select, and the ordering of columns may change in future versions. Use the title row, --csv output and/or csvtool(1) to match columns to data in external programs.
+
+Use -h if you want sizes to be displayed in human-readable format. The default is to show raw numbers of bytes.
+
+Use --uuid to display UUIDs too.
+
+--lvs
+--logvols
+--logical-volumes
+Display LVM logical volumes. In this mode, these are displayed irrespective of whether the LVs contain filesystems.
+
+--no-title
+In --long mode, don’t add a title row.
+
+Note that the order of the columns is not fixed, and may change in future versions of virt-filesystems, so using this option may give you unexpected surprises.
+
+--parts
+--partitions
+Display partitions. In this mode, these are displayed irrespective of whether the partitions contain filesystems.
+
+--pvs
+--physvols
+--physical-volumes
+Display LVM physical volumes.
+
+--uuid
+--uuids
+In --long mode, display UUIDs as well.
+
+-v
+--verbose
+Enable verbose messages for debugging.
+
+-V
+--version
+Display version number and exit.
+
+--vgs
+--volgroups
+--volume-groups
+Display LVM volume groups.
+
+-x
+Enable tracing of libguestfs API calls.
+
+COLUMNS
+Note that columns in the output are subject to reordering and change in future versions of this tool.
+
+Name
+The filesystem, partition, block device or LVM name.
+
+For device and partition names these are displayed as canonical libguestfs names, so that for example /dev/sda2 is the second partition on the first device.
+
+If the --long option is not specified, then only the name column is shown in the output.
+
+Type
+The object type, for example filesystem, lv, device etc.
+
+VFS
+If there is a filesystem, then this column displays the filesystem type if one could be detected, eg. ext4.
+
+Label
+If the object has a label (used for identifying and mounting filesystems) then this column contains the label.
+
+MBR
+The partition type byte, displayed as a two digit hexadecimal number. A comprehensive list of partition types can be found here: http://www.win.tue.nl/~aeb/partitions/partition_types-1.html
+
+This is only applicable for DOS (MBR) partitions.
+
+Size
+The size of the object in bytes. If the --human option is used then the size is displayed in a human-readable form.
+
+Parent
+The parent column records the parent relationship between objects.
+
+For example, if the object is a partition, then this column contains the name of the containing device. If the object is a logical volume, then this column is the name of the volume group.
+
+If there is more than one parent, then this column is (internal to the column) a comma-separated list, eg. /dev/sda,/dev/sdb.
+
+UUID
+If the object has a UUID (used for identifying and mounting filesystems and block devices) then this column contains the UUID as a string.
+
+The UUID is only displayed if the --uuid option is given.
+
+NOTE ABOUT CSV FORMAT
+Comma-separated values (CSV) is a deceptive format. It seems like it should be easy to parse, but it is definitely not easy to parse.
+
+Myth: Just split fields at commas. Reality: This does not work reliably. This example has two columns:
+
+ "foo,bar",baz
+Myth: Read the file one line at a time. Reality: This does not work reliably. This example has one row:
+
+ "foo
+ bar",baz
+For shell scripts, use csvtool (https://github.com/Chris00/ocaml-csv also packaged in major Linux distributions).
+
+For other languages, use a CSV processing library (eg. Text::CSV for Perl or Python’s built-in csv library).
+
+Most spreadsheets and databases can import CSV directly.
+
+EXIT STATUS
+This program returns 0 if successful, or non-zero if there was an error.
+
+SEE ALSO
+guestfs(3), guestfish(1), virt-cat(1), virt-df(1), virt-list-filesystems(1), virt-list-partitions(1), csvtool(1), http://libguestfs.org/.
+
+AUTHOR
+Richard W.M. Jones http://people.redhat.com/~rjones/
+
+COPYRIGHT
+Copyright (C) 2010-2012 Red Hat Inc.
+
+LICENSE
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+BUGS
+To get a list of bugs against libguestfs, use this link: https://bugzilla.redhat.com/buglist.cgi?component=libguestfs&product=Virtualization+Tools
+
+To report a new bug against libguestfs, use this link: https://bugzilla.redhat.com/enter_bug.cgi?component=libguestfs&product=Virtualization+Tools
+
+When reporting a bug, please supply:
+
+The version of libguestfs.
+
+Where you got libguestfs (eg. which Linux distro, compiled from source, etc)
+
+Describe the bug accurately and give a way to reproduce it.
+
+Run libguestfs-test-tool(1) and paste the complete, unedited output into the bug report.
+
+
+NAME
+SYNOPSIS
+DESCRIPTION
+EXAMPLES
+DETAILED USAGE
+EXPANDING A VIRTUAL MACHINE DISK SHRINKING A VIRTUAL MACHINE DISK IGNORING OR DELETING PARTITIONS QCOW2 AND NON-SPARSE RAW FORMATS LOGICAL PARTITIONS
+OPTIONS
+MACHINE READABLE OUTPUT
+NOTES
+"Partition 1 does not end on cylinder boundary." GUEST BOOT STUCK AT "GRUB" RESIZING WINDOWS BOOT PARTITIONS WINDOWS CHKDSK WINDOWS UNMOUNTABLE_BOOT_VOLUME BSOD WINDOWS 8 SPARSE COPYING "unknown/unavailable method for expanding the TYPE filesystem on DEVICE/LV"
+ALTERNATIVE TOOLS
+EXIT STATUS
+SEE ALSO
+AUTHOR
+COPYRIGHT
+LICENSE
+BUGS
+virt-resize - Resize a virtual machine disk
+
+SYNOPSIS
+ virt-resize [--resize /dev/sdaN=[+/-]<size>[%]]
+   [--expand /dev/sdaN] [--shrink /dev/sdaN]
+   [--ignore /dev/sdaN] [--delete /dev/sdaN] [...] indisk outdisk
+DESCRIPTION
+Virt-resize is a tool which can resize a virtual machine disk, making it larger or smaller overall, and resizing or deleting any partitions contained within.
+
+Virt-resize cannot resize disk images in-place. Virt-resize should not be used on live virtual machines - for consistent results, shut the virtual machine down before resizing it.
+
+If you are not familiar with the associated tools: virt-filesystems(1) and virt-df(1), we recommend you go and read those manual pages first.
+
+EXAMPLES
+This example takes olddisk and resizes it into newdisk, extending one of the guest’s partitions to fill the extra 5GB of space:
+
+ virt-filesystems --long -h --all -a olddisk
+ 
+ truncate -r olddisk newdisk
+ truncate -s +5G newdisk
+ 
+ # Note "/dev/sda2" is a partition inside the "olddisk" file.
+ virt-resize --expand /dev/sda2 olddisk newdisk
+As above, but make the /boot partition 200MB bigger, while giving the remaining space to /dev/sda2:
+
+ virt-resize --resize /dev/sda1=+200M --expand /dev/sda2 \
+   olddisk newdisk
+As in the first example, but expand a logical volume as the final step. This is what you would typically use for Linux guests that use LVM:
+
+ virt-resize --expand /dev/sda2 --LV-expand /dev/vg_guest/lv_root \
+   olddisk newdisk
+As in the first example, but the output format will be qcow2 instead of a raw disk:
+
+ qemu-img create -f qcow2 -o preallocation=metadata newdisk.qcow2 15G
+ virt-resize --expand /dev/sda2 olddisk newdisk.qcow2
+DETAILED USAGE
+EXPANDING A VIRTUAL MACHINE DISK
+1. Shut down the virtual machine
+2. Locate input disk image
+Locate the input disk image (ie. the file or device on the host containing the guest’s disk). If the guest is managed by libvirt, you can use virsh dumpxml like this to find the disk image name:
+
+ # virsh dumpxml guestname | xpath /domain/devices/disk/source
+ Found 1 nodes:
+ -- NODE --
+ <source dev="/dev/vg/lv_guest" />
+3. Look at current sizing
+Use virt-filesystems(1) to display the current partitions and sizes:
+
+ # virt-filesystems --long --parts --blkdevs -h -a /dev/vg/lv_guest
+ Name       Type       Size  Parent
+ /dev/sda1  partition  101M  /dev/sda
+ /dev/sda2  partition  7.9G  /dev/sda
+ /dev/sda   device     8.0G  -
+(This example is a virtual machine with an 8 GB disk which we would like to expand up to 10 GB).
+
+4. Create output disk
+Virt-resize cannot do in-place disk modifications. You have to have space to store the resized output disk.
+
+To store the resized disk image in a file, create a file of a suitable size:
+
+ # rm -f outdisk
+ # truncate -s 10G outdisk
+Or use lvcreate(1) to create a logical volume:
+
+ # lvcreate -L 10G -n lv_name vg_name
+Or use virsh(1) vol-create-as to create a libvirt storage volume:
+
+ # virsh pool-list
+ # virsh vol-create-as poolname newvol 10G
+5. Resize
+virt-resize takes two mandatory parameters, the input disk and the output disk (both can be e.g. a device, a file, or a URI to a remote disk). The output disk is the one created in the previous step.
+
+ # virt-resize indisk outdisk
+This command just copies disk image indisk to disk image outdisk without resizing or changing any existing partitions. If outdisk is larger, then an extra, empty partition is created at the end of the disk covering the extra space. If outdisk is smaller, then it will give an error.
+
+More realistically you'd want to expand existing partitions in the disk image by passing extra options (for the full list see the "OPTIONS" section below).
+
+"--expand" is the most useful option. It expands the named partition within the disk to fill any extra space:
+
+ # virt-resize --expand /dev/sda2 indisk outdisk
+(In this case, an extra partition is not created at the end of the disk, because there will be no unused space).
+
+"--resize" is the other commonly used option. The following would increase the size of /dev/sda1 by 200M, and expand /dev/sda2 to fill the rest of the available space:
+
+ # virt-resize --resize /dev/sda1=+200M --expand /dev/sda2 \
+     indisk outdisk
+If the expanded partition in the image contains a filesystem or LVM PV, then if virt-resize knows how, it will resize the contents, the equivalent of calling a command such as pvresize(8), resize2fs(8), ntfsresize(8), btrfs(8), xfs_growfs(8), or resize.f2fs(8). However virt-resize does not know how to resize some filesystems, so you would have to online resize them after booting the guest.
+
+ # virt-resize --expand /dev/sda2 nbd://example.com outdisk
+The input disk can be a URI, in order to use a remote disk as the source. The URI format is compatible with guestfish. See "ADDING REMOTE STORAGE" in guestfish(1).
+
+Other options are covered below.
+
+6. Test
+Thoroughly test the new disk image before discarding the old one.
+
+If you are using libvirt, edit the XML to point at the new disk:
+
+ # virsh edit guestname
+Change <source ...>, see http://libvirt.org/formatdomain.html#elementsDisks
+
+Then start up the domain with the new, resized disk:
+
+ # virsh start guestname
+and check that it still works. See also the "NOTES" section below for additional information.
+
+7. Resize LVs etc inside the guest
+(This can also be done offline using guestfish(1))
+
+Once the guest has booted you should see the new space available, at least for filesystems that virt-resize knows how to resize, and for PVs. The user may need to resize LVs inside PVs, and also resize filesystem types that virt-resize does not know how to expand.
+
+SHRINKING A VIRTUAL MACHINE DISK
+Shrinking is somewhat more complex than expanding, and only an overview is given here.
+
+Firstly virt-resize will not attempt to shrink any partition content (PVs, filesystems). The user has to shrink content before passing the disk image to virt-resize, and virt-resize will check that the content has been shrunk properly.
+
+(Shrinking can also be done offline using guestfish(1))
+
+After shrinking PVs and filesystems, shut down the guest, and proceed with steps 3 and 4 above to allocate a new disk image.
+
+Then run virt-resize with any of the --shrink and/or --resize options.
+
+IGNORING OR DELETING PARTITIONS
+virt-resize also gives a convenient way to ignore or delete partitions when copying from the input disk to the output disk. Ignoring a partition speeds up the copy where you don't care about the existing contents of a partition. Deleting a partition removes it completely, but note that it also renumbers any partitions after the one which is deleted, which can leave some guests unbootable.
+
+QCOW2 AND NON-SPARSE RAW FORMATS
+If the input disk is in qcow2 format, then you may prefer that the output is in qcow2 format as well. Alternately, virt-resize can convert the format on the fly. The output format is simply determined by the format of the empty output container that you provide. Thus to create qcow2 output, use:
+
+ qemu-img create -f qcow2 -o preallocation=metadata outdisk [size]
+instead of the truncate command.
+
+Similarly, to get non-sparse raw output use:
+
+ fallocate -l size outdisk
+(on older systems that don’t have the fallocate(1) command use dd if=/dev/zero of=outdisk bs=1M count=..)
+
+LOGICAL PARTITIONS
+Logical partitions (a.k.a. /dev/sda5+ on disks using DOS partition tables) cannot be resized.
+
+To understand what is going on, firstly one of the four partitions /dev/sda1-4 will have MBR partition type 05 or 0f. This is called the extended partition. Use virt-filesystems(1) to see the MBR partition type.
+
+Logical partitions live inside the extended partition.
+
+The extended partition can be expanded, but not shrunk (unless you force it, which is not advisable). When the extended partition is copied across, all the logical partitions contained inside are copied over implicitly. Virt-resize does not look inside the extended partition, so it copies the logical partitions blindly.
+
+You cannot specify a logical partition (/dev/sda5+) at all on the command line. Doing so will give an error.
+
+OPTIONS
+--help
+Display help.
+
+--align-first auto
+--align-first never
+--align-first always
+Align the first partition for improved performance (see also the --alignment option).
+
+The default is --align-first auto which only aligns the first partition if it is safe to do so. That is, only when we know how to fix the bootloader automatically, and at the moment that can only be done for Windows guests.
+
+--align-first never means we never move the first partition. This is the safest option. Try this if the guest does not boot after resizing.
+
+--align-first always means we always align the first partition (if it needs to be aligned). For some guests this will break the bootloader, making the guest unbootable.
+
+--alignment N
+Set the alignment of partitions to N sectors. The default in virt-resize < 1.13.19 was 64 sectors, and after that is 128 sectors.
+
+Assuming 512 byte sector size inside the guest, here are some suitable values for this:
+
+--alignment 1 (512 bytes)
+The partitions would be packed together as closely as possible, but would be completely unaligned. In some cases this can cause very poor performance. See virt-alignment-scan(1) for further details.
+
+--alignment 8 (4K)
+This would be the minimum acceptable alignment for reasonable performance on modern hosts.
+
+--alignment 128 (64K)
+This alignment provides good performance when the host is using high end network storage.
+
+--alignment 2048 (1M)
+This is the standard alignment used by all newly installed guests since around 2008.
+
+--colors
+--colours
+Use ANSI colour sequences to colourize messages. This is the default when the output is a tty. If the output of the program is redirected to a file, ANSI colour sequences are disabled unless you use this option.
+
+-d
+--debug
+(Deprecated: use -v option instead)
+
+Enable debugging messages.
+
+--delete PART
+Delete the named partition. It would be more accurate to describe this as "don't copy it over", since virt-resize doesn't do in-place changes and the original disk image is left intact.
+
+Note that when you delete a partition, then anything contained in the partition is also deleted. Furthermore, this causes any partitions that come after to be renumbered, which can easily make your guest unbootable.
+
+You can give this option multiple times.
+
+--expand PART
+Expand the named partition so it uses up all extra space (space left over after any other resize changes that you request have been done).
+
+If virt-resize knows how, it will expand the direct content of the partition. For example, if the partition is an LVM PV, it will expand the PV to fit (like calling pvresize(8)). Virt-resize leaves any other content it doesn't know about alone.
+
+Currently virt-resize can resize:
+
+ext2, ext3 and ext4 filesystems.
+
+NTFS filesystems, if libguestfs was compiled with support for NTFS.
+
+The filesystem must have been shut down consistently last time it was used. Additionally, ntfsresize(8) marks the resized filesystem as requiring a consistency check, so at the first boot after resizing Windows will check the disk.
+
+LVM PVs (physical volumes). virt-resize does not usually resize anything inside the PV, but see the --LV-expand option. The user could also resize LVs as desired after boot.
+
+Btrfs filesystems, if libguestfs was compiled with support for btrfs.
+
+XFS filesystems, if libguestfs was compiled with support for XFS.
+
+Linux swap partitions.
+
+Please note that libguestfs destroys the existing swap content by recreating it with mkswap, so this should not be used when the guest is suspended.
+
+f2fs filesystems, if libguestfs was compiled with support for f2fs.
+
+Note that you cannot use --expand and --shrink together.
+
+--format raw
+Specify the format of the input disk image. If this flag is not given then it is auto-detected from the image itself.
+
+If working with untrusted raw-format guest disk images, you should ensure the format is always specified.
+
+Note that this option does not affect the output format. See "QCOW2 AND NON-SPARSE RAW FORMATS".
+
+--ignore PART
+Ignore the named partition. Effectively this means the partition is allocated on the destination disk, but the content is not copied across from the source disk. The content of the partition will be blank (all zero bytes).
+
+You can give this option multiple times.
+
+--LV-expand LOGVOL
+This takes the logical volume and, as a final step, expands it to fill all the space available in its volume group. A typical usage, assuming a Linux guest with a single PV /dev/sda2 and a root device called /dev/vg_guest/lv_root would be:
+
+ virt-resize indisk outdisk \
+   --expand /dev/sda2 --LV-expand /dev/vg_guest/lv_root
+This would first expand the partition (and PV), and then expand the root device to fill the extra space in the PV.
+
+The contents of the LV are also resized if virt-resize knows how to do that. You can stop virt-resize from trying to expand the content by using the option --no-expand-content.
+
+Use virt-filesystems(1) to list the filesystems in the guest.
+
+You can give this option multiple times, but it doesn't make sense to do this unless the logical volumes you specify are all in different volume groups.
+
+--machine-readable
+--machine-readable=format
+This option is used to make the output more machine friendly when being parsed by other programs. See "MACHINE READABLE OUTPUT" below.
+
+-n
+--dry-run
+Print a summary of what would be done, but don’t do anything.
+
+--no-copy-boot-loader
+By default, virt-resize copies over some sectors at the start of the disk (up to the beginning of the first partition). Commonly these sectors contain the Master Boot Record (MBR) and the boot loader, and are required in order for the guest to boot correctly.
+
+If you specify this flag, then this initial copy is not done. You may need to reinstall the boot loader in this case.
+
+--no-extra-partition
+By default, virt-resize creates an extra partition if there is any extra, unused space after all resizing has happened. Use this option to prevent the extra partition from being created. If you do this then the extra space will be inaccessible until you run fdisk, parted, or some other partitioning tool in the guest.
+
+Note that if the surplus space is smaller than 10 MB, no extra partition will be created.
+
+--no-expand-content
+By default, virt-resize will try to expand the direct contents of partitions, if it knows how (see --expand option above).
+
+If you give the --no-expand-content option then virt-resize will not attempt this.
+
+--no-sparse
+Turn off sparse copying. See "SPARSE COPYING" below.
+
+--ntfsresize-force
+Pass the --force option to ntfsresize(8), allowing resizing even if the NTFS disk is marked as needing a consistency check. You have to use this option if you want to resize a Windows guest multiple times without booting into Windows between each resize.
+
+--output-format raw
+Specify the format of the output disk image. If this flag is not given then it is auto-detected from the image itself.
+
+If working with untrusted raw-format guest disk images, you should ensure the format is always specified.
+
+Note that this option does not create the output format. This option just tells libguestfs what it is so it doesn't try to guess it. You still need to create the output disk with the right format. See "QCOW2 AND NON-SPARSE RAW FORMATS".
+
+-q
+--quiet
+Don’t print the summary.
+
+--resize PART=SIZE
+Resize the named partition (expanding or shrinking it) so that it has the given size.
+
+SIZE can be expressed as an absolute number followed by b/K/M/G to mean bytes, Kilobytes, Megabytes, or Gigabytes; or as a percentage of the current size; or as a relative number or percentage. For example:
+
+ --resize /dev/sda2=10G
+
+ --resize /dev/sda4=90%
+
+ --resize /dev/sda2=+1G
+
+ --resize /dev/sda2=-200M
+
+ --resize /dev/sda1=+128K
+
+ --resize /dev/sda1=+10%
+
+ --resize /dev/sda1=-10%
+You can increase the size of any partition. Virt-resize will expand the direct content of the partition if it knows how (see --expand above).
+
+You can only decrease the size of partitions that contain filesystems or PVs which have already been shrunk. Virt-resize will check this has been done before proceeding, or else will print an error (see also --resize-force).
+
+You can give this option multiple times.
+
+--resize-force PART=SIZE
+This is the same as --resize except that it will let you decrease the size of any partition. Generally this means you will lose any data which was at the end of the partition you shrink, but you may not care about that (eg. if shrinking an unused partition, or if you can easily recreate it such as a swap partition).
+
+See also the --ignore option.
+
+--shrink PART
+Shrink the named partition until the overall disk image fits in the destination. The named partition must contain a filesystem or PV which has already been shrunk using another tool (eg. guestfish(1) or other online tools). Virt-resize will check this and give an error if it has not been done.
+
+The amount by which the overall disk must be shrunk (after carrying out all other operations requested by the user) is called the "deficit". For example, a straight copy (assume no other operations) from a 5GB disk image to a 4GB disk image results in a 1GB deficit. In this case, virt-resize would give an error unless the user specified a partition to shrink and that partition had more than a gigabyte of free space.
+
+Note that you cannot use --expand and --shrink together.
+
+--unknown-filesystems ignore
+--unknown-filesystems warn
+--unknown-filesystems error
+Configure the behaviour of virt-resize when asking to expand a filesystem, and neither libguestfs has the support it, nor virt-resize knows how to expand the content of the filesystem.
+
+--unknown-filesystems ignore will cause virt-resize to silently ignore such filesystems, and nothing is printed about them.
+
+--unknown-filesystems warn (the default behaviour) will cause virt-resize to warn for each of the filesystem that cannot be expanded, but still continuing to resize the disk.
+
+--unknown-filesystems error will cause virt-resize to error out at the first filesystem that cannot be expanded.
+
+See also "unknown/unavailable method for expanding the TYPE filesystem on DEVICE/LV".
+
+-v
+--verbose
+Enable debugging messages.
+
+-V
+--version
+Display version number and exit.
+
+-x
+Enable tracing of libguestfs API calls.
+
+MACHINE READABLE OUTPUT
+The --machine-readable option can be used to make the output more machine friendly, which is useful when calling virt-resize from other programs, GUIs etc.
+
+There are two ways to use this option.
+
+Firstly use the option on its own to query the capabilities of the virt-resize binary. Typical output looks like this:
+
+ $ virt-resize --machine-readable
+ virt-resize
+ ntfsresize-force
+ 32bitok
+ ntfs
+ btrfs
+A list of features is printed, one per line, and the program exits with status 0.
+
+Secondly use the option in conjunction with other options to make the regular program output more machine friendly.
+
+At the moment this means:
+
+Progress bar messages can be parsed from stdout by looking for this regular expression:
+
+ ^[0-9]+/[0-9]+$
+The calling program should treat messages sent to stdout (except for progress bar messages) as status messages. They can be logged and/or displayed to the user.
+
+The calling program should treat messages sent to stderr as error messages. In addition, virt-resize exits with a non-zero status code if there was a fatal error.
+
+Versions of the program prior to 1.13.9 did not support the --machine-readable option and will return an error.
+
+It is possible to specify a format string for controlling the output; see "ADVANCED MACHINE READABLE OUTPUT" in guestfs(3).
+
+NOTES
+"Partition 1 does not end on cylinder boundary."
+Virt-resize aligns partitions to multiples of 128 sectors (see the --alignment parameter). Usually this means the partitions will not be aligned to the ancient CHS geometry. However CHS geometry is meaningless for disks manufactured since the early 1990s, and doubly so for virtual hard drives. Alignment of partitions to cylinders is not required by any modern operating system.
+
+GUEST BOOT STUCK AT "GRUB"
+If a Linux guest does not boot after resizing, and the boot is stuck after printing GRUB on the console, try reinstalling grub.
+
+ guestfish -i -a newdisk
+ ><fs> cat /boot/grub/device.map
+ # check the contents of this file are sensible or
+ # edit the file if necessary
+ ><fs> grub-install / /dev/vda
+ ><fs> exit
+For more flexible guest reconfiguration, including if you need to specify other parameters to grub-install, use virt-rescue(1).
+
+RESIZING WINDOWS BOOT PARTITIONS
+In Windows Vista and later versions, Microsoft switched to using a separate boot partition. In these VMs, typically /dev/sda1 is the boot partition and /dev/sda2 is the main (C:) drive. Resizing the first (boot) partition causes the bootloader to fail with 0xC0000225 error. Resizing the second partition (ie. C: drive) should work.
+
+WINDOWS CHKDSK
+Windows disks which use NTFS must be consistent before virt-resize can be used. If the ntfsresize operation fails, try booting the original VM and running chkdsk /f on all NTFS partitions, then shut down the VM cleanly. For further information see: https://bugzilla.redhat.com/show_bug.cgi?id=975753
+
+After resize Windows may initiate a lengthy "chkdsk" on first boot if NTFS partitions have been expanded. This is just a safety check and (unless it find errors) is nothing to worry about.
+
+WINDOWS UNMOUNTABLE_BOOT_VOLUME BSOD
+After sysprepping a Windows guest and then resizing it with virt-resize, you may see the guest fail to boot with an UNMOUNTABLE_BOOT_VOLUME BSOD. This error is caused by having ExtendOemPartition=1 in the sysprep.inf file. Removing this line before sysprepping should fix the problem.
+
+WINDOWS 8
+Windows 8 "fast startup" can prevent virt-resize from resizing NTFS partitions. See "WINDOWS HIBERNATION AND WINDOWS 8 FAST STARTUP" in guestfs(3).
+
+SPARSE COPYING
+You should create a fresh, zeroed target disk image for virt-resize to use.
+
+Virt-resize by default performs sparse copying. This means that it does not copy blocks from the source disk which are all zeroes. This improves speed and efficiency, but will produce incorrect results if the target disk image contains unzeroed data.
+
+The main time this can be a problem is if the target is a host partition (eg. virt-resize source.img /dev/sda4) because the usual partitioning tools tend to leave whatever data happened to be on the disk before.
+
+If you have to reuse a target which contains data already, you should use the --no-sparse option. Note this can be much slower.
+
+"unknown/unavailable method for expanding the TYPE filesystem on DEVICE/LV"
+Virt-resize was asked to expand a partition or a logical volume containing a filesystem with the type TYPE, but there is no available nor known expanding method for that filesystem.
+
+This may be due to either of the following:
+
+There corresponding filesystem is not available in libguestfs, because there is no proper package in the host with utilities for it. This is usually the case for btrfs, ntfs, xfs, and f2fs filesystems.
+
+Check the results of:
+
+ virt-resize --machine-readable
+ guestfish -a /dev/null run : available
+ guestfish -a /dev/null run : filesystem_available TYPE
+In this case, it is enough to install the proper packages adding support for them. For example, libguestfs-xfs on Red Hat Enterprise Linux, CentOS, Debian, Ubuntu, and distributions derived from them, for supporting the xfs filesystem.
+
+Virt-resize has no support for expanding that type of filesystem.
+
+In this case, there’s nothing that can be done to let virt-resize expand that type of filesystem.
+
+In both cases, virt-resize will not expand the mentioned filesystem; the result (unless --unknown-filesystems error is specified) is that the partitions containing such filesystems will be actually bigger as requested, but the filesystems will still be usable at the their older sizes.
+
+ALTERNATIVE TOOLS
+There are several proprietary tools for resizing partitions. We won't mention any here.
+
+parted(8) and its graphical shell gparted can do some types of resizing operations on disk images. They can resize and move partitions, but I don't think they can do anything with the contents, and they certainly don't understand LVM.
+
+guestfish(1) can do everything that virt-resize can do and a lot more, but at a much lower level. You will probably end up hand-calculating sector offsets, which is something that virt-resize was designed to avoid. If you want to see the guestfish-equivalent commands that virt-resize runs, use the --debug flag.
+
+dracut(8) includes a module called dracut-modules-growroot which can be used to grow the root partition when the guest first boots up. There is documentation for this module in an associated README file.
+
+EXIT STATUS
+This program returns 0 if successful, or non-zero if there was an error.
+
+SEE ALSO
+virt-filesystems(1), virt-df(1), guestfs(3), guestfish(1), lvm(8), pvresize(8), lvresize(8), resize2fs(8), ntfsresize(8), btrfs(8), xfs_growfs(8), resize.f2fs(8), virsh(1), parted(8), truncate(1), fallocate(1), grub(8), grub-install(8), virt-rescue(1), virt-sparsify(1), virt-alignment-scan(1), http://libguestfs.org/.
+
+AUTHOR
+Richard W.M. Jones http://people.redhat.com/~rjones/
+
+COPYRIGHT
+Copyright (C) 2010-2012 Red Hat Inc.
+
+LICENSE
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+BUGS
+To get a list of bugs against libguestfs, use this link: https://bugzilla.redhat.com/buglist.cgi?component=libguestfs&product=Virtualization+Tools
+
+To report a new bug against libguestfs, use this link: https://bugzilla.redhat.com/enter_bug.cgi?component=libguestfs&product=Virtualization+Tools
+
+When reporting a bug, please supply:
+
+The version of libguestfs.
+
+Where you got libguestfs (eg. which Linux distro, compiled from source, etc)
+
+Describe the bug accurately and give a way to reproduce it.
+
+Run libguestfs-test-tool(1) and paste the complete, unedited output into the bug report.
