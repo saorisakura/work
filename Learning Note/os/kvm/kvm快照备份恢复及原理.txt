@@ -1,0 +1,106 @@
+kvm快照备份恢复
+<![if !supportLists]>1. <![endif]>查看磁盘格式：
+[root@localhost kvm-host]# qemu-img info test01.qcow2 
+image: test01.qcow2
+file format: qcow2
+virtual size: 100G (107374182400 bytes)
+disk size: 3.2G
+cluster_size: 65536
+ 
+因为kvm虚拟机默认使用raw格式的镜像格式，性能最好，速度最快，它的缺点就是不支持一些新的功能，如支持镜像,zlib磁盘压缩,AES加密等。   
+要使用镜像功能，磁盘格式必须为qcow2。
+如果格式为raw，那么需要来转换。可以看到我们的镜像格是qcow2，故无需改变镜像格式。
+ 
+转换磁盘格式
+# qemu-img convert -f raw -O qcow2 test01.img test01.qcow2 
+-f  源镜像的格式   
+-O 目标镜像的格式
+ 
+<![if !supportLists]>2. <![endif]>对虚拟机进行快照管理
+ 
+创建快照
+[root@localhost kvm-host]# virsh snapshot-create test01 
+ 
+也可以给快照起个别名
+[root@localhost kvm-host]# virsh snapshot-create-as test03 InitFinish
+查看快照版本
+[root@localhost kvm-host]# virsh snapshot-list test01
+ 名称               Creation Time             状态
+------------------------------------------------------------
+ 1500373324           2017-07-18 18:22:04 +0800 running
+ 
+查看当前虚拟机的快照版本
+[root@localhost kvm-host]# virsh snapshot-current test01
+<domainsnapshot>
+  <name>1500373324</name>
+  <state>running</state>
+  <creationTime>1500373324</creationTime>
+  <memory snapshot='internal'/>
+  <disks>
+    <disk name='vda' snapshot='internal'/>
+    <disk name='hdc' snapshot='no'/>
+  </disks>
+ 
+ 
+ 
+查看当前的镜像文件：
+[root@localhost kvm-host]# qemu-img info test01.qcow2        
+image: test01.qcow2
+file format: qcow2
+virtual size: 100G (107374182400 bytes)
+disk size: 3.4G
+cluster_size: 65536
+Snapshot list:
+ID        TAG                 VM SIZE                DATE       VM CLOCK
+1         1500373324             188M 2017-07-18 18:22:04   00:23:41.304
+ 
+快照配置文件在/var/lib/libvirt/qemu/snapshot/虚拟机名称/下
+ 
+<![if !supportLists]>3. <![endif]>恢复虚拟机快照
+ 
+恢复快照，必须关机，确认虚拟机处于关机状态。
+[root@localhost kvm-host]# virsh destroy test01
+域 test01 被删除
+ 
+[root@localhost kvm-host]# virsh list --all
+ Id    名称                         状态
+----------------------------------------------------
+ -     API-Online-137                 关闭
+ -     Nginx-backend01-132            关闭
+ -     Nginx-qian-01                  关闭
+ -     PHP-H5-136                     关闭
+ -     test01                         关闭
+ 
+确认需要恢复的快照时间，这里恢复到1500373324           
+[root@localhost kvm-host]# virsh snapshot-list test01
+ 名称               Creation Time             状态
+------------------------------------------------------------
+ 1500373324           2017-07-18 18:22:04 +0800 running
+ 
+执行恢复操作
+ 
+[root@localhost kvm-host]# virsh snapshot-revert test01 1500373324
+ 
+ 
+<![if !supportLists]>4. <![endif]>删除虚拟机快照
+ 
+先test01镜像对应有哪些快照
+[root@localhost kvm-host]# qemu-img info test01.qcow2 
+image: test01.qcow2
+file format: qcow2
+virtual size: 100G (107374182400 bytes)
+disk size: 3.4G
+cluster_size: 65536
+Snapshot list:
+ID        TAG                 VM SIZE                DATE       VM CLOCK
+1         1500373324             188M 2017-07-18 18:22:04   00:23:41.304
+ 
+删除第一个快照
+[root@localhost kvm-host]# virsh snapshot-delete test01 1500373324
+Domain snapshot 1500373324 deleted
+查看确认
+[root@localhost kvm-host]# virsh snapshot-list test01
+ 名称               Creation Time             状态
+------------------------------------------------------------
+ 
+已经被删除。
