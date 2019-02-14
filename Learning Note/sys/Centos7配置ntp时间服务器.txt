@@ -1,0 +1,41 @@
+Centos7配置ntp时间服务器
+Centos7配置时间服务器，假如配置一个服务端，N个客户端：
+
+服务端：
+
+1、安装ntp服务 
+yum install ntp ntpdate -y 
+2、查找当前地区，最适合的时间服务器 
+步骤一：打开网站：http://www.pool.ntp.org/zone/asia 
+步骤二：复制自动推荐的最合适的同步服务器 
+这里写图片描述 
+3、编辑 /etc/ntp.conf 
+vim /etc/ntp.conf 复制上述查到的时间服务器，保存 
+4、启动ntp服务 
+cd /usr/lib/systemd/system 
+systemctl start ntpd #启动 
+systemctl enable ntpd.service #设置开机启动服务 
+5、同步远程时间服务（下面两个是第2步查询到的前两个ntp） 
+ntpdate -q 0.asia.pool.ntp.org 1.asia.pool.ntp.org 
+6、验证服务：ntpq -p 
+查看当前时间：date -R 
+打开百度，搜索“时间”，对比时间是否一致
+
+7、建立Job，每天定时自动同步远程服务 
+crontab -e 
+00 01 * * * root /usr/sbin/ntpdate -q 0.asia.pool.ntp.org 1.asia.pool.ntp.org
+
+客户端：
+
+1、安装ntp服务 
+yum install ntp ntpdate -y 
+2、启动ntp服务 
+cd /usr/lib/systemd/system 
+systemctl start ntpd #启动 
+systemctl enable ntpd.service #设置开机启动服务 
+3、修改硬件时间，保持和软件NTP时间同步 
+hwclock -w 
+4、测试服务器同步 
+ntpdate -d -b 192.168.85.20 
+5、如果正常，即可建立Job，自动运行 
+00 01 * * * root /usr/sbin/ntpdate -q 192.168.85.20
