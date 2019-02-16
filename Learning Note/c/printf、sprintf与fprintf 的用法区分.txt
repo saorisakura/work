@@ -1,0 +1,126 @@
+printf、sprintf与fprintf 的用法区分
+1: fprintf()
+#include <stdio.h> 
+int fprintf( FILE *stream, const char *format, ... );
+fprintf()函数根据指定的format(格式)发送信息(参数)到由stream(流)指定的文件.因此fprintf()可以使得信息输出到指定的文件.比如
+    char name[20] = "Mary";
+    FILE *out;
+    out = fopen( "output.txt", "w" );
+    if( out != NULL )
+    fprintf( out, "Hello %s\n", name );
+对于其输出格式参数,和printf()一样.
+fprintf()和printf()一样工作. fprintf()的返回值是输出的字符数,发生错误时返回一个负值.
+在有些地方,有这样的定义:printf(...)=fprintf(stdout,...).
+
+2:eg)
+fprintf函数的用法!2007-12-13 21:46
+fprintf是用于文件操作的，原型是int fprintf( FILE *stream, const char *format [, argument ]...);
+
+举例用法：
+#include <stdio.h>
+#include <process.h>
+
+FILE *stream;
+
+void main( void )
+{
+int i = 10;
+double fp = 1.5;
+char s[] = "this is a string";
+char c = '\n';
+
+stream = fopen( "fprintf.out", "w" );
+fprintf( stream, "%s%c", s, c );
+
+fprintf( stream, "%d\n", i );
+fprintf( stream, "%f\n", fp );
+fclose( stream );
+system( "type fprintf.out" );
+}
+
+屏幕输出：
+
+this is a string
+10
+1.500000
+
+printf就是在屏幕打印出一段字符串来啊
+原型是int printf( const char *format [, argument]... );
+是标准输出。
+
+3:printf、sprintf与fprintf 的用法区分
+
+1.printf 是和标准输出文件(stdout)关联的,fprintf 则没有这个限制.
+ 
+2.fprintf是用于文件操作的，原型是int fprintf( FILE *stream, const char *format [, argument ]...);
+
+3.sprintf是格式化输出到一个字符串，fprintf是格式化输出到一个stream，通常是到文件。
+ 
+int   fprintf(   FILE   *stream,   const   char   *format   [,   argument   ]...);  
+int   sprintf(   char   *buffer,   const   char   *format   [,  argument]   ...   );
+
+头文件：#include <stdio.h>
+
+sprintf()函数用于将格式化的数据写入字符串，其原型为：
+    int sprintf(char *str, char * format [, argument, ...]);
+
+【参数】str为要写入的字符串；format为格式化字符串，与printf()函数相同；argument为变量。
+
+除了前两个参数类型固定外，后面可以接任意多个参数。而它的精华，显然就在第二个参数--格式化字符串--上。 printf()和sprintf()都使用格式化字符串来指定串的格式，在格式串内部使用一些以“%”开头的格式说明符（format specifications）来占据一个位置，在后边的变参列表中提供相应的变量，最终函数就会用相应位置的变量来替代那个说明符，产生一个调用者想要的字符串。
+
+sprintf()最常见的应用之一莫过于把整数打印到字符串中，如：
+    sprintf(s, "%d", 123);  //把整数123打印成一个字符串保存在s中
+    sprintf(s, "%8x", 4567);  //小写16进制，宽度占8个位置，右对齐
+
+sprintf的作用是将一个格式化的字符串输出到一个目的字符串中，而printf是将一个格式化的字符串输出到屏幕。sprintf的第一个参数应该是目的字符串，如果不指定这个参数，执行过程中出现 "该程序产生非法操作,即将被关闭...."的提示。
+
+sprintf()会根据参数format 字符串来转换并格式化数据，然后将结果复制到参数str 所指的字符串数组，直到出现字符串结束('\0')为止。关于参数format 字符串的格式请参考printf()。
+
+【返回值】成功则返回参数str 字符串长度，失败则返回-1，错误原因存于errno 中。
+
+注意：C语言对数组进行操作时并不检测数组的长度，如果str的长度不够，sprintf()很容易造成缓冲区溢出，带来意想不到的后果，黑客经常利用这个弱点攻击看上去安全的系统。请看下面的代码：
+#include <stdio.h>
+main()
+{
+    char buf[10];
+    sprintf(buf, "The length of the string is more than 10");
+    printf("%s", buf);
+}
+编译并运行，屏幕上输出”The length of the string is more than 10“，同时系统提示程序已经停止。原因就是要写入的字符串的长度超过了buf的长度，造成缓冲区溢出。
+
+使用snprintf()来代替sprintf()将能够很好的解决这个问题。
+
+【实例】打印字母a的ASCII值。
+#include <stdio.h>
+main()
+{
+    char a = 'a';
+    char buf[80];
+    sprintf(buf, "The ASCII code of a is %d.", a);
+    printf("%s", buf);
+}
+运行结果：
+The ASCII code of a is 97.
+
+又如，产生10个100以内的随机数并输出。
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+int main(void)
+{
+    char str[100];
+    int offset =0;
+    int i=0;
+    srand(time(0));  // *随机种子
+    for(i = 0;i<10;i++)
+    {
+        offset+=sprintf(str+offset,"%d,",rand()%100);  // 格式化的数据写入字符串
+    }
+    str[offset-1]='\n';
+    printf(str);
+    return 0;
+}
+运行结果：
+74,43,95,95,44,90,70,23,66,84
+
+例子使用了一个新函数srand()，它能产生随机数。例子中最复杂的部分是for循环中每次调用函数sprintf()往字符数组写数据的时候，str+foffset为每次写入数据的开始地址，最终的结果是所有产生的随机数据都被以整数的形式存入数组中。
