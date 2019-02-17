@@ -1,0 +1,189 @@
+memcpy指的是c和c++使用的内存拷贝函数，memcpy函数的功能是从源内存地址的起始位置开始拷贝若干个字节到目标内存地址中。
+中文名 内存拷贝函数 外文名 memcpy 函数原型 见正文 功    能 拷贝n个字节 返回值 指向dest的指针 所在头文件 <string.h>或<cstring>
+目录
+1 函数原型
+2 功能
+3 所需头文件
+4 返回值
+5 说明
+6 函数实现
+7 程序实例
+8 区别
+函数原型编辑
+void *memcpy(void *dest, const void *src, size_t n);
+功能编辑
+从源src所指的内存地址的起始位置开始拷贝n个字节到目标dest所指的内存地址的起始位置中
+所需头文件编辑
+C语言：#include<string.h>
+C++：#include<cstring>
+返回值编辑
+函数返回指向dest的指针。
+说明编辑
+1.source和destin所指的内存区域可能重叠，但是如果source和destin所指的内存区域重叠,那么这个函数并不能够确保source所在重叠区域在拷贝之前不被覆盖。而使用memmove可以用来处理重叠区域。函数返回指向destin的指针.
+2.如果目标数组destin本身已有数据，执行memcpy()后，将覆盖原有数据（最多覆盖n）。如果要追加数据，则每次执行memcpy后，要将目标数组地址增加到你要追加数据的地址。
+注意：source和destin都不一定是数组，任意的可读写的空间均可。
+函数实现编辑
+Windows中
+
+void* __cdecl memcpy(
+void* dst,
+const void* src,
+size_t count
+)
+{
+    void*ret=dst;
+#if defined(_M_MRX000)||defined(_M_ALPHA)||defined(_M_PPC)
+{
+     extern void RtlMoveMemory(void *,const void *,size_t count);
+     RtlMoveMemory(dst,src,count);
+}
+#else /*defined(_M_MRX000)||defined(_M_ALPHA)||defined(_M_PPC)*/
+/*
+*copy from lower addresses to higher addresses
+*/
+while(count--){
+    *(char *)dst = *(char *)src;
+    dst = (char *)dst+1;
+    src = (char *)src+1;
+}
+#endif  /*defined(_M_MRX000)||defined(_M_ALPHA)||defined(_M_PPC)*/
+return (ret);
+}
+coreutils中
+
+void* memcpy(void*destaddr,voidconst*srcaddr,size_tlen)
+{
+    char* dest=destaddr;
+    char const* src=srcaddr;
+    while(len-->0)
+    {
+    *dest++ = *src++;
+    }
+    return destaddr;
+}
+Linux中：
+
+void *memcpy(void *to, const void *from, size_t n)
+{
+    void *xto = to;
+    size_t temp, temp1;
+ 
+    if (!n)
+        return xto;
+    if ((long)to & 1) {
+        char *cto = to;
+        const char *cfrom = from;
+        *cto++ = *cfrom++;
+        to = cto;
+        from = cfrom;
+        n--;
+    }
+    if (n > 2 && (long)to & 2) {
+        short *sto = to;
+        const short *sfrom = from;
+        *sto++ = *sfrom++;
+        to = sto;
+        from = sfrom;
+        n -= 2;
+    }
+    temp = n >> 2;
+    if (temp) {
+        long *lto = to;
+        const long *lfrom = from;
+#if defined(CONFIG_M68000) || defined(CONFIG_COLDFIRE)
+        for (; temp; temp--)
+            *lto++ = *lfrom++;
+#else
+        asm volatile (
+            "    movel %2,%3\n"
+            "    andw  #7,%3\n"
+            "    lsrl  #3,%2\n"
+            "    negw  %3\n"
+            "    jmp   %%pc@(1f,%3:w:2)\n"
+            "4:    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "    movel %0@+,%1@+\n"
+            "1:    dbra  %2,4b\n"
+            "    clrw  %2\n"
+            "    subql #1,%2\n"
+            "    jpl   4b"
+            : "=a" (lfrom), "=a" (lto), "=d" (temp), "=&d" (temp1)
+            : "0" (lfrom), "1" (lto), "2" (temp));
+#endif
+        to = lto;
+        from = lfrom;
+    }
+    if (n & 2) {
+        short *sto = to;
+        const short *sfrom = from;
+        *sto++ = *sfrom++;
+        to = sto;
+        from = sfrom;
+    }
+    if (n & 1) {
+        char *cto = to;
+        const char *cfrom = from;
+        *cto = *cfrom;
+    }
+    return xto;
+}
+程序实例编辑
+程序例example1
+作用：将s中的字符串复制到字符数组d中。
+
+//memcpy.c
+#include <stdio.h>
+#include <string.h>
+int main()
+{
+    char* s="GoldenGlobalView";
+    char d[20];
+    clrscr();
+    memcpy(d,s,(strlen(s)+1));        //+1 是为了将字符串后面的'\0'字符结尾符放进来，去掉+1可能出现乱码
+    printf("%s",d);
+    getchar();
+    return 0;
+}
+输出结果：Golden Global View
+example2
+作用：将s中第13个字符开始的4个连续字符复制到d中。(从0开始)
+
+#include<string.h>
+int main(
+{
+    char* s="GoldenGlobalView";
+    char d[20];
+    memcpy(d,s+12,4);//从第13个字符(V)开始复制，连续复制4个字符(View)
+    d[4]='\0';//memcpy(d,s+12*sizeof(char),4*sizeof(char));也可
+    printf("%s",d);
+   getchar();
+   return 0;
+}
+输出结果：　View
+example3
+作用：复制后覆盖原有部分数据
+
+#include<stdio.h>
+#include<string.h>
+int main(void)
+{
+    char src[]="******************************";
+    char dest[]="abcdefghijlkmnopqrstuvwxyz0123as6";
+    printf("destination before memcpy:%s\n",dest);
+    memcpy(dest,src,strlen(src));
+    printf("destination after memcpy:%s\n",dest);
+    return 0;
+}
+输出结果：
+destination before memcpy:abcdefghijlkmnopqrstuvwxyz0123as6
+destination after memcpy: ******************************as6
+区别编辑
+strcpy和memcpy主要有以下3方面的区别。
+1、复制的内容不同。strcpy只能复制字符串，而memcpy可以复制任意内容，例如字符数组、整型、结构体、类等。
+2、复制的方法不同。strcpy不需要指定长度，它遇到被复制字符的串结束符"\0"才结束，所以容易溢出。memcpy则是根据其第3个参数决定复制的长度。
+3、用途不同。通常在复制字符串时用strcpy，而需要复制其他类型数据时则一般用memcpy

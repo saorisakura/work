@@ -1,0 +1,337 @@
+memset 编辑 讨论
+memset是计算机中C/C++语言初始化函数。作用是将某一块内存中的内容全部设置为指定的值， 这个函数通常为新申请的内存做初始化工作。
+中文名 memset函数 外文名 memset 别    称 初始化函数 表达式 memset(void *s,int ch,size_t n); 应用学科 计算机 适用领域范围 C/C++ 头文件 <memory.h>或<string.h> 函    数 void *memset 原    型 (void *s,int ch,size_t n);
+目录
+1 函数介绍
+2 常见错误
+3 常见问题
+4 程序范例
+5 函数作用范例
+函数介绍编辑
+void *memset(void *s, int ch, size_t n);
+函数解释：将s中当前位置后面的n个字节 （typedef unsigned int size_t ）用 ch 替换并返回 s 。
+memset：作用是在一段内存块中填充某个给定的值，它是对较大的结构体或数组进行清零操作的一种最快方法 [1]  。
+memset()函数原型是extern void *memset(void *buffer, int c, int count) buffer：为指针或是数组,c：是赋给buffer的值,count：是buffer的长度.
+常见错误编辑
+第一：memset函数按字节对内存块进行初始化，所以不能用它将int数组初始化为0和-1之外的其他值（除非该值高字节和低字节相同）。
+第二：memset(void *s, int ch,size_t n);中ch实际范围应该在0~~255，因为该函数只能取ch的后八位赋值给你所输入的范围的每个字节，比如int a[5]赋值memset（a,-1,sizeof(int )*5）与memset（a,511,sizeof(int )*5） 所赋值的结果是一样的都为-1；因为-1的二进制码为（11111111 11111111 11111111 11111111）而511的二进制码为（00000000 00000000 00000001 11111111）后八位都为（11111111)，所以数组中每个字节，如a[0]含四个字节都被赋值为（11111111），其结果为a[0]（11111111 11111111 11111111 11111111），即a[0]=-1，因此无论ch多大只有后八位二进制有效，而后八位二进制 [2]  的范围在（0~255）中改。而对字符数组操作时则取后八位赋值给字符数组，其八位值作为ASCII [3]  码。
+第三： 搞反了 ch 和 n 的位置.
+一定要记住如果要把一个char a[20]清零，一定是 memset(a,0,20*sizeof(char));
+而不是 memset(a,20*sizeof(char),0);
+第四： 过度使用memset.
+1
+2
+3
+4
+char buffer[4];
+memset(buffer,0,sizeof(char)*4);
+strcpy(buffer,"123");
+//"123"中最后隐藏的'\0'占一位，总长4位。
+这里的memset是多余的. 因为这块内存马上就被全部覆盖，清零没有意义.
+另：以下情况并不多余，因某些编译器分配空间时，内存中默认值并不为0：
+1
+2
+3
+4
+5
+6
+7
+char buffer[20];
+memset(buffer,0,sizeof(char)*20);
+memcpy(buffer,"123",3);
+//这一条的memset并不多余，memcpy并没把buffer全部覆盖，如果没有memset，
+//用printf打印buffer会有乱码甚至会出现段错误。
+//如果此处是strcpy(buffer,"123");便不用memset,
+//strcpy虽然不会覆盖buffer但是会拷贝字符串结束符
+第五：
+1
+2
+3
+4
+5
+6
+7
+int some_func(struct something *a)
+{
+…
+…
+memset(a,0,sizeof(a));
+…
+}
+其实这个错误严格来讲不能算用错memset，但是它经常在使用memset的场合出现。这里错误的原因是VC函数传参过程中的指针降级，导致sizeof(a)，返回的是一个something*指针类型大小的的字节数，如果是32位，就是4字节。
+常见问题编辑
+1，问：为何要用memset置零?memset(&Address,0,sizeof(Address））；经常看到这样的用法，其实不用的话，分配数据的时候，剩余的空间也会置零的。
+答：i.如果不清空，可能会在测试当中出现野值。你做下面的试验看看结果
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+#include <iostream>
+#include <string.h>
+#include <afx.h>
+using namespace std;
+int main()
+{
+    char buf[5];
+    CString str;
+    CString str1;
+    CString str2;
+    memset(buf,0,sizeof(buf));
+    for(int i=0;i<5;i++)
+    {
+        str.Format("%d",buf[i]);
+        str1+=str;
+    }
+    str2.Format("%d",str1);
+    cout<<str2<<endl;
+    system("pause");
+    return 0;
+}
+这样写，有没有memset，输出都是一样
+ii.其实不然！特别是对于字符指针类型的，剩余的部分通常是不会为0的，不妨作一个试验，定义一个字符数组，并输入一串字符，如果不用memset实现清零，使用MessageBox显示出来就会有乱码（0表示NULL，如果有，就默认字符结束，不会输出后面的乱码）
+2，问：如下demo是可以的，能把数组中的元素值都设置成字符1，
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+#include <iostream>
+#include <cstring>
+using namespace std;
+int main()
+{
+    char a[5];
+    memset(a,'1',5）;
+    for(int i=0;i<5;i++)
+        cout<<a[i]<<"";
+    system("pause");
+    return 0;
+}
+而，如下程序想把数组中的元素值设置成1，却是不可行的
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+#include <iostream>
+#include <cstring>
+#include <windows.h>
+using namespace std;
+int main()
+{
+    int a[5];
+    memset(a,1,20）;
+ 
+   
+                    //也等价于memset(a,1,sizeof(a));.
+    for(int i=0;i<5;i++)
+        cout<<a[i]<<"";
+    system("pause");
+    return 0;
+}
+问题是：第一个程序为什么可以，而第二个不行？
+答：因为第一个程序的数组a是字符型的，字符型占据内存大小是1Byte，而memset函数也是以字节为单位进行赋值的，所以你输出没有问题。而第二个程序a是整型的，使用 memset还是按字节赋值，这样赋值完以后，每个数组元素的值实际上是0x01010101即十进制的16843009。
+如果用memset(a,1,20)，就是对a指向的内存的20个字节进行赋值，每个都用数1去填充，转为二进制后，1就是00000001，占一个字节。一个int元素是4字节，合一起是0000 0001,0000 0001,0000 0001,0000 0001，转化成十六进制就是0x01010101，就等于16843009，就完成了对一个int元素的赋值了。
+3，不想要用for，或是while循环来初始化int a[5]；能做到吗？
+答：能做到，但这样是比较麻烦的，memset是最快捷的方法。
+程序范例编辑
+Eg1.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+#include <string.h>
+#include <stdio.h>
+#include <memory.h>
+ 
+int main(void)
+{
+    char buffer[]="Helloworld\n";
+    printf("Buffer before memset:%s\n",buffer);
+    memset(buffer,'*',strlen(buffer));
+    printf("Buffer after  memset:%s\n",buffer);
+    return 0;
+}
+输出结果：
+1
+2
+3
+Buffer before memset:Helloworld
+ 
+Buffer after  memset:***********
+编译平台：
+Microsoft Visual C++6.0
+也不一定就是把内容全部设置为ch指定的ASCⅡ值，而且该处的ch可为int或者其他类型，并不一定要是char类型。例如下面这样：
+Eg2.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+int array[5]={1,4,3,5,2};
+for(int i=0;i<5;i++)
+cout<<array[i]<<"";
+cout<<endl;
+ 
+memset(array,0,5*sizeof(int));
+for(int k=0;k<5;k++)
+cout<<array[k]<<"";
+cout<<endl;
+输出的结果就是：
+1
+2
+14352
+00000
+后面的表示大小的参数是以字节为单位，所以，对于int或其他的就并不是都乘默认的1（字符型）了。而且不同的机器上int的大小也可能不同，所以最好用sizeof()。
+要注意的是，memset是对字节进行操作，
+所以上述程序如果改为
+1
+2
+3
+4
+5
+6
+7
+8
+9
+int array[5]={1,4,3,5,2};
+for(int i=0;i<5;i++)
+    cout<<array[i]<<"";
+cout<<endl;
+ 
+memset(array,1,5*sizeof(int));//注意这里与上面的程序不同
+for(int k=0;k<5;k++)
+    cout<<array[k]<<"";
+cout<<endl;
+输出的结果就是：
+1
+2
+14352
+1684300916843009168430091684300916843009
+为什么呢？
+因为memset是以字节为单位就是对array指向的内存的4个字节进行赋值，4个字节合一起就是
+1
+00000001000000010000000100000001
+就等于16843009，就完成了对一个INT元素的赋值了。
+所以用memset对非字符型数组赋初值是不可取的！
+对于结构体：
+有一个结构体Some x，可以这样清零：
+1
+memset(&x,0,sizeof(Some));
+如果是一个结构体的数组Some x[10]，可以这样：
+1
+memset(x,0,sizeof(Some)*10）；
+Eg3.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+int main()
+{
+    char *s="GoldenGlobalView";
+    clrscr();
+    memset(s,'G',6);                //这里没有问题，可以编译运行
+                    //单步运行到这里会提示内存访问冲突
+                     //肯定会访问冲突，s指向的是不可写空间。
+    printf("%s",s);
+    getchar();
+    return 0;
+}
+以上例子出现内存访问冲突应该是因为s被当做常量放入程序存储空间，如果修改为 char s[]="Golden Global View";则没有问题了。
+函数作用范例编辑
+1，memset() 函数常用于内存空间初始化。如：
+1
+2
+char str[100];
+memset(str,0,100）；
+2，memset()的深刻内涵：用来对一段内存空间全部设置为某个字符，一般用在对定义的字符串进行初始化
+例如：memset(a,'\0',sizeof(a));
+3，memset可以方便的清空一个结构类型的变量或数组。
+如：
+1
+2
+3
+4
+5
+6
+struct sample_struct
+{
+    char csName[16];
+    int iSeq;
+    int iType;
+};
+对于变量
+1
+struct sample_struct stTest;
+一般情况下，清空stTest的方法：
+1
+2
+3
+stTest.csName[0]={'\0'};
+stTest.iSeq=0;
+stTest.iType=0;
+用memset就非常方便：
+1
+memset(&stTest,0,sizeof(sample_struct));
+如果是数组：
+1
+structsample_struct TEST[10];
+则
+1
+memset(TEST,0,sizeof(structsample_struct)*10）；
+另外：
+如果结构体中有数组的话还是需要对数组单独进行初始化处理的。
