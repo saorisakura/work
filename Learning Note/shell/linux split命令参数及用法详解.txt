@@ -1,0 +1,152 @@
+linux split命令参数及用法详解---linux分割文件命令
+日期:2011-11-30 点击:2070 来源: 未知 分享至: 
+
+csplit(context split)
+功能说明：分割文件。
+
+Split:按指定的行数截断文件
+格式: split [-n] file [name]
+参数说明：
+-n: 指定截断的每一文件的长度，不指定缺省为1000行
+file: 要截断的文件
+name： 截断后产生的文件的文件名的开头字母，不指定，缺省为x，即截断后产生的文件的文件名为xaa,xab....直到xzz
+例一：
+split -55 myfile ff
+将文件myfile依次截断到名为ffaa,ffab,ffac.....的文件中，每一文件的长度为55行
+ 
+例二：
+
+PostgresSQL 大型数据库备份与回存：
+
+因 Postgres 允许表格大过你系统档案的最大容量，所以要将表格 dump 到单一的档案可能会有问题，使用 split 来进行档案分割。
+
+% pg_dump dbname | split -b 1m - filename.dump.
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~·
+】
+ 
+我想给一个朋友传一个大视频，有几百M，尝试多种传输办法失败后，最后想到的是把视频切开一片片“邮递”过去给他，让它自己组装起来吧。
+ 
+[root@pps public_rw]# ls -lh RevolutionOS.rmvb
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+ 
+将将这个276M文件分割成20M的小文件，文件分割操作如下：
+ 
+用法：split [选项] [输入 [前缀]]
+ 
+[root@pps public_rw]# split -b 20m RevolutionOS.rmvb RevOS_part_
+[root@pps public_rw]# ls -lh
+总计 552M
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_aa
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_ab
+...
+-rw-r--r-- 1 root root  20M 03-19 18:00 RevOS_part_am
+-rw-r--r-- 1 root root  16M 03-19 18:00 RevOS_part_an
+ 
+“-b 20m”指定分割文件的大小为20M，文件后面的“RevOS_part_”是分割文件的前缀，最后的是16M的“剩余”文件。
+ 
+组装文件：
+
+[root@pps public_rw] cat RevOS_part_* > RevolutionOS_RSB.rmvb
+ 
+这里不怕组装顺序错误，因为分割的时候是按字母顺序排下来的，cat也是按照字母顺序处理的，如果不放心，将组装后的文件哈希对比一下：
+ 
+[root@pps public_rw]# md5sum RevolutionOS.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS.rmvb
+ 
+[root@pps public_rw]# md5sum RevolutionOS_RSB.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS_RSB.rmvb
+ 
+放心了吧：）
+ 
+如果要分割的是一个文本文件，比如有好几千行，当然每行的字符数是不等的，想要以行数为分割，比如每100行生成1个文件，只需要 -l 参数，如下：
+ 
+[root@pps public_rw]# split -l 100 test.txt
+ 
+其实，如果不加任何参数，默认情况下是以1000行大小来分割的。
+ 
+我想给一个朋友传一个大视频，有几百M，尝试多种传输办法失败后，最后想到的是把视频切开一片片“邮递”过去给他，让它自己组装起来吧。
+ 
+[root@pps public_rw]# ls -lh RevolutionOS.rmvb
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+ 
+将将这个276M文件分割成20M的小文件，文件分割操作如下：
+ 
+用法：split [选项] [输入 [前缀]]
+ 
+[root@pps public_rw]# split -b 20m RevolutionOS.rmvb RevOS_part_
+[root@pps public_rw]# ls -lh
+总计 552M
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_aa
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_ab
+...
+-rw-r--r-- 1 root root  20M 03-19 18:00 RevOS_part_am
+-rw-r--r-- 1 root root  16M 03-19 18:00 RevOS_part_an
+ 
+“-b 20m”指定分割文件的大小为20M，文件后面的“RevOS_part_”是分割文件的前缀，最后的是16M的“剩余”文件。
+ 
+组装文件：
+
+[root@pps public_rw] cat RevOS_part_* > RevolutionOS_RSB.rmvb
+ 
+这里不怕组装顺序错误，因为分割的时候是按字母顺序排下来的，cat也是按照字母顺序处理的，如果不放心，将组装后的文件哈希对比一下：
+ 
+[root@pps public_rw]# md5sum RevolutionOS.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS.rmvb
+ 
+[root@pps public_rw]# md5sum RevolutionOS_RSB.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS_RSB.rmvb
+ 
+放心了吧：）
+ 
+如果要分割的是一个文本文件，比如有好几千行，当然每行的字符数是不等的，想要以行数为分割，比如每100行生成1个文件，只需要 -l 参数，如下：
+ 
+[root@pps public_rw]# split -l 100 test.txt
+ 
+其实，如果不加任何参数，默认情况下是以1000行大小来分割的
+ 
+原始出处 、作者信息和本声明。否则将追究法律责任。
+】
+ 
+我想给一个朋友传一个大视频，有几百M，尝试多种传输办法失败后，最后想到的是把视频切开一片片“邮递”过去给他，让它自己组装起来吧。
+ 
+[root@pps public_rw]# ls -lh RevolutionOS.rmvb
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+ 
+将将这个276M文件分割成20M的小文件，文件分割操作如下：
+ 
+用法：split [选项] [输入 [前缀]]
+ 
+[root@pps public_rw]# split -b 20m RevolutionOS.rmvb RevOS_part_
+[root@pps public_rw]# ls -lh
+总计 552M
+-rwx------ 1 hoho hoho 276M 2005-09-09 RevolutionOS.rmvb
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_aa
+-rw-r--r-- 1 root root  20M 03-19 17:59 RevOS_part_ab
+...
+-rw-r--r-- 1 root root  20M 03-19 18:00 RevOS_part_am
+-rw-r--r-- 1 root root  16M 03-19 18:00 RevOS_part_an
+ 
+“-b 20m”指定分割文件的大小为20M，文件后面的“RevOS_part_”是分割文件的前缀，最后的是16M的“剩余”文件。
+ 
+组装文件：
+
+[root@pps public_rw] cat RevOS_part_* > RevolutionOS_RSB.rmvb
+ 
+这里不怕组装顺序错误，因为分割的时候是按字母顺序排下来的，cat也是按照字母顺序处理的，如果不放心，将组装后的文件哈希对比一下：
+ 
+[root@pps public_rw]# md5sum RevolutionOS.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS.rmvb
+ 
+[root@pps public_rw]# md5sum RevolutionOS_RSB.rmvb
+ac7cce07f621b1ed6f692e6df0ac8c16  RevolutionOS_RSB.rmvb
+ 
+放心了吧：）
+ 
+如果要分割的是一个文本文件，比如有好几千行，当然每行的字符数是不等的，想要以行数为分割，比如每100行生成1个文件，只需要 -l 参数，如下：
+ 
+[root@pps public_rw]# split -l 100 test.txt
+ 
+其实，如果不加任何参数，默认情况下是以1000行大小来分割的。

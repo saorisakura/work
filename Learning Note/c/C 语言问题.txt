@@ -1,0 +1,23 @@
+Q: stu_management]# gcc -o main main.c 
+main.c:4:19: fatal error: conio.h: No such file or directory
+ #include <conio.h>
+                   ^
+compilation terminated.
+
+A: conio.h is a C header file used in old MS-DOS compilers to create text user interfaces. Compilers that targeted non-DOS operating systems, such as Linux, Win32 and OS/2, provided different implementations of these functions.
+
+The #include <curses.h> will give you almost all the functionalities that was provided in conio.h
+
+nucurses need to be installed at the first place
+
+In deb based Distros use
+
+sudo apt-get install libncurses5-dev libncursesw5-dev
+
+And in rpm based distros use
+
+sudo yum install ncurses-devel ncurses
+
+For getch() class of functions, you can try this
+
+########################## gcc -o main main.c -lncurses ############very important#############
