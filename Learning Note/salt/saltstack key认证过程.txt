@@ -1,0 +1,41 @@
+saltstack key认证过程
+
+密钥对儿的认证
+当初始化安装 minion 启动服务启动后
+
+minion端生成一个秘钥对，并产生一个ID值，minion服务会安装ID值命名的公钥发送给 master ,直到接受为止;
+master认证完毕后，会将minion 端发送来的，以ID值命名的公钥存放在 /etc/salt/pki/master/minions 目录中(无扩展名);
+master认证完毕后，会将自身的公钥发送给 minion，并存储为 /etc/salt/pki/minion/minion_master.pub
+minion id的生成过程
+minion 默认按照一定的顺序，试图找到一个不是localhost的值作为其ID
+
+这里不需要知道salt是按照怎样的顺序取值的，只需要记住以下优先级即可
+
+hostname < /etc/salt/minion_id < /etc/salt/minion文件中的id值
+
+密钥对儿存放的位置
+master 秘钥对默认存储在
+/etc/salt/pki/master/master.pub 
+/etc/salt/pki/master/master.pem
+master 端认证的公钥存储在：
+/etc/salt/pki/master/minions/
+minion 秘钥对默认存储在
+/etc/salt/pki/minion/minion.pub 
+/etc/salt/pki/minion/minion.pem
+minion 存放的master公钥
+/etc/salt/pki/minion/minion_master.pub
+minion_id 默认存储在
+/etc/salt/minion_id
+在实际使用过程中，minion端可能会遇到各种原因导致的密钥对儿不匹配的情况，造成在master端显示在denied keys列表中无法通过认证。
+
+[master]先在master端删除该id
+[minion]再删除minion端的key文件
+[minion]最后重启服务
+rm -fr /etc/salt/pki/minion/minion_master.pub
+#通过上面的介绍可以得知，以上这个文件是在master端认证通过之后，发放到minion端的公钥
+#造成出现这个文件情况是因为早期连接了一个其他的master，更换master导致原公钥无法匹配
+#删除与旧master认证的公钥文件
+rm -fr /etc/salt/pki/minion/minion.pem    #删除minion的私钥文件
+rm -fr /etc/salt/pki/minion/minion.pub    #删除minion的公钥文件
+service salt-minion restart    #重启服务 会自动重新生成新的密钥对儿
+#此时master端查看keys时，新的主机已经出现在Unaccepted Keys的列表中了
