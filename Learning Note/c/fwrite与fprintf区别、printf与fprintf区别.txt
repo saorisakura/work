@@ -1,0 +1,62 @@
+fwrite与fprintf区别、printf与fprintf区别
+
+C语言把文件看作一个字符（字节）的序列，即由一个一个字符（字节）的数据顺序组成。根据数据的组织形式，可分为ASCII文件和二进制文件。ASCII文件又称为文本（text）文件，它的每个字节放一个ASCII代码，代表一个字符。二进制文件是把内存中的数据按其在内在中的存储形式原样输出到磁盘上存放。
+1、fprintf(fp, "%d", buffer); 是将格式化的数据写入文件
+fprintf(文件指针,格式字符串,输出表列);
+
+fwrite(&buffer, sizeof(int), 1, fp);是以二进位位方式写入文件
+fwrite(数据，数据类型大小（字节数），写入数据的最大数量，文件指针);
+
+由于fprintf写入时，对于整数来说，一位占一个字节，比如1，占1个字节；10，占2个字节；100，占3个字节，10000，占5个字节
+所以文件的大小会随数据的大小而改变，对大数据空间占用很大。
+而fwrite是按二进制写入，所以写入数据所占空间是根据数据类型来确定，比如int的大小为4个字节（一般32位下），那么整数10所占空间为4个字节，100、10000所占空间也是4个字节。所以二进制写入比格式化写入更省空间。
+
+因此，
+对于1 2 3 4 5 6 7 8 9 0 十个整数，用fprintf写入时，占10个字节；而用fwrite写入时，占40个字节。
+对于100 101 102 103 104 105 106 107 108 109 110 这十个整数，用fprintf写入时，占30个字节；而用fwrite写入时，占40个字节。
+对于10000 10100 10200 10300 10400 10500 10600 10700 10800 10900 11000 这十个整数，用fprintf写入时，占50个字节；而用fwrite写入时，还是占40个字节。
+
+fwrite 函数按照指定的数据类型将矩阵中的元素写入到文件中。写二进制文件
+其调用格式为：COUNT=fwrite (fid, A, precision)其中COUNT返回所写的数据元素个数，fid为文件句柄，A用来存放写入文件的数据，precision用于控制所写数据的类型，其形式与fread函数相同。
+fprintf 写文本文件 函数的调用格式为：COUNT= fprintf(fid, format, A)其中A存放要写入文件的数据。先按format指定的格式将数据矩阵A格式化，然后写入到fid所指定的文件。format用以控制读取的数据格式，由%加上格式符组成，常见的格式符有d，f，c，s。fid为文件句柄。
+
+看如下的例子：
+
+#include <stdio.h>
+void main()
+{
+    int num;
+    char name[5];
+    FILE *fp;
+    if ((fp = fopen("t.txt", "w")) == NULL)
+        printf("cannot open file!\n");
+   scanf("%d %s",&num,name);
+   fprintf(fp, "%d %s", num, name);
+   fclose(fp);
+ 
+   if ((fp = fopen("tt.txt", "w")) == NULL)
+        printf("cannot open file!\n");
+   fwrite(&num, sizeof(int), 1, fp);
+   fwrite(name, sizeof(char), 5, fp);
+   fclose(fp); 
+}
+ 
+输入：100000 liuj
+ 
+t.txt： 100000 liuj    (文件大小：11字节)
+ 
+tt.txt：爢 liuj （乱码，文件大小：9字节）
+
+2、 fprintf() ： 按格式输入到流，
+
+其原型是int fprintf(FILE *stream, const char *format[, argument, ...]);其用法和printf()相同，不过不是写到控制台，而是写到流罢了。
+
+注意的是返回值为此次操作写入到文件的字节数。
+
+如int c = fprintf(fp, "%s %s %d %f", str1,str2, a, b) ;str1：10字节；str2： 10字节；a：2字节；b：8字节，c为33，因为写入时不同的数据间自动加入一个空格。
+
+文件使用之后一定要关闭,否则将不能正确显示内容.fwrite:读入两个学生信息然后用fwrite存入文件
+
+printf函数的一般形式为：
+int printf(const char *format,[argument]);
+如：printf("the value of printf is:%d",a); //a的值为24

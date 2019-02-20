@@ -1,0 +1,22 @@
+深入理解函数
+
+	引用传递参数
+	
+	全局变量、局部变量、global
+	
+	命名空间（名字空间）、约束（关联关系（name，obj））和名字空间、作用域和名字空间（LEGB、闭包）
+	
+	*args、**kwargs、foo(*bar, **bars)、zip(colors, values)合并解压
+	
+	lambda、map、reduce、filter
+	
+	map(func, list)
+	map(lambda x, y: x+y, list, list)
+	
+	list = [1,2,3,4,5]
+	reduce(lambda x, y: x+y, list) --> 15
+	
+	list=[-5,-4,-3,-2,-1,0,1,2,3,4,5]
+	filter(lambda x: x>0, list)
+	
+	
