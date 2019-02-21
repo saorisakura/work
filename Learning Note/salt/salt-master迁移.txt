@@ -46,3 +46,11 @@ master: salt-sl.hqygou.com
 master: 10.177.210.122
 
 这种只能有其中一台master进行操作。
+
+迁移步骤
+
+both side with the same configuration and localhost.crt**
+scp -P 7710 /etc/salt/* salt-backup:/etc/salt/
+
+
+

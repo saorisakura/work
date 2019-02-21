@@ -1,0 +1,112 @@
+Python 生成随机字符串
+
+1.最简单的方式
+''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(N))
+
+使用python 的random模块，使用其中的choice方法，从给定的字符序列中随机选择字符组合。
+
+使用样例：
+
+>>> import string
+>>> import random
+>>> def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
+ 
+>>> id_generator()
+>>> 'G5G74W'
+>>> id_generator(3, "6793YUIO")
+>>> 'Y3U'
+
+具体分解一下这段代码：
+
+我们导入string 模块——包含ascii的字符序列;random模块——用于处理随机数生成。
+
+string.ascii_uppercase + string.digits 
+1
+用于将大写的ASCII字符列表和数字组合起来。
+
+例如：
+
+>>> string.ascii_uppercase
+>>> 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+>>> string.digits
+>>> '0123456789'
+>>> string.ascii_uppercase + string.digits
+>>> 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+下面我们通过循环和列表创建N个元素：
+
+>>> range(4) # range create a list of 'n' numbers
+>>> [0, 1, 2, 3]
+>>> ['elem' for _ in range(4)] # we use range to create 4 times 'elem'
+>>> ['elem', 'elem', 'elem', 'elem']
+
+在上面的例子中，我们使用 [ 来创建列表，但是我们没有在id_generator()中使用这种方式，所以python没有在内容中创建这个列表,但是一个一个生成的。（更多细节请参考这里）
+
+在本文中，我们不是要生成N次字符串元素，我们是要从给定的字符序列中生成N次随机字符。
+
+例如：
+
+>>> random.choice("abcde")
+>>> 'a'
+>>> random.choice("abcde")
+>>> 'd'
+>>> random.choice("abcde")
+>>> 'b'
+
+因此，代码：
+
+random.choice(chars) for _ in range(size)
+
+的作用是从chars字符序列中随机选出size个字符。 
+例如：
+
+>>> [random.choice('abcde') for _ in range(3)]
+>>> ['a', 'b', 'b']
+>>> [random.choice('abcde') for _ in range(3)]
+>>> ['e', 'b', 'e']
+>>> [random.choice('abcde') for _ in range(3)]
+>>> ['d', 'a', 'c']
+
+注：for _ in range(3)的意思就和for i in range(3)是一样的，下划线 _ 就像i一样就是个普通的变量，只是这个变量在接下来不会再去使用了，所以用 _ 表示。
+
+最后我们只需要将这些随机挑选出来的字符拼成一个字符串即可：
+
+>>> ''.join(['a', 'b', 'b'])
+>>> 'abb'
+>>> [random.choice('abcde') for _ in range(3)]
+>>> ['d', 'c', 'b']
+>>> ''.join(random.choice('abcde') for _ in range(3))
+>>> 'dac'
+
+2.密码学意义上更加安全的版本
+由于大部分随机生成的字符串的使用环境都是需要比较安全的环境的。所以使用这种方式不能保证密码学上的安全性。
+
+''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(N))
+
+PRNG(pseudorandom number generator)在密码学意义上并不是安全的（密码学意义上安全的PRNG见此）。所以我们在linux系统中使用random.SystemRandom()，而在windows系统中使用CryptGenRandom()。
+
+3.其他的实现方式
+使用Python内置的uuid库。
+
+>>> import uuid;
+>>> str(uuid.uuid4().get_hex().upper()[0:6])
+>>> 'C596CB'
+
+更加优雅的版本： 
+先看个例子:
+
+>>> import uuid
+>>> uuid.uuid4() #uuid4 => full random uuid # 会生成这样的: UUID('0172fc9a-1dac-4414-b88d-6b9a6feb91ea')
+
+如果你需要像这样的格式的字符串——’6U1S75’，你可以这样做：
+
+>>> import uuid
+>>> def my_random_string(string_length=10):
+    """Returns a random string of length string_length."""
+      random = str(uuid.uuid4()) # Convert UUID format to a Python string.
+      random = random.upper() # Make all characters uppercase.
+      random = random.replace("-","") # Remove the UUID '-'.
+      return random[0:string_length] # Return the random string.
+ 
+>>> print(my_random_string(6)) # For example, D9E50C

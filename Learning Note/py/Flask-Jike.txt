@@ -1,0 +1,51 @@
+基本框架
+	from flask import Flask
+	app = Flask(__name__)
+
+	@app.route("/")
+	def hello():
+		return "Hello World!"
+	if __name__ == "__main__":
+		app.run()
+	通过访问http://127.0.0.1/5000/ 就可以访问首页了，然而，这7行代码的作用是什么，对于一个新手来说，不得而知，下面，一起看看注释版的7行代码：
+
+	#!/usr/bin/python
+	#coding=utf-8
+
+	from flask import Flask    # 1. 从使用pip命令安装的flask中引入Flask
+	app = Flask(__name__)      # 2. 创建一个Flask的实例
+
+
+	@app.route("/")            # 3. 将网页访问的根路径路由到index方法处理
+	def index():               # 4. 定义一个方法index,用来处理业务逻辑
+		return "Hello World!"  # 5. 处理业务逻辑
+
+
+	if __name__ == '__main__': # 6. 使用run方法启动Flask集成的开发Web服务器
+		app.run(debug=True)    # 7. 以debug模式启动，方便调试
+
+
+路由和视图函数
+	#!/usr/bin/python
+	#coding=utf-8
+
+	from flask import Flask
+	app = Flask(__name__)
+
+	@app.route("/")
+	def index():
+		""" 新闻首页 """
+		return "<h1>新闻首页</h1>"
+
+	@app.route("/cat/<name>")
+	def category(name):
+		""" 新闻类别页 """
+		return "<h1>这里是 %s 类别的新闻.</h1>" % name
+
+	@app.route("/detail/<int:pk>")
+	def detail(pk):
+		""" 新闻详情页 """
+		return "<h1>新闻ID为 %d 的详情页</h1>" % pk
+
+	if __name__ == '__main__':
+		app.run(debug=True)
