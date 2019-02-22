@@ -1,0 +1,9 @@
+cgroups介绍及安装配置使用详解
+
+	libcgroup libcgroup-devel libcgroup-tools
+	Installing:
+	 libcgroup-devel           x86_64           0.41-20.el7           base            37 k
+	 libcgroup-tools           x86_64           0.41-20.el7           base           100 k
+	Updating for dependencies:
+	 libcgroup                 x86_64           0.41-20.el7           base            66 k
+
