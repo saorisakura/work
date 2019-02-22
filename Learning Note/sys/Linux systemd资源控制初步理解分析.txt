@@ -1,0 +1,156 @@
+Linux systemd资源控制初步理解分析
+ 
+本文记录一次cgroup子目录丢失问题，并简单探索了Linux systemd的资源控制机制。
+
+问题现象
+
+我们希望通过systemd拉起服务并通过cgroup限制其CPU、memory的使用，因此我们新建了一个.service文件，文件里面创建了自己的cgroup目录，设置了cpu、memory限制，然后通过cgexec拉起我们的服务进程。假设我们的服务叫xx，.service文件大概是这样的：
+
+[Unit]
+Description=xx Server
+Documentation=xx docs
+
+[Service]
+EnvironmentFile=-/etc/xx
+ExecStartPre=/usr/bin/mkdir -p /sys/fs/cgroup/memory/xx
+ExecStartPre=/usr/bin/bash -c "echo 2G > /sys/fs/cgroup/memory/xx/memory.limit_in_bytes"
+ExecStartPre=/usr/bin/bash -c "echo 2G > /sys/fs/cgroup/memory/xx/memory.memsw.limit_in_bytes"
+
+ExecStartPre=/usr/bin/mkdir -p /sys/fs/cgroup/cpu/xx
+ExecStartPre=/usr/bin/bash -c "echo 100000 > /sys/fs/cgroup/cpu/xx/cpu.cfs_period_us"
+ExecStartPre=/usr/bin/bash -c "echo 100000 > /sys/fs/cgroup/cpu/xx/cpu.cfs_quota_us"
+ExecStartPre=/usr/bin/bash -c "echo 1024 > /sys/fs/cgroup/cpu/xx/cpu.shares"
+
+ExecStart=/usr/bin/cgexec -g cpu,memory:xx /usr/bin/xx
+
+Restart=on-failure
+KillMode=process
+LimitNOFILE=102400
+LimitNPROC=102400
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target
+
+设置完.service文件后，将其拷贝到/usr/lib/systemd/system目录（CentOS 7）下，然后通过systemctl start xx.service启动，通过systemctl enable xx.service关联自启动项。
+ 但在运行很久之后，发现我们的xx服务内存使用爆了，然后查看我们自己创建的xx cgroup目录丢失了，因此对应的CPU、memory资源也就没有限制住。
+
+分析过程
+
+刚开始的定位过程是很懵逼的，各种日志查看没有发现线索，尝试复现也没有成功。正在苦恼没有方向之际，无意中发现执行了其他服务的systemd的某些操作（stop/start/enable）之后，复现了问题，就这样盯上了systemd。
+ 后来发现其实一开始就可以通过查看进程的cgroup信息就能很快找到线索：进程cgroup移到了/system.slice/xx.service目录下：
+
+[root@localhost ~]# cat /proc/214041/cgroup 
+10:memory:/system.slice/xx.service
+4:cpuacct,cpu:/system.slice/xx.service
+
+而/system.slice/xx.service正是systemd为xx这个服务创建的cgroup目录。所以问题锁定为systemd把xx进程从我们自己创建的cgroup移动到它默认创建的cgroup里，但是它默认创建的cgroup显然没有设置过资源限制。
+
+systemd资源控制
+
+systemd通过Unit的配置文件配置资源控制，Unit包括services（上面例子就是一个service unit）, slices, scopes, sockets, mount points, 和swap devices六种。systemd底层也是依赖Linux Control Groups (cgroups)来实现资源控制。
+
+cgroup v1和v2
+
+cgroup有两个版本，新版本的cgroup v2即Unified cgroup(参考cgroup v2)和传统的cgroup v1（参考cgroup v1），在新版的Linux（4.x）上，v1和v2同时存在，但同一种资源（CPU、内存、IO等）只能用v1或者v2一种cgroup版本进行控制。systemd同时支持这两个版本，并在设置时为两者之间做相应的转换。对于每个控制器，如果设置了cgroup v2的配置，则忽略所有v1的相关配置。
+ 在systemd配置选项上，cgroup v2相比cgroup v1有如下不一样的地方：
+1.CPU： CPUWeight=和StartupCPUWeight=取代了CPUShares=和StartupCPUShares=。cgroup v2没有"cpuacct"控制器。
+2.Memory：MemoryMax=取代了MemoryLimit=. MemoryLow= and MemoryHigh=只在cgroup v2上支持。
+3.IO：BlockIO前缀取代了IO前缀。在cgroup v2，Buffered写入也统计在了cgroup写IO里，这是cgroup v1一直存在的问题。
+
+配置选项(新版本systemd)
+
+CPUAccounting=：是否开启该unit的CPU使用统计，BOOL型，true或者false。
+
+CPUWeight=weight, StartupCPUWeight=weight：用于设置cgroup v2的cpu.weight参数。取值范围1-1000，默认值100。StartupCPUWeight应用于系统启动阶段，CPUWeight应用于正常运行时。这两个配置取代了旧版本的CPUShares=和StartupCPUShares=。
+
+CPUQuota=：用于设置cgroup v2的cpu.max参数或者cgroup v1的cpu.cfs_quota_us参数。表示可以占用的CPU时间配额百分比。如：20%表示最大可以使用单个CPU核的20%。可以超过100%，比如200%表示可以使用2个CPU核。
+
+MemoryAccounting=：是否开启该unit的memory使用统计，BOOL型，true或者false。
+
+MemoryLow=bytes：用于设置cgroup v2的memory.low参数，不支持cgroup v1。当unit使用的内存低于该值时将被保护，其内存不会被回收。可以设置不同的后缀：K,M,G或者T表示不同的单位。
+
+MemoryHigh=bytes：用于设置cgroup v2的memory.high参数，不支持cgroup v1。内存使用超过该值时，进程将被降低运行时间，并快速回收其占用的内存。同样可以设置不同的后缀：K,M,G或者T（单位1024）。也可以设置为infinity表示没有限制。
+
+MemoryMax=bytes：用于设置cgroup v2的memory.max参数，如果进程的内存超过该限制，则会触发out-of-memory将其kill掉。同样可以设置不同的后缀：K,M,G或者T（单位1024），以及设置为infinity。该参数去掉旧版本的MemoryLimit=。
+
+MemorySwapMax=bytes：用于设置cgroup v2的memory.swap.max"参数。和MemoryMax类似，不同的是用于控制Swap的使用上限。
+
+TasksAccounting=：是否开启unit的task个数统计，BOOL型，ture或者false。
+
+TasksMax=N：用于设置cgroup的pids.max参数。控制unit可以创建的最大tasks个数。
+
+IOAccounting：是否开启Block IO的统计，BOOL型，true或者false。对应旧版本的BlockIOAccounting=参数。
+
+IOWeight=weight, StartupIOWeight=weight：设置cgroup v2的io.weight参数，控制IO的权重。取值范围0-1000，默认100。该设置取代了旧版本的BlockIOWeight=和StartupBlockIOWeight=。
+
+IODeviceWeight=device weight：控制单个设备的IO权重，同样设置在cgroup v2的io.weight参数里，如“/dev/sda 1000”。取值范围0-1000，默认100。该设置取代了旧版本的BlockIODeviceWeight=。
+
+IOReadBandwidthMax=device bytes, IOWriteBandwidthMax=device bytes：设置磁盘IO读写带宽上限，对应cgroup v2的io.max参数。该参数格式为“path bandwidth”，path为具体设备名或者文件系统路径（最终限制的是文件系统对应的设备名）。数值bandwidth支持以K,M,G,T后缀（单位1000）。可以设置多行以限制对多个设备的IO带宽。该参数取代了旧版本的BlockIOReadBandwidth=和BlockIOWriteBandwidth=。
+
+IOReadIOPSMax=device IOPS, IOWriteIOPSMax=device IOPS：设置磁盘IO读写的IOPS上限，对应cgroup v2的io.max参数。格式和上面带宽限制的格式一样一样的。
+
+IPAccounting=：BOOL型，如果为true，则开启ipv4/ipv6的监听和已连接的socket网络收发包统计。
+
+IPAddressAllow=ADDRESS[/PREFIXLENGTH]…, IPAddressDeny=ADDRESS[/PREFIXLENGTH]…：开启AF_INET和AF_INET6 sockets的网络包过滤功能。参数格式为IPv4或IPv6的地址列表，IP地址后面支持地址匹配前缀（以'/'分隔），如”10.10.10.10/24“。需要注意，该功能仅在开启“eBPF”模块的系统上才支持。
+
+DeviceAllow=：用于控制对指定的设备节点的访问限制。格式为“设备名 权限”，设备名以"/dev/"开头或者"char-"、“block-”开头。权限为'r','w','m'的组合，分别代表可读、可写和可以通过mknode创建指定的设备节点。对应cgroup的"devices.allow"和"devices.deny"参数。
+
+DevicePolicy=auto|closed|strict：控制设备访问的策略。strict表示：只允许明确指定的访问类型；closed表示：此外，还允许访问包含/dev/null,/dev/zero,/dev/full,/dev/random,/dev/urandom等标准伪设备。auto表示：此外，如果没有明确的DeviceAllow=存在，则允许访问所有设备。auto是默认设置。
+
+Slice=：存放unit的slice目录，默认为system.slice。
+
+Delegate=：默认关闭，开启后将更多的资源控制交给进程自己管理。开启后unit可以在单其cgroup下创建和管理其自己的cgroup的私人子层级，systemd将不在维护其cgoup以及将其进程从unit的cgroup里移走。开启方法：“Delegate=yes”。所以通过设置Delegate选项，可以解决上面的问题。
+
+配置选项（旧版本）
+
+这些是旧版本的选项，新版本已经弃用。列出来是因为centos 7里的systemd是旧版本，所以要使用这些配置。
+
+CPUShares=weight, StartupCPUShares=weight：进程获取CPU运行时间的权重值，对应cgroup的"cpu.shares"参数，取值范围2-262144，默认值1024。
+
+MemoryLimit=bytes：进程内存使用上限，对应cgroup的"memory.limit_in_bytes"参数。支持K,M,G,T（单位1024）以及infinity。默认值-1表示不限制。
+
+BlockIOAccounting=：开启磁盘IO统计选项，同上面的IOAccounting=。
+
+BlockIOWeight=weight, StartupBlockIOWeight=weight：磁盘IO的权重，对应cgroup的"blkio.weight"参数。取值范围10-1000，默认值500。
+
+BlockIODeviceWeight=device weight：指定磁盘的IO权重，对应cgroup的"blkio.weight_device"参数。取值范围1-1000，默认值500。
+
+BlockIOReadBandwidth=device bytes, BlockIOWriteBandwidth=device bytes：磁盘IO带宽的上限配置，对应cgroup的"blkio.throttle.read_bps_device"和 "blkio.throttle.write_bps_device"参数。支持K,M,G,T后缀（单位1000）。
+
+问题解决
+
+回到上面的问题，我们可以通过两种方法解决：
+1.在unit配置文件里添加一个Delegate=yes的选项，这样资源控制完全有用户自己管理，systemd不会去移动进程到其默认创建的cgroup里。
+2.直接使用systemd的资源控制机制进行资源控制。通过直接使用systemd的资源控制的.service配置文件样例：
+
+[Unit]
+Description=xx Server
+
+[Service]
+ExecStart=/usr/bin/xx
+
+LimitNOFILE=102400
+LimitNPROC=102400
+LimitCORE=infinity
+Restart=on-failure
+KillMode=process
+MemoryLimit=1G
+CPUShares=1024
+
+[Install]
+WantedBy=multi-user.target
+
+修改完.service文件后，通过systemctl daemon-reload重新导入service文件，通过systemctl restart xx重启服务。
+
+总结
+
+systemd有自己的资源控制机制，所以用systemd拉起的服务时，不要自作聪明创建自己的cgroup目录并通过cgexec来拉起进程进行资源控制。
+
+参考
+
+systemd.resource-control
+systemd for Administrators, Part XVIII
+Control Group APIs and Delegation
+
+本文永久更新链接地址：https://www.linuxidc.com/Linux/2018-05/152623.htm
