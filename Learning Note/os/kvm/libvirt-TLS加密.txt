@@ -1,0 +1,316 @@
+libvirt-TLS加密
+原创 2018-01-06 kvm虚拟化 
+    TLS(Transport Layer Security Protocol)，即安全传输层协议，其核心是加密两台计算机之间的通信。libvirt中使用TLS，可以实现libvirt的安全加密。例如，虚拟机在不同的主机之间迁移或者远程链接libvirt的守护进程对libvirt进程控制时，都可以走TLS通道进行加密。本文将实践libvirt的TLS配置和具体使用。有以下四个步骤。
+
+1.CA证书文件：
+http://wiki.libvirt.org/page/TLSCreateCACert
+
+2.创建服务端证书：
+http://wiki.libvirt.org/page/TLSCreateServerCerts
+
+3.创建客户端证书：
+ http://wiki.libvirt.org/page/TLSCreateClientCerts
+（以上三个步骤时TLS的通用配置方式）
+
+4：配置libvirt守护进程
+/etc/libvirt/libvirtd.conf 
+#在最后添加下面#auth_unix_rw="sasl"ca_file="/etc/pki/CA/cacert.pem"cert_file = "/etc/pki/libvirt/servercert.pem"key_file = "/etc/pki/libvirt/private/serverkey.pem"listen_addr="0.0.0.0"unix_sock_group="qemu"unix_sock_rw_perms="0770"
+/etc/sysconfig/libvirtd
+#libvirtd启动时添加--listen参数LIBVIRTD_ARGS="--listen"
+
+以上4个步骤就完成了libvrit中TLS的配置。可查看端口监控信息：
+# netstat -tulpen | grep libvirt
+tcp        0      0 0.0.0.0:16514           0.0.0.0:*               LISTEN      0          34065      3505/libvirtd
+
+使用tls通道测试链接libvirt的守护进程：
+# virsh -c qemu+tls://host1/system hostname 
+（远程查看名为host1的计算机的hostname）
+
+使用tls通道测试虚拟机在不同的主机间迁移：
+# virsh migrate centos_test1 qemu+tls://host1/system --p2p --tunnelled
+（使用tls加密可以使用tunnelled参数，例子是把虚拟机centos_test1在线迁移到host1这台服务器上）
+
+具体操作可参考libvirt官方文档：
+http://wiki.libvirt.org/page/TLSSetup
+libvirt-使用cgroup做资源分割控制
+原创 2018-01-05 kvm虚拟化 
+    使用libvirt可以把创建的虚拟机放到cgroup划分的资源区中，从而实现所有虚拟机、部分虚拟机、单个虚拟机的资源控制，例如控制虚拟机的cpu使用情况、控制虚拟机在host上内存的使用大小等。
+
+libvirt默认资源划分：
+默认的libvirt使用cgroup创建一个名为machine的组：/sys/fs/cgroup/cpuset/machine/。
+然后使用libvrit创建的虚拟机都在这个machine组中。
+控制或改变machine组中的各个资源就可以控制虚拟机。
+例如：
+改变/sys/fs/cgroup/memory/machine/memory.limit_in_bytes的大小，就可以改变使用libvirt创建的所有虚拟机的实际占用host的总内存大小。
+
+libvirt指定资源划分：
+如果需要把部分虚拟机划分的一个资源组中，单独对这个资源组进行资源的控制，则需要手动创建资源组。
+
+例如建立一个新的资源组名字为openstack.partition，步骤
+1.在RESOURCE中建立目录：/sys/fs/cgroup/$RESOURCE/machine/openstack.partition/
+（这里RESOURCE的取值为blkio cpu,cpuacct cpuset devices freezer memory net_cls perf_event）
+
+2.根据需求修改/sys/fs/cgroup/$RESOURCE/machine/openstack.partition/中的资源，例如修改/sys/fs/cgroup/memory/machine/openstack.partition/memory.limit_in_bytes的大小。
+
+3.在openstack.partition资源组中创建虚拟机。
+libvirt的domain的xml：
+<domain type='kvm' id='6'>  ....  <resource>    <partition>/machine/openstack.partition</partition>  </resource>  ....</domain>
+
+4.启动虚拟机后，虚拟机的资源就收到了openstack.partition资源组的控制。
+可以看到在/sys/fs/cgroup/memory/machine/openstack.partition/目录下多了此虚拟机的文件夹：instance-00000049.libvirt-qemu
+
+注：
+1./sys/fs/cgroup/中资源的控制是可以嵌套的，子目录的资源定制可以覆盖掉父目录的资源定制。
+2.在上面例子是在ubuntu这种非systemd启动的系统中实践。在centos等systemd启动的系统中配置方式有所区别。
+
+具体可参考libvirt文档：https://libvirt.org/cgroups.html
+
+libvirt-虚拟机qos控制
+原创 2018-01-02 kvm虚拟化 
+libvirt提供了一系列tune的方式，来实现对虚拟机的qos精细控制。下面介绍cpu、内存、磁盘io、网络带宽的qos控制方式。
+
+一. cpu
+限制cpu带宽，主要时通过cputune中的quota参数来控制，设置了cpu的quota后就可以限制cpu访问物理CPU的时间片段。libvirt的虚拟机配置如下：
+<domain type='kvm' id='6'>  ....  <cputune>    <vcpupin vcpu="0" cpuset="1-4,^2"/>    <vcpupin vcpu="1" cpuset="0,1"/>    <vcpupin vcpu="2" cpuset="2,3"/>    <vcpupin vcpu="3" cpuset="0,4"/>    <emulatorpin cpuset="1-3"/>    <iothreadpin iothread="1" cpuset="5,6"/>    <iothreadpin iothread="2" cpuset="7,8"/>    <shares>2048</shares>    <period>1000000</period>    <quota>-1</quota>    <emulator_period>1000000</emulator_period>    <emulator_quota>-1</emulator_quota>    <iothread_period>1000000</iothread_period>    <iothread_quota>-1</iothread_quota>    <vcpusched vcpus='0-4,^3' scheduler='fifo' priority='1'/>    <iothreadsched iothreads='2' scheduler='batch'/>  </cputune>  ....</domain>
+# virsh schedinfo demo
+设置cpu亲和性。设置了cpu的亲和性可以使得虚拟机的cpu固定在某些物理cpu上，从而实现对cpu使用的控制和隔离。libvirt虚拟机的配置方式如下：
+<vcpu placement='static' cpuset='0-1'>2</vcpu><cputune>        <vcpupin vcpu='0' cpuset='0'/>        <vcpupin vcpu='1' cpuset='1'/></cputune>
+查看信息：# virsh vcpuinfo instance-0000000d（可查看到CPU Affinity信息）
+演示虚拟机cpu亲和性绑定
+1.通过下面命令找到虚拟机进程所有的线程# ps -efL例如：root     22314     1 22314  0    3 18:21 ?        00:00:00 /usr/libexec/qemu-kvm -name win7 -S -machine pc-i440fx-rhel7.0.0,accel=kvm,usb=off -cpu qemu64,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0root     22314     1 22324  0    3 18:21 ?        00:00:02 /usr/libexec/qemu-kvm -name win7 -S -machine pc-i440fx-rhel7.0.0,accel=kvm,usb=off -cpu qemu64,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0root     22314     1 22370  0    3 18:21 ?        00:00:00 /usr/libexec/qemu-kvm -name win7 -S -machine pc-i440fx-rhel7.0.0,accel=kvm,usb=off -cpu qemu64,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0这里虚拟机win7的线程为22314  22324  223702.查看各个线程的绑定情况# taskset -p 22314pid 22314's current affinity mask: f# taskset -p 22324 pid 22324's current affinity mask: 2# taskset -p 22370pid 22370's current affinity mask: f可以看出22314和22370是没做绑定。22324被绑定到了1号cpu上，说明如下：22314和22370绑定到了0123四个cpu上（f即1111，代表绑定到了0123四个cpu上）；22324绑定到了1号cpu上（2即0010，代表绑定到了1号cpu上）。这里主机上一共有0123这4个cpu，所以绑定到0123四个cpu上也就是没有绑定，所以这里22314和22370是没做绑定的。3.查看虚拟机运行时的cpu是否真的被绑住了：# watch -n 1 -d 'ps  -eLo pid,tid,pcpu,psr| grep 22314'Every 1.0s: ps  -eLo pid,tid,pcpu,psr| grep 22314                                                                                                                           Wed Nov  9 18:58:17 201622314 22314  0.0   022314 22324  0.2   122314 22370  0.0   1这里会看到22324一致在1上不动，22314和22370会随机的在各个cpu上跑。（左后一列代表在哪个cpu上。虚拟机很忙时效果会很明显）（说明：命令中最后为什么grep 22314，这个22314是刚才ps -eLf的第二列。）
+ 
+二. 内存
+内存_qos。设置了内存的qos可以限制虚拟机在物理host山申请内存的大小。libvirt虚拟机的配置方式如下：
+<domain>  ...  <memtune>    <hard_limit unit='G'>1</hard_limit>    <soft_limit unit='M'>128</soft_limit>    <swap_hard_limit unit='G'>2</swap_hard_limit>    <min_guarantee unit='byte'>67108864</min_guarantee>  </memtune>  ...</domain>
+参数说明：hard_limit：限制虚拟机在host上使用的最大物理内存。min_guarantee：最小保证的内存查看信息：# virsh memtune instance-00000005说明：可以通过virsh memtune动态调整上述参数
+另外还可以通过cgroup来实现对虚拟机的内存限制：
+1.如何通过cgroup做所有虚拟机总内存限制
+# cat /sys/fs/cgroup/memory/machine/memory.limit_in_bytes
+9223372036854771712
+这里machine是libvrit的默认根cgroup组名。修改/sys/fs/cgroup/memory/machine/memory.limit_in_bytes的数值就可以限制所有libvirt创建的虚拟机的使用总内存。
+2.如何通过cgroup做部分虚拟机的总内存限制
+创建一个名为openstack的自定义cgroup ：
+#!/bin/bashcd /sys/fs/cgroupfor i in blkio cpu,cpuacct cpuset devices freezer memory net_cls perf_event  do    mkdir $i/machine/openstack.partition  donefor i in cpuset.cpus  cpuset.mems  do    cat cpuset/machine/$i > cpuset/machine/openstack.partition/$i  done
+在虚拟机的xml文件中使用：
+<domain type='kvm' id='6'>  ....  <resource>    <partition>/machine/openstack.partition</partition>  </resource>  ....</domain>
+修改/sys/fs/cgroup/memory/machine/openstack.partition/memory.limit_in_bytes的数值，就可以限制通过openstack.partition创建的虚拟机的使用总内存
+3.如何通过cgroup做某个虚拟机的内存限制
+（同在虚拟机的xml文件中的memtune中配置hard_limit）
+echo 100000000 > /sys/fs/cgroup/memory/machine/openstack.partition/instance-00000005.libvirt-qemu/memory.limit_in_bytes
+就可以限制虚拟机instance-00000005的实际使用host的物理内存最大为100M。
+
+三. 磁盘
+磁盘_qos。设置磁盘的qos可以实现对磁盘的读写速率的限制，单位可以时iops或者字节。libvirt虚拟机的配置方式如下：
+<domain type='kvm' id='6'>  ....  <devices>    ....    <disk type='network' device='disk'>      <driver name='qemu' type='raw' cache='writeback' discard='unmap'/>      <source protocol='rbd' name='images/1a956ba7-25fe-49f1-9513-7adb8928036c'>        <host name='192.168.107.50' port='6789'/>        <host name='192.168.107.51' port='6789'/>        <host name='192.168.107.52' port='6789'/>        <host name='192.168.107.53' port='6789'/>      </source>      <target dev='vda' bus='virtio'/>      <iotune>        <read_bytes_sec>20480</read_bytes_sec>        <write_bytes_sec>10240</write_bytes_sec>      </iotune>      <boot order='1'/>      <address type='pci' domain='0x0000' bus='0x00' slot='0x0a' function='0x0'/>    </disk>    ....  </devices>  ....</domain>
+    <disk type='network' device='disk'>      <driver name='qemu' type='raw' cache='writeback' discard='unmap'/>      <source protocol='rbd' name='images/1a956ba7-25fe-49f1-9513-7adb8928036c'>        <host name='192.168.107.50' port='6789'/>        <host name='192.168.107.51' port='6789'/>        <host name='192.168.107.52' port='6789'/>        <host name='192.168.107.53' port='6789'/>      </source>      <target dev='vda' bus='virtio'/>      <iotune>        <read_iops_sec>20480</read_iops_sec>        <write_iops_sec>10240</write_iops_sec>      </iotune>      <boot order='1'/>      <address type='pci' domain='0x0000' bus='0x00' slot='0x0a' function='0x0'/>    </disk>
+# virsh blkiotune demo
+
+四. 网卡
+网卡_qos。设置网卡的qos可以限制网卡的io速率。libvirt虚拟机的配置方式如下：
+    <interface type='bridge'>      <mac address='fa:16:3e:8f:6a:c9'/>      <source bridge='brq5233ef6c-62'/>      <bandwidth>        <inbound average='2048'/>        <outbound average='1024'/>      </bandwidth>      <target dev='tap9573c869-24'/>      <model type='virtio'/>      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>    </interface>
+
+libvirt-内存分配
+原创 2018-01-01 kvm虚拟化 
+一. 启动内存
+<memory unit='KiB'>8388608</memory>
+虚拟机启动时使用的内存
+
+二. 内存气泡
+在虚拟机的xml文件中配置：
+  <memory unit='KiB'>8388608</memory>  <currentMemory unit='KiB'>158608</currentMemory>  ......  <devices>    <memballoon model='virtio'>      <stats period='10'/>      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>    </memballoon>  </devices>
+参数说明：memory：在qemu命令中使用参数-m来设置的。表示虚拟机在启动阶段使用的内存。包括在启动或稍后热插拔时指定的可能的附加内存。currentMemory：通过libvirt调整balloon值的初始值是currentMemory。说明：1.在虚拟机启动后加载了内存balloon驱动后就开始对虚拟机内存进行热插拔，先设置内存为<currentMemory>大小，这个<currentMemory>qemu进程不知道，时记录在libvirt中的。然后根据需求对内存进行调整（balloon），调整的上限是<memory>，这个<memory>qemu进程是知道的，在虚拟机启动时使用了这个值。2.要禁止memballoon设备，可以设置memballoon model='none'禁止内存气泡设备后，虚拟机内部看到的内存就是<memory>，也不能通过气泡进行调整。
+通过ballon调整虚拟机内存大小（调整后在虚拟机内部是可以看到虚拟机内存大小变化的）：
+# virsh qemu-monitor-command instance-00000005 --hmp "info balloon"
+# virsh qemu-monitor-command instance-00000005 --hmp "balloon 1024"
+或者：
+# virsh setmem instance-00000005 2097152
+# virsh dommemstat instance-00000005
+
+三. 内存热插拔
+虚拟机的xml文件
+ <maxMemory slots='1' unit='KiB'>10388608</maxMemory>  ...... <cpu mode='host-model'>    ......    <numa>      <cell id='0' cpus='0' memory='4194304' unit='KiB'/>    </numa>  </cpu>
+<maxMemory>的值表示通过 hot-plug 可以达到的内存的上限（包含虚拟机初始内存）。其中 slots 表示 DIMM 插槽的数量，每个插槽在运行时都可以插入一个内存设备，上限是 255 个。
+<numa>内的配置用于指定虚拟机内的 NUMA 拓扑。
+要插入内存设备xml文件
+<memory model='dimm'>    <target>        <size unit='KiB'>524287</size>        <node>0</node>    </target></memory>
+<size>指定设备的内存容量，<node>指定插入到虚拟机的哪个 NUMA 节点。
+插入内存前虚拟机内部：
+
+注：新的内存设备插入之后，内存气泡可调整的上限值也随之增大相应的大小。
+
+四. 热插拔内存后虚拟机内部自动 online 内存
+为了让系统自动 online 添加的内存，可以设置 udev 规则，内容如下：
+/etc/udev/rules.d/99-hotplug-memory.rules
+# automatically online hot-plugged memoryACTION=="add", SUBSYSTEM=="memory",ATTR{state}="online"
+五. 目前支持内存热插的 Windows 版本有：
+　　Windows Server 2008 R2, Enterprise Edition and Datacenter Edition
+　　Windows Server 2008, Enterprise Edition and Datacenter Edition
+　　Windows Server 2003, Enterprise Edition and Datacenter Edition
+　　所有 Windows 系统都不支持内存热拔操作。
+
+
+libvirt-cpu分配
+原创 2017-12-31 kvm-虚拟化 
+cpu模式和拓扑
+<domain>
+  ...
+  <cpu mode='host-model'>
+      <model fallback='allow'/>
+      <topology sockets='1' cores='2' threads='1'/>
+  </cpu>
+  ...
+</domain>
+cpu mode：可取值为custom host-model host-passthrouth
+<domain>
+  ...
+ <cpu match='exact'>
+   <model fallback='allow'>core2duo</model>
+   <vendor>Intel</vendor>
+   <topology sockets='1' cores='2' threads='1'/>
+   <cache level='3' mode='emulate'/>
+   <feature policy='disable' name='lahf_lm'/>
+ </cpu>
+  ...
+</domain>
+cpu match：可取值为exact minimum strict
+另外cpu的numa配置也在这里配。
+
+vcpu分配
+<domain>
+  ...
+  <vcpu placement='static' cpuset="1-4,^3,6" current="1">2</vcpu>
+  <vcpus>
+    <vcpu id='0' enabled='yes' hotpluggable='no' order='1'/>
+    <vcpu id='1' enabled='no' hotpluggable='yes'/>
+  </vcpus>
+  ...
+</domain>
+vcpu：最大vcpu数量，不能超出cpu拓扑中的数值。
+cpuset：指定CPU的亲和性，如果cputune中制定了vcpupin的亲和性，这里的将被忽略。
+current：开机时给虚拟机分配的cpu数量。
+vcpus：配置单个vcpu的状态。
+
+cpu热插
+当前配置：
+  <vcpu placement='static' current='2'>4</vcpu>
+  <cpu>
+    <topology sockets='1' cores='4' threads='1'/>
+  </cpu>
+根据上述配置，此虚拟机开机时有两个cpu，另外有两个cpu可以后插入。
+libvirt监控状态：
+virsh # vcpucount instance-0000000d
+maximum      config         4
+maximum      live           4
+current      config         2
+current      live           2
+virsh # vcpuinfo instance-0000000d
+VCPU:           0
+CPU:            2
+State:          running
+CPU time:       1.3s
+CPU Affinity:   yyyy
+VCPU:           1
+CPU:            3
+State:          running
+CPU time:       0.5s
+CPU Affinity:   yyyy
+virsh # cpu-stats instance-0000000d
+CPU0:
+        cpu_time             0.000000000 seconds
+        vcpu_time            0.000000000 seconds
+CPU1:
+        cpu_time             0.000000000 seconds
+        vcpu_time            0.000000000 seconds
+CPU2:
+        cpu_time             1.559106643 seconds
+        vcpu_time            1.149663485 seconds
+CPU3:
+        cpu_time             1.006847058 seconds
+        vcpu_time            0.701462772 seconds
+Total:
+        cpu_time             2.565953701 seconds
+        user_time            0.540000000 seconds
+        system_time          0.710000000 seconds
+虚拟机内部CPU列表：
+
+
+插入cpu：
+# virsh setvcpus instance-0000000d --count 4 --live
+在虚拟机内部激活新插入的cpu：
+
+
+
+硬件辅助IO虚拟化之设备直接分配
+原创 2018-01-19 kvm虚拟化 
+IO虚拟化实现的方式有很多种，有软件模拟、半虚拟化、设备直接分配、单根IO虚拟化。在《说一说虚拟化绕不开的io半虚拟化》一文中介绍了io的全虚拟化和半虚拟化。下面介绍一下IO的硬件辅助虚拟化。
+
+PCI设备直接分配
+    设备直接分配 （Device assignment）也称为 Device Pass-Through。就是将宿主机host中的物理 PCI 设备直接分配给客户机guest使用，虚拟机独占这个PCI设备。在guest进行对应的IO操作时，避免 了VM Exit 陷入VMM 中，极大提高了性能。
+    在Intel平台上的Device assignment技术是VT-D（Intel Virtualization Technology for Directed I/O），是在VT-X的基础上对硬件辅助虚拟化的扩展。
+下图（来自intel《vt-directed-io-spec》）是软件模拟io虚拟化和intel的VT-D的对比原理图：
+
+
+PCI设备直接分配实践
+下面的例子是把host主机中个一个网卡透传给虚拟机使用。
+（在intel平台上要开启VT-d，内核要设置intel_iommu=on。）
+
+1.在host上查看网卡信息
+# lspci
+00:19.0 Ethernet controller: Intel Corporation Ethernet Connection I217-LM (rev 04)
+04:00.0 Ethernet controller: Intel Corporation 82541PI Gigabit Ethernet Controller (rev 05)
+# ls /sys/bus/pci/devices/0000\:04\:00.0/net/
+eth1
+# cat /sys/class/net/eth1/address
+90:e2:ba:9f:7c:5a
+
+2.把pci设备从host中分离
+# virsh nodedev-list
+pci_0000_04_00_0
+# virsh nodedev-dettach pci_0000_04_00_0
+Device pci_0000_04_00_0 detached
+
+3.把pci设备分配给虚拟机
+虚拟机xml：
+<devices>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x0'/>
+    </hostdev>
+</devices>
+
+4.进入虚拟机查看pci是否进入
+# lspci
+00:10.0 Ethernet controller: Intel Corporation 82541PI Gigabit Ethernet Controller (rev 05)
+# cat /sys/class/net/eth1/address
+90:e2:ba:9f:7c:5a
+可以看出虚拟机中的网卡就是原来host中的网卡。并且此时在host的/sys/class/net/中已经看不到这个网卡了。
+
+5.把pci设备还给host：
+# virsh nodedev-reattach pci_0000_04_00_0
+
+libvirt-Host与Guest之间共享文件夹
+原创 2018-02-09 kvm虚拟化 
+本文实践在Host和Gues之间共享文件夹，方式是qemu实现的Plan 9 folder sharing over Virtio。
+
+在Host上建立一个共享文件夹：
+# mkdir /tmp/shared_host
+
+在Host上启动虚拟机qemu：
+# qemu-system-x86_64 -smp 2 -m 4096 -enable-kvm -drive file=/home/test/ubuntu.img,if=virtio -vnc :2 \
+-fsdev local,security_model=passthrough,id=fsdev-fs0,path=/tmp/shared_host -device virtio-9p-pci,id=fs0,fsdev=fsdev-fs0,mount_tag=test_mount
+
+在Host上启动虚拟机libvirt：
+<devices>
+    <filesystem type='mount' accessmode='passthrough'>
+      <source dir='/tmp/shared_host'/>
+      <target dir='test_mount'/>
+    </filesystem>
+</devices>
+
+在Guest上mount共享文件夹：
+# mkdir /tmp/shared_guest
+# mount -t 9p -o trans=virtio test_mount /tmp/shared_guest/ -oversion=9p2000.L,posixacl,cache=loose
+
+现在就可在Host的/tmp/shared_host和Guest的/tmp/shared_guest/之间进行文件的共享了。
