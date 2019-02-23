@@ -1,3 +1,17 @@
+kubeadm 踩坑记
+
+Kubeadm 是个让我爱恨交加的东西，一方面，我不认为一个生产集群应该使用这样一个第三方工具进行在线安装，尤其是在目前这种网络环境之下；而另外一方面，Kubeadm 这一工具是随 Kubernetes 同步更新的，其中包含了大量的集群配置方面的最佳实践，是追新的最佳参考，所以这个讨厌的东西的运行是必须需要得到保障的。kubeadm 的执行过程沉默到令人发指，因此下面分享几个使用过程中遇到的一些问题和解决的思路和方法，希望对同行们有所帮助。
+
+下面的例子是基于 kubeadm 1.6.6 + Centos 7 的执行过程记录的。
+
+写入 yum repo 并进行安装之后，利用 systemctl enable kubelet 启用 kubelet 服务之后，只要运行一下 systemctl daemon-reload即可，这一服务的启动需要 kubeadm 生成的证书和配置文件等的支持，因此无需进行启动。
+kubeadm init过程首先会检查代理服务器，确定跟 kube-apiserver 的 https 连接方式，如果有代理设置，会提出警告。
+接下来会对 sysctl 进行检查，我这里需要执行 sysctl net.bridge.bridge-nf-call-iptables=1，对这一参数进行调整，解决他的警告。
+接下来进入最抓狂的一个等待时间，屏幕显示为[apiclient] Created API client, waiting for the control plane to become ready，这一过程中会遇到大多数的坑，我一般会另外启动一个连接或者 tmux 窗口，进行观察和除错：
+这里已经做好运行 kubelet 服务的准备，因此这一时间内，我们可以利用systemctl statusl -l kubelet对服务的启动状况进行检查，目前比较容易遇到的是 kubectl 和 docker 两个服务的cgroup-driver不一致的问题，这里编辑文件/etc/systemd/system/kubelet.service.d/10-kubeadm.conf，修改这一参数值为跟 docker 一致的cgroupfs即可。这一步可以在 kubeadm init 之前执行完成
+kubelet 启动之后，会尝试运行系统组件的 Pod，这里我们可以通过观察docker images的镜像列表来观察是否能够顺利进行下载。
+镜像下载完成之后就会开始运行各个系统组件，因此也是事故最为集中的阶段，我们可以使用docker ps、docker logs、docker inspect几个命令，逐个查看组件的运行情况，对失败组件的原因进行排除，之前提过的resolv.conf的故障就是在这一阶段发现并排除的。
+
 kubeadm 部署kubernetes 1.11.0 的问题记录
 
 系统环境
