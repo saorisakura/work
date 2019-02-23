@@ -1,0 +1,118 @@
+kubeadm 部署kubernetes 1.11.0 的问题记录
+
+系统环境
+
+[root@kubeadm ~]# cat /etc/redhat-release 
+CentOS Linux release 7.5.1804 (Core) 
+
+关闭selinux
+
+[root@kubeadm ~]# cat /etc/selinux/config 
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected. 
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted 
+
+编辑kubelet的启动环境变量，该变量要与docker的cgroup-driver驱动一样
+
+docker的cgroup-driver驱动
+
+[root@kubeadm ~]# docker info
+Containers: 10
+ Running: 10
+ Paused: 0
+ Stopped: 0
+Images: 7
+Server Version: 1.13.1
+Storage Driver: overlay2
+ Backing Filesystem: xfs
+ Supports d_type: true
+ Native Overlay Diff: false
+Logging Driver: journald
+Cgroup Driver: systemd
+
+kubelet的cgroup-driver驱动
+
+[root@kubeadm ~]# cat /etc/default/kubelet 
+KUBELET_KUBEADM_EXTRA_ARGS=--cgroup-driver=systemd
+
+安装docker
+
+yum install -y docker
+systemctl enable docker && systemctl start docker
+1
+2
+添加谷歌的yum源
+
+[root@kubeadm ~]# cat /etc/yum.repos.d/kubernetes.repo 
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+安装kubelet kubeadm kubectl
+
+yum install -y kubelet kubeadm kubectl
+systemctl enable kubelet
+1
+2
+注意：这一步不能直接执行 systemctl start kubelet，否侧会报错，kubelet也起动不成功
+
+7月 29 12:17:19 kubeadm systemd[1]: Started kubelet: The Kubernetes Node Agent.
+7月 29 12:17:19 kubeadm systemd[1]: Starting kubelet: The Kubernetes Node Agent...
+7月 29 12:17:20 kubeadm kubelet[32751]: F0729 12:17:20.026220   32751 server.go:190] failed to load Kubelet config file /var/lib/kubelet/config.yaml, error failed to read kubelet config file "/var/lib/kubelet/config.yaml", error: open /var/lib/kubelet/config.yaml: no such file or directory
+
+
+直接执行
+
+[root@kubeadm ~]# kubeadm init
+[init] using Kubernetes version: v1.11.1
+[preflight] running pre-flight checks
+    [WARNING Firewalld]: firewalld is active, please ensure ports [6443 10250] are open or your cluster may not function correctly
+I0729 12:24:37.097036     574 kernel_validator.go:81] Validating kernel version
+I0729 12:24:37.097124     574 kernel_validator.go:96] Validating kernel config
+    [WARNING Hostname]: hostname "kubeadm" could not be reached
+    [WARNING Hostname]: hostname "kubeadm" lookup kubeadm on 10.155.0.1:53: no such host
+[preflight/images] Pulling images required for setting up a Kubernetes cluster
+[preflight/images] This might take a minute or two, depending on the speed of your internet connection
+[preflight/images] You can also perform this action in beforehand using 'kubeadm config images pull'
+
+[kubelet] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[preflight] Activating the kubelet service
+[certificates] Generated ca certificate and key.
+[certificates] Generated apiserver certificate and key.
+
+[root@kubeadm ~]# systemctl status kubelet
+● kubelet.service - kubelet: The Kubernetes Node Agent
+   Loaded: loaded (/etc/systemd/system/kubelet.service; enabled; vendor preset: disabled)
+  Drop-In: /etc/systemd/system/kubelet.service.d
+           └─10-kubeadm.conf
+   Active: active (running) since 日 2018-07-29 12:27:18 CST; 1min 10s ago
+     Docs: http://kubernetes.io/docs/
+ Main PID: 917 (kubelet)
+   CGroup: /system.slice/kubelet.service
+           └─917 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib...
+
+7月 29 12:28:10 kubeadm kubelet[917]: W0729 12:28:10.689546     917 cni.go:172] Unable to update cni config: No networks found in /etc/cni/net.d
+7月 29 12:28:10 kubeadm kubelet[917]: E0729 12:28:10.689653     917 kubelet.go:2110] Container runtime network not ready: NetworkReady=false reas...itialized
+7月 29 12:28:15 kubeadm kubelet[917]: W0729 12:28:15.691030     917 cni.go:172] Unable to update cni config: No networks found in /etc/cni/net.d
+7月 29 12:28:15 kubeadm kubelet[917]: E0729 12:28:15.691284     917 kubelet.go:2110] Container runtime network not ready: NetworkReady=false reas...itialized
+7月 29 12:28:20 kubeadm kubelet[917]: E0729 12:28:20.683083     917 summary.go:102] Failed to get system container stats for "/system.slice/kubelet.servic...
+7月 29 12:28:20 kubeadm kubelet[917]: E0729 12:28:20.683103     917 summary.go:102] Failed to get system container stats for "/system.slice/docke....service"
+7月 29 12:28:20 kubeadm kubelet[917]: W0729 12:28:20.692520     917 cni.go:172] Unable to update cni config: No networks found in /etc/cni/net.d
+7月 29 12:28:20 kubeadm kubelet[917]: E0729 12:28:20.692688     917 kubelet.go:2110] Container runtime network not ready: NetworkReady=false reas...itialized
+7月 29 12:28:25 kubeadm kubelet[917]: W0729 12:28:25.694158     917 cni.go:172] Unable to update cni config: No networks found in /etc/cni/net.d
+7月 29 12:28:25 kubeadm kubelet[917]: E0729 12:28:25.694261     917 kubelet.go:2110] Container runtime network not ready: NetworkReady=false reas...itialized
+Hint: Some lines were ellipsized, use -l to show in full.
