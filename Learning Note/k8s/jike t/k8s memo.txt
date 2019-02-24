@@ -110,14 +110,215 @@ Cgroups
 
 Images
 	见有道笔记（PDF）
+		
+		之前做的一个脚本把信息用json格式存到文本中。这样的好处是简便，易编辑，并且拥有强大的表达能力。
+		不过从文本cat出来的是一堆很难看的字符串，没换行和缩进。这时候就在想，如果有个类似于IDE的格式化代码的工具来显示格式化的json数据，那就好了。
+		这工具不用四处去找，python就提供了这样一个东西。
+		从python2.6开始，多了个json.tool的东西。
+		使用很简单。
+		在命令行中，python -mjson.tool somejson.txt。
+		我们用echo来测试下。
+		>>echo '{"name": "lucy", "age": "18"}' | python -mjson.tool
+		{
+		"age": "18",
+		"name": "lucy"
+		}
+
+image filesystem
+	overlay on /var/lib/docker/overlay2/c4e1ec52589d9c947a4e1735d08520f453bd0c1d3416f7dd4c2a40caeb97196b/merged type overlay (rw,relatime,
+	lowerdir=/var/lib/docker/overlay2/l/QA2NAQVLJBHHB6E2XNRYF2OTXH:/var/lib/docker/overlay2/l/P2FTPTUU2CNF2JFVCG3XW4AMA3:/var/lib/docker/overlay2/l/PPPOV7SQAFZBRGKQV6FEBJL4FM:/var/lib/docker/overlay2/l/MTO6CA5ETJBKLTLFXZZ3MHUSIK:/var/lib/docker/overlay2/l/ATUZP6HHVZBMMOP7OXTVXDTO5G:/var/lib/docker/overlay2/l/TJMAAUKGMGAHIHCNHABG3QW5HX:/var/lib/docker/overlay2/l/4MGFCJFRZLQQWIOJJYO3BAH65G:/var/lib/docker/overlay2/l/P22ZRVOEGYMUXH6IW6AG6R2MNR:/var/lib/docker/overlay2/l/2NEVYXKXM5EHFR4DQJMJHXYHQG:/var/lib/docker/overlay2/l/HF3GP7SGGVQFPYIW2TJOJVB6AC:/var/lib/docker/overlay2/l/XER74UQQ2JBHZ5QKXYZFJFP4DV:/var/lib/docker/overlay2/l/QTOSFGPZUSOS6CNLMWGDGHQQFJ:/var/lib/docker/overlay2/l/5IL2U3NPUXODK3N5FTAAXDJPZD:/var/lib/docker/overlay2/l/E6ON5G4VQ5NTP3NFNKXZHBSZ2C,
+	
+	upperdir=/var/lib/docker/overlay2/c4e1ec52589d9c947a4e1735d08520f453bd0c1d3416f7dd4c2a40caeb97196b/diff,
+	
+	workdir=/var/lib/docker/overlay2/c4e1ec52589d9c947a4e1735d08520f453bd0c1d3416f7dd4c2a40caeb97196b/work)
+
 
 K8S
 
+kubeadm config print init-defaults > kubeadm.conf
+	[root@template 2019_k8s]# cat kubeadm.conf 
+		apiVersion: kubeadm.k8s.io/v1beta1
+		bootstrapTokens:
+		- groups:
+		  - system:bootstrappers:kubeadm:default-node-token
+		  token: abcdef.0123456789abcdef
+		  ttl: 24h0m0s
+		  usages:
+		  - signing
+		  - authentication
+		kind: InitConfiguration
+		localAPIEndpoint:
+		  advertiseAddress: 1.2.3.4
+		  bindPort: 6443
+		nodeRegistration:
+		  criSocket: /var/run/dockershim.sock
+		  name: template.me
+		  taints:
+		  - effect: NoSchedule
+			key: node-role.kubernetes.io/master
+		---
+		apiServer:
+		  timeoutForControlPlane: 4m0s
+		apiVersion: kubeadm.k8s.io/v1beta1
+		certificatesDir: /etc/kubernetes/pki
+		clusterName: kubernetes
+		controlPlaneEndpoint: ""
+		controllerManager: {}
+		dns:
+		  type: CoreDNS
+		etcd:
+		  local:
+			dataDir: /var/lib/etcd
+		imageRepository: registry.aliyuncs.com/google_containers
+		kind: ClusterConfiguration
+		kubernetesVersion: v1.13.3
+		networking:
+		  dnsDomain: cluster.local
+		  podSubnet: ""
+		  serviceSubnet: 10.96.0.0/12
+		scheduler: {}
+		---
+		apiVersion: kubeadm.k8s.io/v1alpha1
+		kind: MasterConfiguration
+		controllerManagerExtraArgs:
+		  horizontal-pod-autoscaler-use-rest-clients: "true"
+		  horizontal-pod-autoscaler-sync-period: "10s"
+		  node-monitor-grace-period: "10s"
+		apiServerExtraArgs:
+		  runtime-config: "api/all=true"
+kubeadm config images pull --config kubeadm.conf
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/kube-controller-manager:v1.13.3 k8s.gcr.io/kube-controller-manager:v1.13.3
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/kube-apiserver:v1.13.3 k8s.gcr.io/kube-apiserver:v1.13.3
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/kube-proxy:v1.13.3 k8s.gcr.io/kube-proxy:v1.13.3
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/kube-scheduler:v1.13.3 k8s.gcr.io/kube-scheduler:v1.13.3
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/coredns:1.2.6 k8s.gcr.io/coredns:1.2.6
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/etcd:3.2.24 k8s.gcr.io/etcd:3.2.24
+[root@template 2019_k8s]# docker tag registry.aliyuncs.com/google_containers/pause:3.1 k8s.gcr.io/pause:3.1
 
+kubeadm init --kubernetes-version=v1.13.3 --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12 --apiserver-advertise-address=0.0.0.0 --ignore-preflight-errors=Swap
+	[root@template 2019_k8s]# kubeadm init --config kubeadm.conf 
+	W0224 00:16:48.353952   12785 strict.go:47] unknown configuration schema.GroupVersionKind{Group:"kubeadm.k8s.io", Version:"v1beta1", Kind:"MasterConfiguration"} for scheme definitions in "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/scheme/scheme.go:31" and "k8s.io/kubernetes/cmd/kubeadm/app/componentconfigs/scheme.go:28"
+	[config] WARNING: Ignored YAML document with GroupVersionKind kubeadm.k8s.io/v1beta1, Kind=MasterConfiguration
+	[init] Using Kubernetes version: v1.13.3
+	[preflight] Running pre-flight checks
+			[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 17.12.1-ce. Latest validated version: 18.06
+	[preflight] Pulling images required for setting up a Kubernetes cluster
+	[preflight] This might take a minute or two, depending on the speed of your internet connection
+	[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+	[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+	[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+	[kubelet-start] Activating the kubelet service
+	[certs] Using certificateDir folder "/etc/kubernetes/pki"
+	[certs] Generating "ca" certificate and key
+	[certs] Generating "apiserver-kubelet-client" certificate and key
+	[certs] Generating "apiserver" certificate and key
+	[certs] apiserver serving cert is signed for DNS names [template.me kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 172.16.56.11]
+	[certs] Generating "front-proxy-ca" certificate and key
+	[certs] Generating "front-proxy-client" certificate and key
+	[certs] Generating "etcd/ca" certificate and key
+	[certs] Generating "etcd/peer" certificate and key
+	[certs] etcd/peer serving cert is signed for DNS names [template.me localhost] and IPs [172.16.56.11 127.0.0.1 ::1]
+	[certs] Generating "etcd/healthcheck-client" certificate and key
+	[certs] Generating "apiserver-etcd-client" certificate and key
+	[certs] Generating "etcd/server" certificate and key
+	[certs] etcd/server serving cert is signed for DNS names [template.me localhost] and IPs [172.16.56.11 127.0.0.1 ::1]
+	[certs] Generating "sa" key and public key
+	[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+	[kubeconfig] Writing "admin.conf" kubeconfig file
+	[kubeconfig] Writing "kubelet.conf" kubeconfig file
+	[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+	[kubeconfig] Writing "scheduler.conf" kubeconfig file
+	[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+	[control-plane] Creating static Pod manifest for "kube-apiserver"
+	[control-plane] Creating static Pod manifest for "kube-controller-manager"
+	[control-plane] Creating static Pod manifest for "kube-scheduler"
+	[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+	[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+	[apiclient] All control plane components are healthy after 26.004421 seconds
+	[uploadconfig] storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+	[kubelet] Creating a ConfigMap "kubelet-config-1.13" in namespace kube-system with the configuration for the kubelets in the cluster
+	[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "template.me" as an annotation
+	[mark-control-plane] Marking the node template.me as control-plane by adding the label "node-role.kubernetes.io/master=''"
+	[mark-control-plane] Marking the node template.me as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+	[bootstrap-token] Using token: abcdef.0123456789abcdef
+	[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+	[bootstraptoken] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+	[bootstraptoken] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+	[bootstraptoken] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+	[bootstraptoken] creating the "cluster-info" ConfigMap in the "kube-public" namespace
+	[addons] Applied essential addon: CoreDNS
+	[addons] Applied essential addon: kube-proxy
 
+	Your Kubernetes master has initialized successfully!
 
+	To start using your cluster, you need to run the following as a regular user:
 
+	  mkdir -p $HOME/.kube
+	  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	  sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
+	You should now deploy a pod network to the cluster.
+	Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+	  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+	You can now join any number of machines by running the following on each node
+	as root:
+
+	  kubeadm join 172.16.56.11:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:c98e6c2a6ba07023335991591c0e353ab5337e5496d11c45a3d2bf50db35b4d5  # 20190224
+	  ##################################此处执行完之后，由于下载对应镜像，node1达到ready状态需要一段时间
+	  [root@template 2019_k8s]# kubectl get nodes
+			NAME          STATUS   ROLES    AGE   VERSION
+			node1         Ready    <none>   10m   v1.13.3
+			template.me   Ready    master   48m   v1.13.3
+	  [root@node1 ~]# kubeadm join 172.16.56.11:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:c98e6c2a6ba07023335991591c0e353ab5337e5496d11c45a3d2bf50db35b4d5 
+		[preflight] Running pre-flight checks
+				[WARNING Service-Docker]: docker service is not enabled, please run 'systemctl enable docker.service'
+				[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 17.12.1-ce. Latest validated version: 18.06
+		[discovery] Trying to connect to API Server "172.16.56.11:6443"
+		[discovery] Created cluster-info discovery client, requesting info from "https://172.16.56.11:6443"
+		[discovery] Requesting info from "https://172.16.56.11:6443" again to validate TLS against the pinned public key
+		[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "172.16.56.11:6443"
+		[discovery] Successfully established connection with API Server "172.16.56.11:6443"
+		[join] Reading configuration from the cluster...
+		[join] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+		[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.13" ConfigMap in the kube-system namespace
+		[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+		[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+		[kubelet-start] Activating the kubelet service
+		[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+		[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "node1" as an annotation
+
+		This node has joined the cluster:
+		* Certificate signing request was sent to apiserver and a response was received.
+		* The Kubelet was informed of the new secure connection details.
+
+		Run 'kubectl get nodes' on the master to see this node join the cluster.
+	
+	kubectl https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+	
+	Error response from daemon: Get https://registry.aliyuncs.com/v2/: x509: certificate has expired or is not yet valid
+	可能是时间不对
+
+	yaml example
+	apiVersion: apps/v1
+	kind: Deployment
+	metadata:
+	  name: nginx-deployment
+	spec:
+	  selector:
+		matchLabels:
+		  app: nginx
+	  replicas: 2
+	  template:
+		metadata:
+		  labels:
+			app: nginx
+		spec:
+		  containers:
+		  - name: nginx
+			image: nginx:1.7.9
+			ports:
+			- containerPort: 80
 
 
 
