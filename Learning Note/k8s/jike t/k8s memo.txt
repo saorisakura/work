@@ -321,7 +321,12 @@ kubeadm init --kubernetes-version=v1.13.3 --pod-network-cidr=10.244.0.0/16 --ser
 			- containerPort: 80
 
 
+	kubernates删除pod一直处于terminating状态
+	使用命令
 
+	kubectl delete pods --all --grace-period=0 –force
+
+	强制删除
 
 
 
