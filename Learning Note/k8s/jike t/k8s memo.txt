@@ -327,6 +327,15 @@ kubeadm init --kubernetes-version=v1.13.3 --pod-network-cidr=10.244.0.0/16 --ser
 	kubectl delete pods --all --grace-period=0 –force
 
 	强制删除
+	
+	使用自定义证书
+	默认情况下，kubeadm 会生成集群运行所需的所有证书。您可以通过提供自己的证书来覆盖此行为。
+
+	要做到这一点，您必须把它们放在 --cert-dir 参数或者配置文件中的 CertificatesDir 指定的目录。默认目录为 /etc/kubernetes/pki。
+
+	如果存在一个给定的证书和密钥对，kubeadm 将会跳过生成步骤并且使用已存在的文件。例如，您可以拷贝一个已有的 CA 到 /etc/kubernetes/pki/ca.crt 和 /etc/kubernetes/pki/ca.key，kubeadm 将会使用这个 CA 来签署其余的证书。
+
+
 
 
 
