@@ -1,0 +1,254 @@
+使用 kubeadm 创建高可用集群
+本指南为您展示了如何使用 kubeadm 安装并设置一个高可用集群。
+
+本文为您展示了如何执行 kubeadm 没有执行的配置任务：配置硬件；配置多个系统和负载均衡。
+
+注意：本指南只是一个潜在的解决方案，还存在很多可以配置高可用集群的方法。如果有更好的解决方案适合您，请使用它。如果您找到了社区可以使用的更好的解决方案，请随时为社区提供回馈。
+
+Before you begin
+在 master 上安装先决条件
+设置高可用 etcd 集群
+创建 etcd CA 证书
+生成 etcd 客户端证书
+创建 SSH 访问
+运行 etcd
+设置 master 负载均衡器
+获取 etcd 证书
+在 master0 上运行 kubeadm init
+在 master1 和 master2 上运行 kubeadm init
+选项 1：使用 scp 复制
+选项 2：复制粘贴
+将 master1 和 master2 添加到负载均衡器中
+安装 CNI 网络
+安装工作节点
+配置工作节点
+Before you begin
+三台满足 kubeadm 最低要求 的机器，用作 master。
+三台满足 kubeadm 最低要求 的机器，用作 worker（工作节点）。
+可选： 至少三台满足 kubeadm 最低要求 的机器 - 如果您希望在专用的节点上托管 etcd（请查看下面的信息）
+每台机器有 1GB 或更多内存（少于该值将导致应用内存不足）
+集群中所有机器之间网络连接良好（公共或私有网络都可以）
+在 master 上安装先决条件
+对于创建好的每个 master，请参照 安装指南 中有关如何安装 kubeadm 及其依赖的信息。在本步骤结束时，您应该在每个 master 上安装了所有的依赖项。
+
+设置高可用 etcd 集群
+对于高可用配置，您需要决定如何托管您的 etcd 集群。一个集群由至少 3 个成员组成。我们推荐以下模型之一：
+
+在独立的计算节点（虚拟机）上托管 etcd 集群，或者
+在 master 节点上托管 etcd 集群
+虽然第一种选项提供了更多的性能和更好的硬件隔离，但它也更加昂贵，并且需要额外的支持。
+
+对于 选项 1：创建 3 个符合 CoreOS 推荐硬件配置 的虚拟机。为了简单起见，我们将它们称为 etcd0、etcd1 和 etcd2。
+
+创建 etcd CA 证书
+安装 cfssl 和 cfssljson：
+
+ curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+ curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+ chmod +x /usr/local/bin/cfssl*
+SSH 进入 etcd0 并运行如下命令：
+
+ mkdir -p /etc/kubernetes/pki/etcd
+ cd /etc/kubernetes/pki/etcd
+ cat >ca-config.json <<EOL
+ {
+     "signing": {
+         "default": {
+             "expiry": "43800h"
+         },
+         "profiles": {
+             "server": {
+                 "expiry": "43800h",
+                 "usages": [
+                     "signing",
+                     "key encipherment",
+                     "server auth",
+                     "client auth"
+                 ]
+             },
+             "client": {
+                 "expiry": "43800h",
+                 "usages": [
+                     "signing",
+                     "key encipherment",
+                     "client auth"
+                 ]
+             },
+             "peer": {
+                 "expiry": "43800h",
+                 "usages": [
+                     "signing",
+                     "key encipherment",
+                     "server auth",
+                     "client auth"
+                 ]
+             }
+         }
+     }
+ }
+ EOL
+ cat >ca-csr.json <<EOL
+ {
+     "CN": "etcd",
+     "key": {
+         "algo": "rsa",
+         "size": 2048
+     }
+ }
+ EOL
+请确保 ca-csr.json 中的 names 小节和您的公司或个人地址相匹配，或者您也可以使用一个合适的默认值。
+
+接下来，像这样生成 CA 证书：
+
+ cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
+生成 etcd 客户端证书
+生成客户端证书
+
+在 etcd0 上运行如下命令：
+
+ cat >client.json <<EOL
+ {
+     "CN": "client",
+     "key": {
+         "algo": "ecdsa",
+         "size": 256
+     }
+ }
+ EOL
+ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
+这会创建 client.pem 和 client-key.pem。
+
+创建 SSH 访问
+为了在机器之间复制证书，您必须为 scp 启用 SSH 访问。
+
+首先，在您的 shell 中为 etcd1 和 etcd2 打开新的选项卡。确保您已经 SSH 进入所有三台机器，然后运行以下命令（如果您使用 tmux 同步 - 请在 iTerm 中输入 cmd+shift+i，这将会快很多）：
+
+ export PEER_NAME=$(hostname)
+ export PRIVATE_IP=$(ip addr show eth1 | grep -Po 'inet \K[\d.]+')
+请确保 eth1 对应于私有网络 iPv4 地址的网络接口。这可能取决于您的网络配置，因此，请在继续之前运行 echo $PRIVATE_IP 进行检查。
+
+接下来，为每个 box 生成 SSH 密钥：
+
+ ssh-keygen -t rsa -b 4096 -C "<email>"
+请确保将 <email> 替换为您的 email、占位符或者一个空字符串。继续回车直到文件出现在 ~/.ssh 中。
+
+输出 etcd1 和 etcd2 的公钥文件的内容，像这样：
+
+ cat ~/.ssh/id_rsa.pub
+最后，复制每个输出并粘贴到 etcd0 的 ~/.ssh/authorized_keys 文件中。这将允许 etcd1 和 etcd2 SSH 到 etcd0 中。
+
+ mkdir -p /etc/kubernetes/pki/etcd
+ cd /etc/kubernetes/pki/etcd
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/ca.pem .
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/ca-key.pem .
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/client.pem .
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/client-key.pem .
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/ca-config.json .
+其中 <etcd0-ip-address> 对应于 etcd0 的公共或私有 IPv4 地址。
+
+完成之后，请在所有 etcd 机器上运行以下命令：
+
+ cfssl print-defaults csr > config.json
+ sed -i '0,/CN/{s/example\.net/'"$PEER_NAME"'/}' config.json
+ sed -i 's/www\.example\.net/'"$PRIVATE_IP"'/' config.json
+ sed -i 's/example\.net/'"$PUBLIC_IP"'/' config.json
+
+ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server config.json | cfssljson -bare server
+ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer config.json | cfssljson -bare peer
+以上内容将使用您机器的 hostname 替换默认配置中的节点名称。请在生成证书之前，确保这些都是正确的。如果发现错误，请重新配置 config.json 并重新运行 cfssl 命令。
+
+这将产生以下文件：peer.pem、peer-key.pem、server.pem、server-key.pem。
+
+运行 etcd
+现在所有的证书都已经生成，您将在每台机器上安装并设置 etcd.
+
+选择一个...systemdStatic Pods
+请选择其中一个选项卡以查看有关运行 etcd 的各种方式的安装说明。
+
+设置 master 负载均衡器
+下一步是创建一个位于 master 节点前面的负载均衡器。如何做到这一点取决于您的环境；例如，您可以利用云服务提供商的负载均衡器，或者使用 nginx、keepalived 或者 HAproxy。某些云服务提供商的解决方案为：
+
+AWS Elastic Load Balancer
+GCE Load Balancing
+Azure
+您需要确保负载均衡器只路由到 master0 上的 6443 端口。这是因为 kubeadm 将使用负载均衡器 IP 执行健康检查。由于 master0 是第一个单独配置的，其他 master 不会运行 apiserver，这将导致 kubeadm 无限期地挂起。
+
+如果可能的话，请使用智能负载均衡算法，如“最少连接数（least connections）”，并使用健康检查，以便将不健康节点从循环中删除。大多数的服务提供商都将提供这些功能。
+
+获取 etcd 证书
+仅在您的 etcd 托管在专用节点上（选项 1）时执行下列步骤。如果您在 master 上（选项 2）托管 etcd，则可以跳过此步骤，因为您已经在 master 上生成了 etcd 证书。
+
+按照 创建 ssh 访问 一节中的步骤为每个 master 节点生成 SSH 密钥。执行以后，每个 master 中的 ~/.ssh/id_rsa.pub 下将生成一个 SSH 密钥，并且在 etcd0 的 ~/.ssh/authorized_keys 文件中存在一条记录。
+
+ mkdir -p /etc/kubernetes/pki/etcd
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
+ scp root@<etcd0-ip-address>:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki/etcd
+在 master0 上运行 kubeadm init
+为了运行 kubeadm，首先需要编写一个配置文件：
+
+ cat >config.yaml <<EOL
+ apiVersion: kubeadm.k8s.io/v1alpha1
+ kind: MasterConfiguration
+ api:
+   advertiseAddress: <private-ip>
+ etcd:
+   endpoints:
+   - https://<etcd0-ip-address>:2379
+   - https://<etcd1-ip-address>:2379
+   - https://<etcd2-ip-address>:2379
+   caFile: /etc/kubernetes/pki/etcd/ca.pem
+   certFile: /etc/kubernetes/pki/etcd/client.pem
+   keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+ networking:
+   podSubnet: <podCIDR>
+ apiServerCertSANs:
+ - <load-balancer-ip>
+ apiServerExtraArgs:
+   apiserver-count: 3
+ EOL
+请确保替换了下列占位符：
+
+<private-ip> 替换为 master 服务器的私有 IPv4 地址。
+<etcd0-ip>、<etcd1-ip> 和 <etcd2-ip> 替换为三个 etcd 节点的地址。
+<podCIDR> 替换为 Pod CIDR。请阅读 CNI 网络小节 文档以获取更多信息。某些 CNI provider 不需要设置。
+注意：如果您正在使用 Kubernetes 1.9+，您可以使用 endpoint-reconciler-type=lease 替换 apiserver-count: 3 附加参数。有关更多信息，请参阅 文档。
+
+完成后，像这样运行 kubeadm：
+
+ kubeadm init --config=config.yaml
+在 master1 和 master2 上运行 kubeadm init
+在其余 master 上运行 kubeadm 之前，您首先需要从 master0 复制 K8s CA 证书。要做到这一点，您有两种选择：
+
+选项 1：使用 scp 复制
+按照 创建 ssh 访问 部分中的步骤操作，但不添加到 etcd0 的 authorized_keys 文件，将它们 添加到 master0 中。
+完成后，请运行：
+
+ scp root@<master0-ip-address>:/etc/kubernetes/pki/* /etc/kubernetes/pki
+ rm apiserver.crt
+选项 2：复制粘贴
+复制 /etc/kubernetes/pki/ca.crt 和 /etc/kubernetes/pki/ca.key 的内容并在 master1 和 master2 上手动创建这些文件。
+完成此操作后，可以参照 上一步，使用 kubeadm 安装控制平面。
+
+将 master1 和 master2 添加到负载均衡器中
+一旦 kubeadm 配置好了其它 master，您就可以将它们添加到负载均衡器中。
+
+安装 CNI 网络
+按照 此处 的说明安装 pod 网络。请确保这和您 master 配置文件中的任何 CIDR 都相匹配。
+
+安装工作节点
+接下来创建并设置工作节点。为此，您需要配置至少 3 台虚拟机。
+
+要配置工作节点，请执行和非高可用工作负载 相同的步骤。
+配置工作节点
+重新配置 kube-proxy 以通过负载均衡器访问 kube-apiserver：
+
+ kubectl get configmap -n kube-system kube-proxy -o yaml > kube-proxy.yaml
+ sudo sed -i 's#server:.*#server: https://<masterLoadBalancerFQDN>:6443#g' kube-proxy.cm
+ kubectl apply -f kube-proxy.cm --force
+ # restart all kube-proxy pods to ensure that they load the new configmap
+ kubectl delete pod -n kube-system -l k8s-app=kube-proxy
+重新配置 kubelet 以通过负载均衡器访问 kube-apiserver：
+
+ sudo sed -i 's#server:.*#server: https://<masterLoadBalancerFQDN>:6443#g' /etc/kubernetes/kubelet.conf
+ sudo systemctl restart kubelet
