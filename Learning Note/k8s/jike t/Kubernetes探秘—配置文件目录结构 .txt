@@ -1,0 +1,131 @@
+Kubernetes探秘—配置文件目录结构 
+
+Kubernetes的配置目录包括/etc/kubernetes、/home/supermap/.kube和/var/lib/kubelet目录。
+
+下面我们来看一看，这些目录里到底有些什么文件（操作系统使用Ubuntu 18.04LTS desktop）。
+
+安装tree命令：
+
+sudo apt  install tree
+1、kubernetes主配置目录
+显示/etc/kubernetes目录结构：
+
+supermap@podc01:/etc/kubernetes$ tree .
+.
+├── admin.conf
+├── controller-manager.conf
+├── kubelet.conf
+├── manifests
+│   ├── etcd.yaml
+│   ├── kube-apiserver.yaml
+│   ├── kube-controller-manager.yaml
+│   └── kube-scheduler.yaml
+├── pki
+│   ├── apiserver.crt
+│   ├── apiserver-etcd-client.crt
+│   ├── apiserver-etcd-client.key
+│   ├── apiserver.key
+│   ├── apiserver-kubelet-client.crt
+│   ├── apiserver-kubelet-client.key
+│   ├── ca.crt
+│   ├── ca.key
+│   ├── etcd
+│   │   ├── ca.crt
+│   │   ├── ca.key
+│   │   ├── healthcheck-client.crt
+│   │   ├── healthcheck-client.key
+│   │   ├── peer.crt
+│   │   ├── peer.key
+│   │   ├── server.crt
+│   │   └── server.key
+│   ├── front-proxy-ca.crt
+│   ├── front-proxy-ca.key
+│   ├── front-proxy-client.crt
+│   ├── front-proxy-client.key
+│   ├── sa.key
+│   └── sa.pub
+├── scheduler.conf
+└── tmp [error opening dir]
+
+4 directories, 30 files
+2、kubernetes用户配置目录
+主用户目录下的隐藏目录.kube包含用户的配置参数和缓存数据。目录结构为：
+
+/home/supermap/.kube
+├── cache
+│   └── discovery
+│       ├── 10.1.1.181_6443
+│       └── 10.1.1.201_6443
+├── config
+└── http-cache
+    ├── 028d83935e12ce471cbe29f4096ef4ed
+其中，配置文件config的内容为：
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...
+    server: https://10.1.1.201:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1...
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUl...
+3、kubelet服务的配置目录
+每一个ks节点都需要运行kubelet服务。kubelet服务的配置在/var/lib/kubelet目录下：
+
+supermap@podc01:/var/lib/kubelet$ tree
+.
+├── config.yaml
+├── cpu_manager_state
+├── device-plugins
+│   ├── DEPRECATION
+│   ├── kubelet_internal_checkpoint
+│   └── kubelet.sock
+├── kubeadm-flags.env
+├── pki
+│   ├── kubelet-client-2018-11-23-10-08-12.pem
+│   ├── kubelet-client-2018-11-23-10-08-38.pem
+│   ├── kubelet-client-current.pem -> /var/lib/kubelet/pki/kubelet-client-2018-11-23-10-08-38.pem
+│   ├── kubelet.crt
+│   └── kubelet.key
+├── plugin-containers [error opening dir]
+├── plugins [error opening dir]
+├── plugins_registry [error opening dir]
+├── pod-resources [error opening dir]
+└── pods [error opening dir]
+
+7 directories, 11 files
+4、kubelet.service服务目录
+kubelet使用systemd管理，service定义文件位于： /lib/systemd/system/kubelet.service。
+
+最新的dropin文件位于： /etc/systemd/system/kubelet.service.d，内容为：
+
+supermap@podc01:/etc/systemd/system/kubelet.service.d$ cat 10-kubeadm.conf 
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/default/kubelet
+
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+可以看到，在新的kubernetes配置结构中，这个kublet服务参数的配置有了很大的变化。启动参数不再放在kubelet.service文件里了，放到了/var/lib/kubelet、/etc/default/kubelet。
+
+注意，这个变化可能会导致以前的很多手动安装的脚本工具不再可用。
