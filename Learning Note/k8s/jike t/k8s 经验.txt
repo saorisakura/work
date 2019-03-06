@@ -1,0 +1,42 @@
+Docker 批量删除镜像 
+
+1、删除所有容器
+docker rm `docker ps -a -q`
+2、删除所有镜像
+docker rmi `docker images -q`
+3、按条件删除镜像
+没有打标签：
+docker rmi `docker images -q | awk '/^<none>/ { print $3 }'`
+指定标签：
+docker rmi `docker images -q | awk '/^k8s/ { print $3 }'`
+镜像名包含关键字：
+docker rmi --force `docker images | grep doss-api | awk '{print $3}'` //其中doss-api为关键字
+组合：
+
+Kubernetes中强制删除已销毁的顽固pod
+
+Kubernetes运行中由于网络、磁盘、程序错误等原因可能导致pod无法删除。这里介绍一个强制删除pod的方法。
+
+注意，强制删除pod会导致其中的数据来不及保存，有可能引发数据丢失或者错误，谨慎使用！
+一般情况下，添加--force参数即可将其删除。
+
+批量删除pod参考下面的脚本：
+
+#
+# Clean up dying pods
+#
+pods=$( kubectl get pods | grep -v Running | tail -n +2 | awk -F " " '{print $1}' )
+for pod in $pods;
+do
+    kubectl delete pod $pod --force
+done
+但是，有时候使用--force参数仍然无法删除该pod，有可能是删除的时间过长，可以添加--now来立即删除。
+
+kubectl delete pod xxx --now
+如果提示--grace-period未到期，可以将--grace-period强制设为0，一般就可以删除掉了。
+
+kubectl delete pod NAME --grace-period=0 --force
+pod在处于创建或撤销期间，有可能更新生命期的函数失效，导致pod的销毁期一直保持不变，从而Kubernetes系统调度器不会主动将其删除。此时，可以使用上面的方法来删除。
+
+参考：
+https://stackoverflow.com/questions/50336665/how-do-i-force-delete-kubernetes-pods
