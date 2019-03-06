@@ -40,4 +40,3 @@ pod在处于创建或撤销期间，有可能更新生命期的函数失效，�
 
 参考：
 https://stackoverflow.com/questions/50336665/how-do-i-force-delete-kubernetes-pods
-

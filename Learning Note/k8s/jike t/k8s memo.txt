@@ -430,7 +430,8 @@ kubeadm init --kubernetes-version=v1.13.3 --pod-network-cidr=10.244.0.0/16 --ser
 	  kubeadm join 192.168.110.72:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:e8ce4259fdf49d04cccf683166ae48d9e35a73edebde668c730e36ed8d6eaf77
 
 
-
+ETCD
+	ETCDCTL_API=3 etcdctl --endpoints=[192.168.110.72:2379] --cacert=/etc/kubernetes/pki/etcd/ca.crt --key=/etc/kubernetes/pki/etcd/server.key --cert=/etc/kubernetes/pki/etcd/server.crt get / --prefix --keys-only
 
 
 
