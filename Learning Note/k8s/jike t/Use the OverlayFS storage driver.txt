@@ -1,4 +1,5 @@
 Use the OverlayFS storage driver
+2019.3.7
 Estimated reading time: 19 minutes
 OverlayFS is a modern union filesystem that is similar to AUFS, but faster and with a simpler implementation. Docker provides two storage drivers for OverlayFS: the original overlay, and the newer and more stable overlay2.
 
