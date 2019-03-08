@@ -1,0 +1,137 @@
+[原]CentOS 7 网卡子接口的创建
+OS:CentOS 7
+在linux上创建vlan需要加载802.1q模块：
+1.检测OS是否已经加载802.1q模块
+　　
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+[root@controller ~]# modinfo 8021q
+filename:       /lib/modules/3.10.0-229.14.1.el7.x86_64/kernel/net/8021q/8021q.ko
+version:        1.8
+license:        GPL
+alias:          rtnl-link-vlan
+rhelversion:    7.1
+srcversion:     2C3C3989B54002FAEC13FFD
+depends:        mrp,garp
+intree:         Y
+vermagic:       3.10.0-229.14.1.el7.x86_64 SMP mod_unload modversions
+signer:         CentOS Linux kernel signing key
+sig_key:        E9:9F:C4:37:BD:9C:BF:B4:F1:B1:DA:87:C1:57:FF:66:56:9B:EE:66
+sig_hashalgo:   sha256或者：[root@controller ~]# modinfo -F filename 8021q
+/lib/modules/3.10.0-229.14.1.el7.x86_64/kernel/net/8021q/8021q.ko
+
+或者：
+
+　　
+
+[root@controller ~]# modprobe --first-time 8021q
+modprobe: ERROR: could not insert '8021q': Module already in kernel
+
+2.如果没有加载802.1q模块怎么加载？　
+
+1
+2
+##加载8021q模块
+[root@controller ~]# modprobe 8021q<br>##查看是否正常加载
+　　[root@controller ~]# lsmod |grep 8021q
+　　8021q 28808 0 
+　　garp 14384 1 8021q
+　　mrp 18542 1 8021q
+
+3.在父接口创建vlan子接口
+
+　　3.1在父接口/etc/sysconfig/network-scripts/ifcfg-ethX  中设置　
+
+1
+2
+3
+4
+DEVICE=ethX
+TYPE=Ethernet
+BOOTPROTO=none
+ONBOOT=yes
+　　3.2复制父接口并修改接口名称　
+
+1
+cp /etc/sysconfig/network-scripts/ifcfg-ethX /etc/sysconfig/network-scripts/ifcfg-ethX.125     ## X后面的125为vlan号
+　　3.3配置/etc/sysconfig/network-scripts/ifcfg-ethX.125
+
+1
+2
+3
+4
+5
+6
+7
+DEVICE=ethX.192
+BOOTPROTO=none
+ONBOOT=yes
+IPADDR=192.168.1.1
+PREFIX=24
+NETWORK=192.168.1.0
+VLAN=yes                ##开启vlan，表明此子接口为vlan接口
+　4.重启网络
+
+1
+systemctl restart network
+　　
+
+================================================
+CONFIGURE 802.1Q VLAN TAGGING USING THE COMMAND LINE
+In Red Hat Enterprise Linux 7, the 8021q module is loaded by default. If necessary, you can make sure that the module is loaded by issuing the following command as root:
+~]# modprobe --first-time 8021q
+modprobe: ERROR: could not insert '8021q': Module already in kernel
+To display information about the module, issue the following command:
+~]$ modinfo 8021q
+See the modprobe(8) man page for more command options.
+7.4.1. Setting Up 802.1Q VLAN Tagging Using ifcfg Files
+Configure the parent interface in /etc/sysconfig/network-scripts/ifcfg-ethX, whereX is a unique number corresponding to a specific interface, as follows:
+DEVICE=ethX
+TYPE=Ethernet
+BOOTPROTO=none
+ONBOOT=yes
+Configure the VLAN interface configuration in the /etc/sysconfig/network-scripts/directory. The configuration file name should be the parent interface plus a . character plus the VLAN ID number. For example, if the VLAN ID is 192, and the parent interface is eth0, then the configuration file name should be ifcfg-eth0.192:
+DEVICE=ethX.192
+BOOTPROTO=none
+ONBOOT=yes
+IPADDR=192.168.1.1
+PREFIX=24
+NETWORK=192.168.1.0
+VLAN=yes
+If there is a need to configure a second VLAN, with for example, VLAN ID 193, on the same interface, eth0, add a new file with the name eth0.193 with the VLAN configuration details.
+Restart the networking service in order for the changes to take effect. As root issue the following command:
+~]# systemctl restart network
+7.4.2. Configure 802.1Q VLAN Tagging Using ip Commands
+To create an 802.1Q VLAN interface on Ethernet interface eth0, with name VLAN8 and ID 8, issue a command as root as follows:
+~]# ip link add link eth0 name eth0.8 type vlan id 8
+To view the VLAN, issue the following command:
+~]$ ip -d link show eth0.8
+4: eth0.8@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT
+     link/ether 52:54:00:ce:5f:6c brd ff:ff:ff:ff:ff:ff promiscuity 0
+     vlan protocol 802.1Q id 8 <REORDER_HDR>
+Note that the ip utility interprets the VLAN ID as a hexadecimal value if it is preceded by 0x and as an octal value if it has a leading 0. This means that in order to assign a VLAN ID with a decimal value of 22, you must not add any leading zeros.
+To remove the VLAN, issue a command as root as follows:
+~]# ip link delete eth0.8
+================
+总结：修改父接口的BOOTPROTO=manual
+复制父接口，
+清空内容
+注入下面的内容：
+DEVICE=${SECONF_ETH}.${EXTERNAL_TENANT_NETWORK_VLAN_ID}
+BOOTPROTO=none
+ONBOOT=yes
+IPADDR=${SECOND_SUB_INTERFACE_IP}
+PREFIX=24
+NETWORK=${SECOND_SUB_INTERFACE_NET}
+VLAN=yes
