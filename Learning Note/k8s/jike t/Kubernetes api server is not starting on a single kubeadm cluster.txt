@@ -1,0 +1,199 @@
+Kubernetes api server is not starting on a single kubeadm cluster
+Ask Question
+
+1
+
+
+2
+I'm trying to set up a bare-metal k8s cluster.
+
+When creating the cluster, using flannel plugin (sudo kubeadm init --pod-network-cidr=10.244.0.0/16) - it seems that the API server doesn't even run:
+
+root@kubernetes-master:/# kubectl cluster-info
+Kubernetes master is running at https://192.168.10.164:6443
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+The connection to the server 192.168.10.164:6443 was refused - did you specify the right host or port?
+i've disabled swap, and that's what i have in the logs:
+
+Oct 09 11:45:50 kubernetes-master kubelet[12442]: E1009 11:45:50.975944   12442 kubelet_node_status.go:391] Error updating node status, will retry: error getting node "kubernetes-master": Get https://192.168.10.164:6443/api/v1/nodes/kubernetes-master?resourceVersion=0&timeout=10s: dial tcp 192.168.10.164:6443: connect: connection refused
+Oct 09 11:45:50 kubernetes-master kubelet[12442]: E1009 11:45:50.976715   12442 kubelet_node_status.go:391] Error updating node status, will retry: error getting node "kubernetes-master": Get https://192.168.10.164:6443/api/v1/nodes/kubernetes-master?timeout=10s: dial tcp 192.168.10.164:6443: connect: connection refused
+Oct 09 11:45:50 kubernetes-master kubelet[12442]: E1009 11:45:50.977162   12442 kubelet_node_status.go:391] Error updating node status, will retry: error getting node "kubernetes-master": Get https://192.168.10.164:6443/api/v1/nodes/kubernetes-master?timeout=10s: dial tcp 192.168.10.164:6443: connect: connection refused
+Oct 09 11:45:50 kubernetes-master kubelet[12442]: E1009 11:45:50.977741   12442 kubelet_node_status.go:391] Error updating node status, will retry: error getting node "kubernetes-master": Get https://192.168.10.164:6443/api/v1/nodes/kubernetes-master?timeout=10s: dial tcp 192.168.10.164:6443: connect: connection refused
+Oct 09 11:45:50 kubernetes-master kubelet[12442]: E1009 11:45:50.978199   12442 kubelet_node_status.go:391] Error updating node status, will retry: error getting node "kubernetes-master": Get https://192.168.10.164:6443/api/v1/nodes/kubernetes-master?timeout=10s: dial tcp 192.168.10.164:6443: connect: connection refused
+when i do docker ps, i see that the api-server did not even start:
+
+root@kubernetes-master:/# docker ps -a
+CONTAINER ID        IMAGE                  COMMAND                  CREATED             STATUS                      PORTS               NAMES
+7904888d512d        ca1f38854f74           "kube-scheduler --ad…"   15 minutes ago      Up 15 minutes                                   k8s_kube-scheduler_kube-scheduler-kubernetes-master_kube-system_009228e74aef4d7babd7968782118d5e_1
+ad5f25be44a3        ca1f38854f74           "kube-scheduler --ad…"   16 minutes ago      Exited (1) 16 minutes ago                       k8s_kube-scheduler_kube-scheduler-kubernetes-master_kube-system_009228e74aef4d7babd7968782118d5e_0
+1948a59f8ec9        b8df3b177be2           "etcd --advertise-cl…"   16 minutes ago      Up 16 minutes                                   k8s_etcd_etcd-kubernetes-master_kube-system_2c12104e97be3063569dbbc535d06f35_0
+a43f9cb2a143        k8s.gcr.io/pause:3.1   "/pause"                 16 minutes ago      Up 16 minutes                                   k8s_POD_kube-scheduler-kubernetes-master_kube-system_009228e74aef4d7babd7968782118d5e_0
+c0125fd3aa06        k8s.gcr.io/pause:3.1   "/pause"                 16 minutes ago      Up 16 minutes                                   k8s_POD_etcd-kubernetes-master_kube-system_2c12104e97be3063569dbbc535d06f35_0
+I'm also not able of course to configure the network plugin because the API server is down:
+
+root@kubernetes-master:/# kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+unable to recognize "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml": Get https://192.168.10.164:6443/api?timeout=32s: dial tcp 192.168.10.164:6443: connect: connection refused
+I'm not sure how to continue to debug this, Assistance would be helpful.
+
+docker kubernetes crash
+shareimprove this question
+asked Oct 9 '18 at 11:49
+
+ArielB
+504319
+add a comment
+1 Answer
+active oldest votes
+
+5
+
+Yes, you definitely have problems with API server. My advice to you is wipe all, update docker.io, kubelet, kubeadm, kubectl to latest versions and start from scratch.
+
+Let me help you step-by-step:
+
+Wipe you current cluster, update packages under the root :
+
+#kubeadm reset -f && rm -rf /etc/kubernetes/
+#apt-get update && apt-get install -y mc ebtables ethtool docker.io apt-transport-https curl
+#curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+#cat <<EOF >/etc/apt/sources.list.d/kubernetes.list \
+ deb http://apt.kubernetes.io/ kubernetes-xenial main \
+ EOF
+#apt-get update && apt-get install -y kubelet kubeadm kubectl
+Make sure that the cgroup driver used by kubelet is the same as the one used by Docker. Verify that your Docker cgroup driver matches the kubelet config:
+
+#docker info | grep -i cgroup
+#cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+Check the versions:
+
+root@kube-master-1:~# docker -v
+Docker version 17.03.2-ce, build f5ec1e2
+root@kube-master-1:~# kubectl version
+Client Version: version.Info{Major:"1", Minor:"12", GitVersion:"v1.12.1", GitCommit:"4ed3216f3ec431b140b1d899130a69fc671678f4", GitTreeState:"clean", BuildDate:"2018-10-05T16:46:06Z", GoVersion:"go1.10.4", Compiler:"gc", Platform:"linux/amd64"}
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+root@kube-master-1:~# kubeadm version
+kubeadm version: &version.Info{Major:"1", Minor:"12", GitVersion:"v1.12.1", GitCommit:"4ed3216f3ec431b140b1d899130a69fc671678f4", GitTreeState:"clean", BuildDate:"2018-10-05T16:43:08Z", GoVersion:"go1.10.4", Compiler:"gc", Platform:"linux/amd64"}
+root@kube-master-1:~# kubelet --version
+Kubernetes v1.12.1
+Start cluster:
+
+#kubeadm init --pod-network-cidr=10.244.0.0/16
+Login and run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  source <(kubectl completion bash) # setup autocomplete in bash into the current shell, bash-completion package should be installed first.
+  echo "source <(kubectl completion bash)" >> ~/.bashrc # add autocomplete permanently to your bash shell.
+Check cluster:
+
+$ kubectl cluster-info
+Kubernetes master is running at https://10.132.0.2:6443
+KubeDNS is running at https://10.132.0.2:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+$ kubectl get no -o wide
+NAME            STATUS     ROLES    AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+kube-master-1   NotReady   master   4m26s   v1.12.1   10.132.0.2    <none>        Ubuntu 16.04.5 LTS   4.15.0-1021-gcp   docker://17.3.2
+
+$ kubectl get all --all-namespaces 
+NAMESPACE     NAME                                        READY   STATUS    RESTARTS   AGE
+kube-system   pod/coredns-576cbf47c7-lw7jv                0/1     Pending   0          4m55s
+kube-system   pod/coredns-576cbf47c7-ncx8w                0/1     Pending   0          4m55s
+kube-system   pod/etcd-kube-master-1                      1/1     Running   0          4m23s
+kube-system   pod/kube-apiserver-kube-master-1            1/1     Running   0          3m59s
+kube-system   pod/kube-controller-manager-kube-master-1   1/1     Running   0          4m17s
+kube-system   pod/kube-proxy-bwrwh                        1/1     Running   0          4m55s
+kube-system   pod/kube-scheduler-kube-master-1            1/1     Running   0          4m10s
+
+NAMESPACE     NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)         AGE
+default       service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP         5m15s
+kube-system   service/kube-dns     ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP   5m9s
+
+NAMESPACE     NAME                        DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+kube-system   daemonset.apps/kube-proxy   1         1         1       1            1           <none>          5m8s
+
+NAMESPACE     NAME                      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+kube-system   deployment.apps/coredns   2         2         2            0           5m9s
+
+NAMESPACE     NAME                                 DESIRED   CURRENT   READY   AGE
+kube-system   replicaset.apps/coredns-576cbf47c7   2         2         0       4m56s
+Install CNI (I prefer Calico):
+
+$ kubectl apply -f https://docs.projectcalico.org/v3.2/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+clusterrole.rbac.authorization.k8s.io/calico-node created
+clusterrolebinding.rbac.authorization.k8s.io/calico-node created
+
+
+$ kubectl apply -f https://docs.projectcalico.org/v3.2/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+configmap/calico-config created
+service/calico-typha created
+deployment.apps/calico-typha created
+daemonset.extensions/calico-node created
+serviceaccount/calico-node created
+customresourcedefinition.apiextensions.k8s.io/felixconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/bgppeers.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/bgpconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ippools.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/hostendpoints.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/clusterinformations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworkpolicies.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworksets.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/networkpolicies.crd.projectcalico.org created
+Check result:
+
+$ kubectl get no -o wide
+NAME            STATUS   ROLES    AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+kube-master-1   Ready    master   9m15s   v1.12.1   10.132.0.2    <none>        Ubuntu 16.04.5 LTS   4.15.0-1021-gcp   docker://17.3.2
+
+
+
+$ kubectl get all --all-namespaces 
+NAMESPACE     NAME                                        READY   STATUS    RESTARTS   AGE
+kube-system   pod/calico-node-tsstf                       2/2     Running   0          2m3s
+kube-system   pod/coredns-576cbf47c7-lw7jv                1/1     Running   0          9m20s
+kube-system   pod/coredns-576cbf47c7-ncx8w                1/1     Running   0          9m20s
+kube-system   pod/etcd-kube-master-1                      1/1     Running   0          8m48s
+kube-system   pod/kube-apiserver-kube-master-1            1/1     Running   0          8m24s
+kube-system   pod/kube-controller-manager-kube-master-1   1/1     Running   0          8m42s
+kube-system   pod/kube-proxy-bwrwh                        1/1     Running   0          9m20s
+kube-system   pod/kube-scheduler-kube-master-1            1/1     Running   0          8m35s
+
+NAMESPACE     NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE
+default       service/kubernetes     ClusterIP   10.96.0.1       <none>        443/TCP         9m40s
+kube-system   service/calico-typha   ClusterIP   10.105.62.183   <none>        5473/TCP        2m4s
+kube-system   service/kube-dns       ClusterIP   10.96.0.10      <none>        53/UDP,53/TCP   9m34s
+
+NAMESPACE     NAME                         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                 AGE
+kube-system   daemonset.apps/calico-node   1         1         1       1            1           beta.kubernetes.io/os=linux   2m4s
+kube-system   daemonset.apps/kube-proxy    1         1         1       1            1           <none>                        9m33s
+
+NAMESPACE     NAME                           DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+kube-system   deployment.apps/calico-typha   0         0         0            0           2m4s
+kube-system   deployment.apps/coredns        2         2         2            2           9m34s
+
+NAMESPACE     NAME                                      DESIRED   CURRENT   READY   AGE
+kube-system   replicaset.apps/calico-typha-5f646c475c   0         0         0       2m4s
+kube-system   replicaset.apps/coredns-576cbf47c7        2         2         2       9m21s
+
+$ sudo docker ps -a | grep api
+996cf65268fe        dcb029b5e3ad                                                                                  "kube-apiserver --..."   10 minutes ago      Up 10 minutes                           k8s_kube-apiserver_kube-apiserver-kube-master-1_kube-system_371bd9e2260dc98257ab7a6961e293b0_0
+ab9f0949b295        k8s.gcr.io/pause:3.1                                                                          "/pause"                 10 minutes ago      Up 10 minutes                           k8s_POD_kube-apiserver-kube-master-1_kube-system_371bd9e2260dc98257ab7a6961e293b0_0
+Hope this will help you.
+
+shareimprove this answer
+answered Oct 9 '18 at 15:29
+
+VKR
+852214
+Thank you, i eventually indeed deleted everything and all is good (different virtual box aswell). i'll mark it as an answer anyway as it's a good tutorial :) – ArielB Oct 23 '18 at 11:46
