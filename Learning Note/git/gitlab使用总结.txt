@@ -62,3 +62,108 @@ Command line instructions
 	git remote add origin http://gitlab.example.com/root/kwd.git
 	git push -u origin --all
 	git push -u origin --tags
+
+	
+GitLab remote: HTTP Basic: Access denied and fatal Authentication
+Ask Question
+
+78
+
+
+35
+I'm on mac OS unlike this post: `git push origin <branchname>` throws error `HTTP Basic: Access denied` I have password configured in GitLab. I have SSL key created AFTER the project was made on GitLab.
+
+When I use an existing folder for a new project and follow the steps below:
+
+Existing folder
+
+cd existing_folder
+git init
+git remote add origin https://gitlab.com/sobopla/Geronimod.git
+git add .
+git commit -m "Initial commit"
+git push -u origin master
+I am prompted to enter my GitLab username and password. After password is entered I get: remote: HTTP Basic: Access denied
+fatal: Authentication failed for 'https://gitlab.com/myname/myproject'
+
+git gitlab
+shareimprove this question
+edited Jan 28 at 9:35
+
+mpro
+1,8021921
+asked Dec 18 '17 at 0:26
+
+jeancode
+5201613
+3
+All Windows users check out that answer. I hope it makes your life easier :) – mpro Sep 12 '18 at 12:24 
+add a comment
+23 Answers
+active oldest votes
+
+93
+
+It happen every time I'm forced to change the Windows password and none of above answers helped to me.
+
+Try below solution which works for me:
+
+Go to Windows Credential Manager (press Windows Key and type 'credential') to edit the git entry under Windows Credentials. Replace old password with the new one.
+
+shareimprove this answer
+edited Sep 12 '18 at 12:17
+answered Aug 30 '18 at 8:49
+
+mpro
+1,8021921
+1
+Thanks, this helped me out. Now i know what needs to be done when ever i change my windows password. – user2723039 Nov 2 '18 at 20:02
+2
+Worked for me. Life saver! – Tina J Nov 14 '18 at 16:57
+1
+Thanks, that worked for me as well and solved the problem. You need this solution if you have different Github accounts on your device – Dany Wehbe Nov 21 '18 at 16:44
+1
+It worked for me too though i am using multiple gilab accounts so what i did i updated my all the gitlab account with the same password that i have in my Credential Manger and the problem is solved Thanks@mpro – Rajan Chauhan Nov 27 '18 at 6:22 
+this worked for me -> codeshare.co.uk/blog/… – Guchelkaben Dec 2 '18 at 20:39
+show 6 more comments
+
+ 
+72
+
+   git config --system --unset credential.helper
+then enter new password for Git remote server.
+
+shareimprove this answer
+edited May 30 '18 at 6:06
+
+coder
+3,644122236
+answered May 30 '18 at 5:41
+
+hatanooh
+82976
+This is the right answer, if you have been using Git already on your machine for a long time. – Kaliyug Antagonist Jul 17 '18 at 8:36
+8
+Note that on Windows you need to run it as Administrator, otherwise you'll get permission errors – Eternal21 Aug 5 '18 at 1:34
+Thank you, this worked for me using a MacBook pro – Ricardo Oct 14 '18 at 14:33
+1
+It depends where you put your credentials. If the previous command does not work try also using global flag: git config --global--unset credential.helper – Vincent Lunat Oct 15 '18 at 10:24 
+This is the most relevant answer for the OP as it addresses the issue, and doesn't go on some "on Windows" tangent. Also, as a side note, you may need to run this command as sudo if your user doesn't have access to /etc – Ghostrydr Oct 17 '18 at 16:43
+show 2 more comments
+ 
+34
+
+I got the same error and I solved this by :
+
+Apply command from cmd
+
+git config --system --unset credential.helper
+
+And when I execute the above command, I got another error
+
+error: could not lock config file C:\Program Files\Git\mingw64/etc/gitconfig: Permission denied
+
+And then I removed gitconfig file from C:\Program Files\Git\mingw64/etc/ location (Note: this path will be different in MAC like "/Users/username")
+
+After that use git command like git pull or git push, it asked me for username and password. applying valid username and password and git command working.
+hope this will help you...
