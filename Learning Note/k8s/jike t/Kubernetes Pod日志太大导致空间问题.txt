@@ -1,0 +1,19 @@
+Kubernetes Pod日志太大导致空间问题
+在log-driver是json-file的模式下，容器的日志存放在/var/lib/docker/containers/下面，是以container_id-json.log文件存放
+
+但缺省方式下,log-driver是设置成journald,交给系统的journal服务来进行管理
+
+ 
+
+日志限制可以通过docker option来进行,但是先要把log-driver修改成json-file模式
+
+# cat /etc/sysconfig/docker 
+
+OPTIONS='--log-driver=json-file --log-opt max-size=50m --log-opt max-file=5'
+清空日志通过
+
+# cat /dev/null > /var/lib/docker/containers/CONTAINER_ID/CONTAINER_ID-json.log
+
+OR
+
+# cat /dev/null >  $(docker inspect --format='{{.LogPath}}'  CONTAINER_ID)

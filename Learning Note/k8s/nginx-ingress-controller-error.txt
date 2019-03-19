@@ -1,0 +1,241 @@
+]# tcpdump -i cni0 -nn host 172.16.1.11 -vv
+tcpdump: listening on cni0, link-type EN10MB (Ethernet), capture size 262144 bytes
+00:30:53.432301 IP (tos 0x0, ttl 64, id 24270, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7384 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x6438), seq 1941566138, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:30:53.432353 IP (tos 0x0, ttl 64, id 35888, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7384: Flags [R.], cksum 0xaa48 (correct), seq 0, ack 1941566139, win 0, length 0
+00:30:56.447429 IP (tos 0x0, ttl 64, id 24596, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7386 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x3ba0), seq 3067795503, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:30:56.447479 IP (tos 0x0, ttl 64, id 36432, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7386: Flags [R.], cksum 0x81b0 (correct), seq 0, ack 3067795504, win 0, length 0
+00:30:58.435791 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.11 tell 172.16.1.1, length 28
+00:30:58.435822 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.11 is-at 0a:58:ac:10:01:0b, length 28
+00:30:59.839308 IP (tos 0x0, ttl 64, id 35480, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51122 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x1585), seq 1198346211, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:00.839811 IP (tos 0x0, ttl 64, id 35481, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51122 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x1585), seq 1198346211, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:02.843819 IP (tos 0x0, ttl 64, id 35482, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51122 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x1585), seq 1198346211, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:03.432259 IP (tos 0x0, ttl 64, id 10130, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7390 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x8622), seq 1349383190, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:03.432299 IP (tos 0x0, ttl 64, id 41883, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7390: Flags [R.], cksum 0xcc32 (correct), seq 0, ack 1349383191, win 0, length 0
+00:31:06.447407 IP (tos 0x0, ttl 64, id 10850, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7392 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x7053), seq 1697117481, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:06.447455 IP (tos 0x0, ttl 64, id 44889, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7392: Flags [R.], cksum 0xb663 (correct), seq 0, ack 1697117482, win 0, length 0
+00:31:06.851820 IP (tos 0x0, ttl 64, id 35483, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51122 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x1585), seq 1198346211, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:07.859809 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.1 tell 172.16.1.11, length 28
+00:31:07.859822 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.1 is-at 0a:58:ac:10:01:01, length 28
+00:31:13.432267 IP (tos 0x0, ttl 64, id 8928, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7394 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xca30), seq 670947444, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:13.432318 IP (tos 0x0, ttl 64, id 46621, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7394: Flags [R.], cksum 0x1041 (correct), seq 0, ack 670947445, win 0, length 0
+00:31:13.716306 IP (tos 0x0, ttl 64, id 31902, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51136 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x8c80), seq 2568521518, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:14.717812 IP (tos 0x0, ttl 64, id 31903, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51136 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x8c80), seq 2568521518, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:16.447454 IP (tos 0x0, ttl 64, id 35753, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7404 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x67d1), seq 3570699762, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:16.447511 IP (tos 0x0, ttl 64, id 48575, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7404: Flags [R.], cksum 0xade1 (correct), seq 0, ack 3570699763, win 0, length 0
+00:31:16.723809 IP (tos 0x0, ttl 64, id 31904, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51136 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x8c80), seq 2568521518, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:20.731813 IP (tos 0x0, ttl 64, id 31905, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51136 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x8c80), seq 2568521518, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:23.432302 IP (tos 0x0, ttl 64, id 31724, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7406 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x261b), seq 1244879432, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:23.432358 IP (tos 0x0, ttl 64, id 53959, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7406: Flags [R.], cksum 0x6c2b (correct), seq 0, ack 1244879433, win 0, length 0
+00:31:26.447420 IP (tos 0x0, ttl 64, id 61817, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7408 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x7c3b), seq 1917246482, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:26.447469 IP (tos 0x0, ttl 64, id 53975, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7408: Flags [R.], cksum 0xc24b (correct), seq 0, ack 1917246483, win 0, length 0
+00:31:29.824391 IP (tos 0x0, ttl 64, id 28019, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51144 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xbaf3), seq 2581354479, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:30.825811 IP (tos 0x0, ttl 64, id 28020, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51144 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xbaf3), seq 2581354479, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:32.827837 IP (tos 0x0, ttl 64, id 28021, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51144 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xbaf3), seq 2581354479, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:33.432262 IP (tos 0x0, ttl 64, id 65070, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7412 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x109b), seq 56342170, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:33.432305 IP (tos 0x0, ttl 64, id 55337, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7412: Flags [R.], cksum 0x56ab (correct), seq 0, ack 56342171, win 0, length 0
+00:31:36.447413 IP (tos 0x0, ttl 64, id 29987, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7414 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x1607), seq 2469339480, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:36.447461 IP (tos 0x0, ttl 64, id 55711, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7414: Flags [R.], cksum 0x5c17 (correct), seq 0, ack 2469339481, win 0, length 0
+00:31:36.835814 IP (tos 0x0, ttl 64, id 28022, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51144 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xbaf3), seq 2581354479, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:37.843814 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.1 tell 172.16.1.11, length 28
+00:31:37.843831 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.1 is-at 0a:58:ac:10:01:01, length 28
+00:31:43.432272 IP (tos 0x0, ttl 64, id 47661, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7416 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x9fdd), seq 1422251497, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:43.432321 IP (tos 0x0, ttl 64, id 58717, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7416: Flags [R.], cksum 0xe5ed (correct), seq 0, ack 1422251498, win 0, length 0
+00:31:43.720006 IP (tos 0x0, ttl 64, id 40150, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51158 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x47e2), seq 2023550002, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:44.721815 IP (tos 0x0, ttl 64, id 40151, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51158 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x47e2), seq 2023550002, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:46.447415 IP (tos 0x0, ttl 64, id 27940, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7426 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x8f0d), seq 616961711, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:46.447458 IP (tos 0x0, ttl 64, id 60829, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7426: Flags [R.], cksum 0xd51d (correct), seq 0, ack 616961712, win 0, length 0
+00:31:46.723822 IP (tos 0x0, ttl 64, id 40152, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51158 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x47e2), seq 2023550002, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:48.435798 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.11 tell 172.16.1.1, length 28
+00:31:48.435840 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.11 is-at 0a:58:ac:10:01:0b, length 28
+00:31:50.731831 IP (tos 0x0, ttl 64, id 40153, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51158 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x47e2), seq 2023550002, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:53.432286 IP (tos 0x0, ttl 64, id 44145, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7428 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x1017), seq 2143566501, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:53.432330 IP (tos 0x0, ttl 64, id 60936, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7428: Flags [R.], cksum 0x5627 (correct), seq 0, ack 2143566502, win 0, length 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+00:31:56.447431 IP (tos 0x0, ttl 64, id 41399, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7430 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xc0fa), seq 106431276, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:31:56.447478 IP (tos 0x0, ttl 64, id 63737, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7430: Flags [R.], cksum 0x070b (correct), seq 0, ack 106431277, win 0, length 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+00:31:59.852431 IP (tos 0x0, ttl 64, id 33098, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51166 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x31d9), seq 1278095010, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:00.853804 IP (tos 0x0, ttl 64, id 33099, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51166 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x31d9), seq 1278095010, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:02.859807 IP (tos 0x0, ttl 64, id 33100, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51166 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x31d9), seq 1278095010, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:03.432266 IP (tos 0x0, ttl 64, id 61377, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7434 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xbee2), seq 3111277093, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:03.432314 IP (tos 0x0, ttl 64, id 496, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7434: Flags [R.], cksum 0x04f3 (correct), seq 0, ack 3111277094, win 0, length 0
+00:32:06.447469 IP (tos 0x0, ttl 64, id 19190, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7436 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xb7b7), seq 2405663581, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:06.447521 IP (tos 0x0, ttl 64, id 916, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7436: Flags [R.], cksum 0xfdc7 (correct), seq 0, ack 2405663582, win 0, length 0
+00:32:06.867813 IP (tos 0x0, ttl 64, id 33101, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51166 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x31d9), seq 1278095010, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:07.875805 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.1 tell 172.16.1.11, length 28
+00:32:07.875817 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.1 is-at 0a:58:ac:10:01:01, length 28
+
+
+
+
+
+00:32:12.657489 IP (tos 0x10, ttl 63, id 52246, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.0.0.39627 > 172.16.1.11.10254: Flags [S], cksum 0x99e8 (correct), seq 2258185528, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:12.657553 IP (tos 0x10, ttl 64, id 7970, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.0.0.39627: Flags [R.], cksum 0xdff8 (correct), seq 0, ack 2258185529, win 0, length 0
+00:32:13.432296 IP (tos 0x0, ttl 64, id 43357, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7438 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xc652), seq 3061468585, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:13.432324 IP (tos 0x0, ttl 64, id 5410, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7438: Flags [R.], cksum 0x0c63 (correct), seq 0, ack 3061468586, win 0, length 0
+00:32:13.715371 IP (tos 0x0, ttl 64, id 32011, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51180 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x4576), seq 3424688900, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:14.715810 IP (tos 0x0, ttl 64, id 32012, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51180 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x4576), seq 3424688900, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+
+
+
+
+
+
+
+00:32:16.447427 IP (tos 0x0, ttl 64, id 54075, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7448 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x9ba6), seq 189145984, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:16.447466 IP (tos 0x0, ttl 64, id 7625, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7448: Flags [R.], cksum 0xe1b6 (correct), seq 0, ack 189145985, win 0, length 0
+00:32:16.719799 IP (tos 0x0, ttl 64, id 32013, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51180 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x4576), seq 3424688900, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:20.723820 IP (tos 0x0, ttl 64, id 32014, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51180 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0x4576), seq 3424688900, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:23.432301 IP (tos 0x0, ttl 64, id 52520, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7450 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0xee86), seq 448250156, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:23.432353 IP (tos 0x0, ttl 64, id 14092, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7450: Flags [R.], cksum 0x3497 (correct), seq 0, ack 448250157, win 0, length 0
+00:32:26.447429 IP (tos 0x0, ttl 64, id 5724, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7452 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x378b), seq 2437284247, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:26.447476 IP (tos 0x0, ttl 64, id 14244, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7452: Flags [R.], cksum 0x7d9b (correct), seq 0, ack 2437284248, win 0, length 0
+00:32:28.435794 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.11 tell 172.16.1.1, length 28
+00:32:28.435828 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.11 is-at 0a:58:ac:10:01:0b, length 28
+00:32:29.806365 IP (tos 0x0, ttl 64, id 27647, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51188 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xe92e), seq 1951354645, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:30.807810 IP (tos 0x0, ttl 64, id 27648, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51188 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xe92e), seq 1951354645, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+
+
+
+
+00:32:32.811824 IP (tos 0x0, ttl 64, id 27649, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51188 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xe92e), seq 1951354645, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+
+
+00:32:33.432290 IP (tos 0x0, ttl 64, id 22412, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7456 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x54de), seq 284058776, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:33.432346 IP (tos 0x0, ttl 64, id 15854, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7456: Flags [R.], cksum 0x9aee (correct), seq 0, ack 284058777, win 0, length 0
+
+
+
+
+
+00:32:36.447453 IP (tos 0x0, ttl 64, id 32989, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7458 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x2b1c), seq 3779051014, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:36.447503 IP (tos 0x0, ttl 64, id 18517, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7458: Flags [R.], cksum 0x712c (correct), seq 0, ack 3779051015, win 0, length 0
+00:32:36.819825 IP (tos 0x0, ttl 64, id 27650, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.11.51188 > 192.168.110.72.6443: Flags [S], cksum 0xdc32 (incorrect -> 0xe92e), seq 1951354645, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:37.827800 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 172.16.1.1 tell 172.16.1.11, length 28
+00:32:37.827811 ARP, Ethernet (len 6), IPv4 (len 4), Reply 172.16.1.1 is-at 0a:58:ac:10:01:01, length 28
+00:32:43.432301 IP (tos 0x0, ttl 64, id 5305, offset 0, flags [DF], proto TCP (6), length 52)
+    172.16.1.1.7460 > 172.16.1.11.10254: Flags [S], cksum 0x5a53 (incorrect -> 0x61fb), seq 432557725, win 1410, options [mss 1410,nop,nop,sackOK,nop,wscale 9], length 0
+00:32:43.432351 IP (tos 0x0, ttl 64, id 19488, offset 0, flags [DF], proto TCP (6), length 40)
+    172.16.1.11.10254 > 172.16.1.1.7460: Flags [R.], cksum 0xa80b (correct), seq 0, ack 432557726, win 0, length 0
