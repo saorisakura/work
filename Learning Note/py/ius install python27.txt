@@ -1,0 +1,20 @@
+2
+
+I found a solution eventually.
+
+The first 30 odd Google searches tell me to make and alt install python2.7 BUT after further searching, I found THIS which I thought was just instructions on how to enable the handy epel repo but it also includes instructions on how to install the IUS repo.
+
+I didn't think the IUS repo was very handy (never heard of it before and wasn't mentioned in anything I'd read up to that point) but I was running out of ideas so I looked into it and installed it just to see what was available. Turns out, it has python27!
+
+Below is what I did to install the IUS repo and python27:
+
+Make sure you have the epel repo installed/enabled.
+
+# wget https://centos6.iuscommunity.org/ius-release.rpm
+# rpm -Uvh ius-release*.rpm
+# yum install python27
+Make sure it is installing from the @ius repo and not base or update. If not installing from ius, you will need to use —disablerepo='*' —enablerepo='ius' options for the yum install.
+
+After the install, I had python2.7 alongside the system python2.6 and all my dependency issues were resolved.
+
+Hope this helps someone else.

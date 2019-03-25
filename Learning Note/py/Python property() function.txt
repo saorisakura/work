@@ -1,0 +1,121 @@
+Python | property() function
+In Python, the main purpose of Property() function is to create property of a class.
+
+Syntax: property(fget, fset, fdel, doc)
+
+Parameters:
+fget() – used to get the value of attribute
+fset() – used to set the value of atrribute
+fdel() – used to delete the attribute value
+doc() – string that contains the documentation (docstring) for the attribute
+
+Return: Returns a property attribute from the given getter, setter and deleter.
+
+Note:
+
+
+
+ 
+
+If no arguments are given, property() method returns a base property attribute that doesn’t contain any getter, setter or deleter.
+If doc isn’t provided, property() method takes the docstring of the getter function.
+Example #1: Using property() method
+
+filter_none
+edit
+play_arrow
+
+brightness_4
+# Python program to explain property() function 
+  
+# Alphabet class 
+class Alphabet: 
+    def __init__(self, value): 
+        self._value = value 
+          
+    # getting the values 
+    def getValue(self): 
+        print('Getting value') 
+        return self._value 
+          
+    # setting the values 
+    def setValue(self, value): 
+        print('Setting value to ' + value) 
+        self._value = value 
+          
+    # deleting the values 
+    def delValue(self): 
+        print('Deleting value') 
+        del self._value 
+      
+    value = property(getValue, setValue, delValue, ) 
+  
+# passing the value 
+x = Alphabet('GeeksforGeeks') 
+print(x.value) 
+  
+x.value = 'GfG'
+  
+del x.value 
+Output:
+
+Getting value
+GeeksforGeeks
+Setting value to GfG
+Deleting value
+ 
+Using Decorator: 
+The main work of decorators is they are used to add functionality to the existing code. Also called metaprogramming, as a part of the program tries to modify another part of the program at compile time.
+
+Example #2: Using @property decorator
+
+filter_none
+edit
+play_arrow
+
+brightness_4
+# Python program to explain property() 
+# function using decorator 
+  
+class Alphabet: 
+    def __init__(self, value): 
+        self._value = value 
+          
+    # getting the values     
+    @property
+    def value(self): 
+        print('Getting value') 
+        return self._value 
+          
+    # setting the values     
+    @value.setter 
+    def value(self, value): 
+        print('Setting value to ' + value) 
+        self._value = value 
+          
+    # deleting the values 
+    @value.deleter 
+    def value(self): 
+        print('Deleting value') 
+        del self._value 
+  
+  
+# passing the value 
+x = Alphabet('Peter') 
+print(x.value) 
+  
+x.value = 'Diesel'
+  
+del x.value 
+Output:
+
+Getting value
+Peter
+Setting value to Diesel
+Deleting value
+Using @property decorator works same as property() method.
+
+First, specify that value() method is also an attribute of Alphabet then, we use the attribute value to specify the setter and the deleter. Notice that the same method value() is used with different definitions for defining the getter, setter and deleter. Whenever we use x.value, it internally calls the appropriate getter, setter and deleter.
+
+Applications:
+By using property() method, we can modify our class and implement the value constraint without any change required to the client code. So that the implementation is backward compatible.
