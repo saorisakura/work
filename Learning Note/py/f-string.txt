@@ -1,0 +1,253 @@
+你还在用 format 格式化字符串？
+刘哈哈
+刘哈哈
+公号【不正经程序员】，技术干货，效率工具，读书分享。
+1,095 人赞同了该文章
+Python 3.6 提供了一种新的字符串格式化方法：f-strings，不仅比其他格式化方式更易读，更简洁，更不容易出错，而且它们也更快！
+
+看完本文后，你将了解如何以及为何要使用 f-strings。
+
+
+
+首先，我们先了解下现有的字符串格式化方法。
+
+在 Python 3.6 之前，字符串格式化方法主要有两种：%格式化 和 str.format()。下面我们简单看下它们的使用方法，以及局限。
+
+1 %-格式化
+% 格式化方法从 Python 刚开始时就存在了，堪称「一届元老」，但是 Python 官方文档中并不推荐这种格式化方式：
+
+这里描述的格式化操作容易表现出各种问题，导致许多常见错误（例如无法正确显示元组和字典）。
+使用较新的格式化字符串文字或 str.format() 可以有助于避免这些错误。这些替代方案还提供了更强大，灵活和可扩展的格式化文本方法。
+1.1 如何使用 %格式化
+一般使用方式，要插入多个变量的话，必须使用元组：
+
+>>> name = "hoxis"
+>>> age = 18
+>>> "hello, %s. you are %s ?" %(name, age)
+'hello, hoxis. you are 18 ?'
+1.2 %格式化的缺陷
+上面的代码示例看起来还能读，但是，一旦开始使用多个参数和更长的字符串，你的代码将很快变得不那么容易阅读：
+
+>>> name = "hoxis"
+>>> age = 18
+>>> country = "China"
+>>> hair = "black"
+>>> "hello, %s. you are %s ?. Your country is %s, and your hair is %s" %(name, age, country,hair)
+'hello, hoxis. you are 18 ?. Your country is China, and your hair is black'
+可以看出，这种格式化并不是很好，因为它很冗长并且容易导致错误，比如没有正确显示元组或字典。
+
+不过还好我们还有 str.format()。
+
+2 str.format()
+Python 2.6 中引入了 str.format() 格式化方法：https://docs.python.org/3/library/stdtypes.html#str.format。
+
+2.1 str.format() 的使用
+str.format() 是对 %格式化 的改进，它使用普通函数调用语法，并且可以通过 __format__() 方法为对象进行扩展。
+
+使用 str.format() 时，替换字段用大括号进行标记：
+
+>>> "hello, {}. you are {}?".format(name,age)
+'hello, hoxis. you are 18?'
+并且可以通过索引来以其他顺序引用变量：
+
+>>> "hello, {1}. you are {0}?".format(age,name)
+'hello, hoxis. you are 18?'
+或者可以这样：
+
+>>> "hello, {name}. you are {age1}?".format(age1=age,name=name)
+'hello, hoxis. you are 18?'
+从字典中读取数据时还可以使用 **：
+
+>>> person = {"name":"hoxis","age":18}
+>>> "hello, {name}. you are {age}?".format(**person)
+'hello, hoxis. you are 18?'
+确实，str.format() 比 %格式化高级了一些，但是它还是有自己的缺陷。
+
+2.2 str.format() 的缺陷
+在处理多个参数和更长的字符串时仍然可能非常冗长，麻烦！看看这个：
+
+>>> "hello, {}. you are {} ?. Your country is {}, and your hair is {}".format(name, age, country,hair)
+'hello, hoxis. you are 18 ?. Your country is China, and your hair is black'
+3 f-Strings
+还好，现在我们有了 f-Strings，它可以使得字符串格式化更加容易。
+
+f-strings 是指以 f 或 F 开头的字符串，其中以 {} 包含的表达式会进行值替换。
+
+下面从多个方面看下 f-strings 的使用方法，看完后，我相信你会对「人生苦短，我用 Python」有更深地赞同~
+
+3.1 f-Strings 使用方法
+>>> name = 'hoxis'
+>>> age = 18
+>>> f"hi, {name}, are you {age}"
+'hi, hoxis, are you 18'
+>>> F"hi, {name}, are you {age}"
+'hi, hoxis, are you 18'
+是不是很简洁？！还有更牛叉的！
+
+因为 f-strings 是在运行时计算的，那么这就意味着你可以在其中放置任意合法的 Python 表达式，比如：
+
+运算表达式
+>>> f"{ 2 * 3 + 1}"
+'7'
+调用函数
+还可以调用函数：
+
+>>> def test(input):
+...     return input.lower()
+...
+>>> name = "Hoxis"
+>>> f"{test(name)} is handsome."
+'hoxis is handsome.'
+也可以直接调用内置函数：
+
+>>> f"{name.lower()} is handsome."
+'hoxis is handsome.'
+在类中使用
+>>> class Person:
+...     def __init__(self,name,age):
+...         self.name = name
+...         self.age = age
+...     def __str__(self):
+...         return f"{self.name} is {self.age}"
+...     def __repr__(self):
+...         return f"{self.name} is {self.age}. HAHA!"
+...
+>>> hoxis = Person("hoxis",18)
+>>> f"{hoxis}"
+'hoxis is 18'
+>>> f"{hoxis!r}"
+'hoxis is 18. HAHA!'
+>>> print(hoxis)
+hoxis is 18
+>>> hoxis
+hoxis is 18. HAHA!
+多行 f-string
+>>> name = 'hoxis'
+>>> age = 18
+>>> status = 'Python'
+>>> message = {
+...     f'hi {name}.'
+...     f'you are {age}.'
+...     f'you are learning {status}.'
+... }
+>>>
+>>> message
+{'hi hoxis.you are 18.you are learning Python.'}
+这里需要注意，每行都要加上 f 前缀，否则格式化会不起作用：
+
+>>> message = {
+...     f'hi {name}.'
+...     'you are learning {status}.'
+... }
+>>> message
+{'hi hoxis.you are learning {status}.'}
+4 速度对比
+其实，f-string 里的 f 也许可以代表 fast，它比 %格式化方法和 str.format() 都要快：
+
+from timeit import timeit
+
+print(timeit("""name = "hoxis"
+age = 18
+'%s is %s.' % (name, age)""", number = 10000))
+
+print(timeit("""name = "hoxis"
+age = 18
+'{} is {}.'.format(name, age)""", number = 10000))
+
+print(timeit("""name = "hoxis"
+age = 18
+f'{name} is {age}.'""", number = 10000))
+运行结果：
+
+$ python3.6 fstring.py
+0.002238000015495345
+0.004068000009283423
+0.0015349999885074794
+很明显，f-string 是最快的，并且语法是最简洁的，是不是迫不及待地要试试了？
+
+5 注意事项
+5.1 引号的处理
+可以在字符串中使用各种引号，只要保证和外部的引号不重复即可。
+
+以下使用方式都是没问题的：
+
+>>> f"{'hoxis'}"
+'hoxis'
+>>> f'{"hoxis"}'
+'hoxis'
+>>> f"""hoxis"""
+'hoxis'
+>>> f'''hoxis'''
+'hoxis'
+那如果字符串内部的引号和外部的引号相同时呢？那就需要 \ 进行转义：
+
+>>> f"You are very \"handsome\""
+'You are very "handsome"'
+5.2 括号的处理
+若字符串中包含括号 {}，那么你就需要用双括号包裹它：
+
+>>> f"{{74}}"
+'{74}'
+
+>>> f"{{{74}}}"
+'{74}'
+可以看出，使用三个括号包裹效果一样。
+
+当然，你可以继续增加括号数目，看下有什么其他效果：
+
+>>> f"{{{{74}}}}"
+'{{74}}'
+>>> f"{{{{{74}}}}}"
+'{{74}}'
+>>> f"{{{{{{74}}}}}}"
+'{{{74}}}'
+额，那么多括号，看着有点晕了...
+
+5.3 反斜杠
+上面说了，可以用反斜杠进行转义字符，但是不能在 f-string 表达式中使用：
+
+>>> f"You are very \"handsome\""
+'You are very "handsome"'
+>>> f"{You are very \"handsome\"}"
+  File "<stdin>", line 1
+SyntaxError: f-string expression part cannot include a backslash
+你可以先在变量里处理好待转义的字符，然后在表达式中引用变量：
+
+>>> name = '"handsome"'
+>>> f'{name}'
+'"handsome"'
+5.4 注释符号
+不能在表达式中出现 #，否则会报出异常；
+
+>>> f"Hoxis is handsome # really"
+'Hoxis is handsome # really'
+>>> f"Hoxis is handsome {#really}"
+  File "<stdin>", line 1
+SyntaxError: f-string expression part cannot include '#'
+总结
+经过以上的讲解，是不是发现 f-string 非常简洁实用、可读性高，而且不易出错，可以尝试切换到 f-string 喽~
+
+f-string 也体现出了 Python 的奥义：
+
+>>> import this
+The Zen of Python, by Tim Peters
+
+Beautiful is better than ugly.
+Explicit is better than implicit.
+Simple is better than complex.
+Complex is better than complicated.
+Flat is better than nested.
+Sparse is better than dense.
+Readability counts.
+Special cases aren't special enough to break the rules.
+Although practicality beats purity.
+Errors should never pass silently.
+Unless explicitly silenced.
+In the face of ambiguity, refuse the temptation to guess.
+There should be one-- and preferably only one --obvious way to do it.
+Although that way may not be obvious at first unless you're Dutch.
+Now is better than never.
+Although never is often better than *right* now.
+If the implementation is hard to explain, it's a bad idea.
+If the implementation is easy to explain, it may be a good idea.
+Namespaces are one honking great idea -- let's do more of those!

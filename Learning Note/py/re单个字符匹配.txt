@@ -1,0 +1,183 @@
+正则---re模块的基础用法(re.match() /单个字符匹配/ 多个字符匹配)
+2018年06月06日 22:19:31 Alien-Hu 阅读数：6533
+1. re模块的使用过程
+    #coding=utf-8
+    # 导入re模块
+    import re
+
+    # 使用match方法进行匹配操作
+    result = re.match(正则表达式,要匹配的字符串)
+
+    # 如果上一步匹配到数据的话，可以使用group方法来提取数据
+    result.group()
+2. re模块示例(匹配以itcast开头的语句)
+    #coding=utf-8
+    import re
+
+    result = re.match("itcast","itcast.cn”) # match 第一个参数是需要匹配的字符串，第二个是源字符串
+    result.group()
+运行结果为：
+itcast
+3. 说明
+re.match() 能够匹配出以xxx开头的字符串
+
+
+
+匹配单个字符
+本小节，将要讲解正则表达式的单字符匹配
+字符	功能
+.	匹配任意1个字符（除了\n）
+[ ]	匹配[ ]中列举的字符
+\d	匹配数字，即0-9
+\D	匹配非数字，即不是数字
+\s	匹配空白，即 空格，tab键
+\S	匹配非空白
+\w	匹配单词字符，即a-z、A-Z、0-9、_
+\W	匹配非单词字符
+示例1：.
+#coding=utf-8
+
+import re
+
+ret = re.match(".","M")
+print(ret.group())
+
+ret = re.match("t.o","too")
+print(ret.group())
+
+ret = re.match("t.o","two")
+print(ret.group())
+运行结果：
+M
+too
+two
+示例2：[ ]
+#coding=utf-8
+
+import re
+
+# 大小写h都可以的情况
+ret = re.match("[hH]","hello Python")
+print(ret.group()) # h
+ret = re.match("[hH]","Hello Python")
+print(ret.group())                                                     # H
+ret = re.match("[hH]ello Python","Hello Python")
+print(ret.group())                                                     # Hello Python
+
+# 匹配0到9第一种写法
+ret = re.match("[0123456789]Hello Python","7Hello Python”) # 7Hello Python
+print(ret.group())
+
+# 匹配0到9第二种写法
+ret = re.match("[0-9]Hello Python","7Hello Python”)
+print(ret.group())                                                     # 7Hello Python
+
+ret = re.match("[0-3,5-9]Hello Python","7Hello Python")
+print(ret.group())                                                     # 7Hello Python
+
+# 下面这个正则不能够匹配到数字4，因此ret为None
+ret = re.match("[0-3,5-9]Hello Python","4Hello Python")
+print(ret.group())                                                     # None
+示例3：\d
+#coding=utf-8
+
+import re
+
+# 普通的匹配方式
+ret = re.match("嫦娥1号","嫦娥1号发射成功")
+print(ret.group())
+
+
+# 使用\d进行匹配
+ret = re.match("嫦娥\d号","嫦娥1号发射成功")
+print(ret.group())
+
+运行结果：
+嫦娥1号
+
+匹配多个字符
+匹配多个字符的相关格式
+字符	功能
+*	匹配前一个字符出现0次或者无限次，即可有可无
++	匹配前一个字符出现1次或者无限次，即至少有1次
+?	匹配前一个字符出现1次或者0次，即要么有1次，要么没有
+{m}	匹配前一个字符出现m次
+{m,n}	匹配前一个字符出现从m到n次
+示例1：*
+需求：匹配出，一个字符串第一个字母为大写字符，后面都是小写字母并且这些小写字母可有可无
+#coding=utf-8
+import re
+
+ret = re.match("[A-Z][a-z]*","M")
+print(ret.group())
+
+ret = re.match("[A-Z][a-z]*","MnnM")
+print(ret.group())
+
+ret = re.match("[A-Z][a-z]*","Aabcdef")
+print(ret.group())
+运行结果：
+M
+Mnn
+Aabcdef
+示例2：+
+需求：匹配出，变量名是否有效
+备注：
+（1）变量名只能是 字母、数字或下划线的任意组合
+（2）变量名的第一个字符不能是数字
+（3）关键字不能声明为变量名，例如as / lambda/ python/ else /class /global/ 等等
+#coding=utf-8
+import re
+
+names = ["name1", "_name", "2_name", "__name__"]
+
+for name in names:
+    ret = re.match("[a-zA-Z_]+[\w]*",name)
+    if ret:
+        print("变量名 %s 符合要求" % ret.group())
+    else:
+        print("变量名 %s 非法" % name)
+运行结果：
+变量名 name1 符合要求
+变量名 _name 符合要求
+变量名 2_name 非法
+变量名 __name__ 符合要求
+示例3：?
+需求：匹配出，0到99之间的数字
+#coding=utf-8
+import re
+
+ret = re.match("[1-9]?[0-9]","7")
+print(ret.group())
+
+ret = re.match("[1-9]?\d","33")
+print(ret.group())
+
+ret = re.match("[1-9]?\d","09")
+print(ret.group())
+运行结果：
+7
+33
+0 # 这个结果并不是想要的，利用$才能解决
+示例4：{m}
+需求：匹配出，8到20位的密码，可以是大小写英文字母、数字、下划线
+#coding=utf-8
+import re
+
+ret = re.match("[a-zA-Z0-9_]{6}","12a3g45678")
+print(ret.group())
+
+ret = re.match("[a-zA-Z0-9_]{8,20}","1ad12f23s34455ff66")
+print(ret.group())
+运行结果：
+
+12a3g4
+1ad12f23s34455ff66
+练一练
+题目1：匹配出163的邮箱地址，且@符号之前有4到20位，例如hello@163.com
+E_mail = hello_world@163.com
+Ret = re.math(‘[a-zA-Z0-9_]{4,20}@163.com’,E_mail)
+
+
+在正则中，点（.）表示任意一个字符，
+正则表达式如果写成”[/w]{4,20}@163.com$”,那hello_world@1633com也会被匹配出来

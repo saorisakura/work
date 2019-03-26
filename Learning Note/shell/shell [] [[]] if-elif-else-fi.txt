@@ -1,3 +1,32 @@
+shell中判断前一个命令是否执行成功
+if [ $? -ne 0 ]; then
+    echo "fail"
+else
+    echo "success"
+fi
+或者
+
+if [ $? -eq 0 ]; then
+    echo "success"
+else
+    echo "fail"
+fi
+ 
+
+shell中：
+
+-eq　　等于
+
+-ne　　不等于
+
+-gt　　大于
+
+-lt　　小于
+
+ge　　大于等于
+
+le　　小于等于
+
 linux,shell中if else if的写法,if elif
 需求描述：
 
