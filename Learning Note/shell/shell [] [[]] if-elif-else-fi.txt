@@ -1,0 +1,282 @@
+linux,shell中if else if的写法,if elif
+需求描述：
+
+　　在写shell脚本的过程中，用到了if else的写法，突然有多个参数需要判断
+
+　　那么就想到了if else if的用法，于是进行如下的测试。
+
+测试过程：
+
+1.写如下的测试脚本，进行多个值的判断
+
+复制代码
+#!/bin/bash
+
+if [[ $1 = 'tomcat' ]]; 
+then
+  echo "Input is tomcat"
+else if [[ $1 = 'redis' ]] || [[ $1 = 'zookeeper' ]];
+then
+  echo "Input is $1"
+else
+  echo "Input Is Error."
+fi
+复制代码
+2.执行脚本，看脚本是否正常执行
+
+[oracle@standby ~]$ ./ts01.sh zookeeper
+./ts01.sh: line 12: syntax error: unexpected end of file
+备注：发现执行是错误的，经过查看可以知道，shell脚本中不是else if而是elif这个写法
+
+3.修改脚本
+
+复制代码
+#!/bin/bash
+
+if [[ $1 = 'tomcat' ]];
+then
+  echo "Input is tomcat"
+elif [[ $1 = 'redis' ]] || [[ $1 = 'zookeeper' ]];
+then
+  echo "Input is $1"
+else
+  echo "Input Is Error."
+fi
+复制代码
+4.再次执行修改过的脚本
+
+复制代码
+[oracle@standby ~]$ ./ts01.sh zookeeper
+Input is zookeeper
+[oracle@standby ~]$ ./ts01.sh tomcat
+Input is tomcat
+[oracle@standby ~]$ ./ts01.sh redis
+Input is redis
+[oracle@standby ~]$ ./ts01.sh mysql
+Input Is Error.
+复制代码
+备注：脚本执行正常，正确的输出了需要的结果。
+
+shell脚本中else if的正确使用方法：
+
+复制代码
+if condition;
+then
+    commands;
+elif condition;then
+    commands;
+else
+    　commands;
+fi
+复制代码
+
+shell中括号的特殊用法 linux if多条件判断
+一．   bash [  ] 单双括号
+
+基本要素：
+
+Ø  [ ] 两个符号左右都要有空格分隔
+
+Ø  内部操作符与操作变量之间要有空格：如  [  “a”  =  “b”  ]
+
+Ø  字符串比较中，> < 需要写成\> \< 进行转义
+
+Ø  [ ] 中字符串或者${}变量尽量使用"" 双引号扩住，避免值未定义引用而出错的好办法
+
+Ø  [ ] 中可以使用 –a –o 进行逻辑运算
+
+Ø  [ ] 是bash 内置命令：[ is a shell builtin
+
+1.测试时逻辑操作符
+
+ 
+
+-a
+
+逻辑与，操作符两边均为真，结果为真，否则为假。
+
+-o
+
+逻辑或，操作符两边一边为真，结果为真，否则为假。
+
+!
+
+逻辑否，条件为假，结果为真。
+
+ 
+
+举例: [ -w result.txt-a -w score.txt ] ;echo $? // 测试两个文件是否均可写
+
+ 
+
+二．   bash  [[  ]] 双方括号
+
+ 
+
+基本要素：
+
+Ø  [[ ]] 两个符号左右都要有空格分隔
+
+Ø  内部操作符与操作变量之间要有空格：如  [[  “a” =  “b”  ]]
+
+Ø  字符串比较中，可以直接使用 > < 无需转义
+
+Ø  [[ ]] 中字符串或者${}变量尽量如未使用"" 双引号扩住的话，会进行模式和元字符匹配
+
+[root@localhostkuohao]# [[ "ab"=a* ]] && echo "ok"
+
+  ok
+
+Ø  [[] ] 内部可以使用 &&  || 进行逻辑运算
+
+Ø  [[ ]] 是bash  keyword：[[ is a shell keyword
+
+[[ ]] 其他用法都和[ ] 一样
+
+二者共同特性：
+
+Ø  && ||-a –o 处理
+
+[  exp1  -a exp2  ] = [[  exp1 && exp2 ]] = [  exp1  ]&& [  exp2  ] = [[ exp1  ]] && [[  exp2 ]]
+
+[  exp1  -o exp2  ] = [[  exp1 || exp2 ]] = [  exp1  ]|| [  exp2  ] = [[ exp1  ]] || [[  exp2 ]]
+
+[root@localhost ~]# if [[ "a" == "a" && 2 -gt1 ]] ;then echo "ok" ;fi
+
+ok
+
+[root@localhost ~]# if [[ "a" == "a" ]] && [[2 -gt 1 ]] ;then echo "ok" ;fi
+
+ok
+
+[root@localhost ~]# if [[ "a" == "a" ]] || [[ 2 -gt 1]] ;then echo "ok" ;fi
+
+ok
+
+[root@localhost ~]# if [[ "a" == "a" ]] || [[ 2 -gt10 ]] ;then echo "ok" ;fi
+
+ok
+
+[root@localhost ~]# if [[ "a" == "a"  || 2 -gt 10 ]] ;then echo "ok" ;fi
+
+ok
+
+Ø  [[ ]] 和 [ ] 都可以和 ! 配合使用
+
+优先级 !  >  && > || 
+
+逻辑运算符  < 关系运算符
+
+逻辑运算符  ： !  &&  || -a  -o
+
+关系运算符  ： <  >  \> \<  ==  = !=  – eq –ne  -gt -ge  –lt  -le
+
+ 
+
+-----------------------------------------------------------------------------
+
+n  [[  ]] 比[ ] 具备的优势
+
+-----------------------------------------------------------------------------
+
+ 
+
+    ①[[是 bash 程序语言的关键字。并不是一个命令，[[ ]] 结构比[ ]结构更加通用。在[[和]]之间所有的字符都不会发生文件名扩展或者单词分割，但是会发生参数扩展和命令替换。
+
+   
+
+    ②支持字符串的模式匹配，使用=~操作符时甚至支持shell的正则表达式。字符串比较时可以把右边的作为一个模式，而不仅仅是一个字符串，比如[[ hello == hell? ]]，结果为真。[[ ]] 中匹配字符串或通配符，不需要引号。
+
+   
+
+    ③使用[[ ... ]]条件判断结构，而不是[... ]，能够防止脚本中的许多逻辑错误。比如，&&、||、<和> 操作符能够正常存在于[[ ]]条件判断结构中，但是如果出现在[ ]结构中的话，会报错。
+
+   
+
+    ④bash把双中括号中的表达式看作一个单独的元素，并返回一个退出状态码。
+
+       
+
+使用[[ ... ]]条件判断结构, 而不是[ ... ], 能够防止脚本中的许多逻辑错误. 比如,&&, ||, <, 和> 操作符能够正常存在于[[]]条件判断结构中, 但是如果出现在[ ]结构中的话, 会报错。
+
+if 条件判断中有多个条件
+#!/bin/bash
+score=$1
+if [ $score = 5 ]||[ $score = 3 ];then
+    echo right
+else
+    echo wrong
+fi
+
+-------------------------------------------------------
+#!/bin/bash
+score=$1
+if [ $score -gt 5 ]||[ $score -lt 3 ];then
+    echo right
+else
+    echo wrong
+fi
+
+-------------------------------------------------------
+#!/bin/bash
+score=$1
+if [ $score -gt 15 ]||([ $score -lt 8 ]&&[ $score -ne 5 ]);then
+    echo right
+else
+    echo wrong
+fi
+
+
+-------------------------------------------------------
+或：
+#!/bin/bash
+
+count="$1"
+
+if [ $count -gt 15 -o $count -lt 5 ];then
+
+   echo right
+
+fi
+
+且：
+#!/bin/bash
+
+count="$1"
+
+if [ $count -gt 5 -a $count -lt 15 ];then
+
+   echo right
+
+fi
+-------------------------------------------------------
+score=$1
+if [[ $score -gt 15 || $score -lt 8 && $score -ne 5 ]];then
+    echo right
+else
+    echo wrong
+fi
+记住必须加两个中括号
+ 
+
+ 
+
+ 
+
+Shell中的括号有其特殊的用法, 现总结如下:
+1. 符号$后的括号
+${a} 变量a的值, 在不引起歧义的情况下可以省略大括号.
+$(cmd) 命令替换, 结果为shell命令cmd的输出, 和`cmd`效果相同, 不过某些Shell版本不支持$()形式的命令替换, 如tcsh.
+$((exp)) 和`expr exp`效果相同, 计算数学表达式exp的数值, 其中exp只要符合C语言的运算规则即可, 甚至三目运算符和逻辑表达式都可以计算.
+
+2. 多条命令执行
+(cmd1;cmd2;cmd3) 新开一个子shell顺序执行命令cmd1,cmd2,cmd3, 各命令之间用分号隔开, 最后一个命令后可以没有分号.
+{ cmd1;cmd2;cmd3;} 在当前shell顺序执行命令cmd1,cmd2,cmd3, 各命令之间用分号隔开, 最后一个命令后必须有分号, 第一条命令和左括号之间必须用空格隔开.
+对{}和()而言, 括号中的重定向符只影响该条命令, 而括号外的重定向符影响到括号中的所有命令.
+
+3. 双括号的特殊用法
+(()) 增强括号的用法, 常用于算术运算比较. 双括号中的变量可以不使用$符号前缀, 只要括号中的表达式符合C语言运算规则, 支持多个表达式用逗号分开.
+比如可以直接使用for((i=0;i<5;i++)), 如果不使用双括号, 则为for i in `seq 0 4`或者for i in {0..4}.
+再如可以直接使用if (($i<5)), 如果不使用双括号, 则为if [ $i -lt 5 ].
+[[]] 增强方括号用法, 常用于字符串的比较. 主要用于条件测试, 双括号中的表达式可以使用&&, ||, <, >等C语言语法.
+比如可以直接使用if [[ $a != 1 && $a != 2 ]], 如果不适用双括号, 则为if [ $a -ne 1] && [ $a != 2 ]或者if [ $a -ne 1 -a $a != 2 ].
