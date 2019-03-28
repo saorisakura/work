@@ -433,23 +433,752 @@ kubeadm init --kubernetes-version=v1.13.3 --pod-network-cidr=10.244.0.0/16 --ser
 ETCD
 	ETCDCTL_API=3 etcdctl --endpoints=[192.168.110.72:2379] --cacert=/etc/kubernetes/pki/etcd/ca.crt --key=/etc/kubernetes/pki/etcd/server.key --cert=/etc/kubernetes/pki/etcd/server.crt get / --prefix --keys-only
 
+	ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key
+
+
+问题
+	
+	kubectl exec -it redis-app-6594cf5f6f-7lsmr -- /bin/sh
+	kubectl get pods -n kube-system -o wide
+	kubectl -n kube-system logs kube-proxy-qwgrw
+	nc -v -w 2 -z kubernetes.default.svc.cluster.local:443
+	tcpdump -i cni0 -nn host 172.16.1.11 -vv
+
+	kubectl -n dehong-test 
 
 
 
 
+Calico
+
+	yum install conntrack ipvsadm ipset jq sysstat curl iptables libseccomp bash-completion yum-utils device-mapper-persistent-data lvm2 net-tools conntrack-tools vim libtool-ltdl
+	
+	yum install kubeadm kubelet kubectl
+
+	docker pull calico/node:v3.5.2
+	docker pull calico/cni:v3.5.2
+	docker pull calico/kube-controllers:v3.5.2
+	
+	docker pull registry.aliyuncs.com/google_containers/kube-apiserver:v1.14.0
+	docker pull registry.aliyuncs.com/google_containers/kube-controller-manager:v1.14.0
+	docker pull registry.aliyuncs.com/google_containers/kube-proxy:v1.14.0
+	docker pull registry.aliyuncs.com/google_containers/kube-scheduler:v1.14.0
+	docker pull registry.aliyuncs.com/google_containers/coredns:1.3.1
+	docker pull registry.aliyuncs.com/google_containers/etcd:3.3.10
+	docker pull registry.aliyuncs.com/google_containers/pause:3.1
+	docker pull registry.cn-hangzhou.aliyuncs.com/kubernete/kubernetes-dashboard-amd64:v1.10.0
+	
+	docker tag registry.aliyuncs.com/google_containers/kube-apiserver:v1.14.0 k8s.gcr.io/kube-apiserver:v1.14.0
+	docker tag registry.aliyuncs.com/google_containers/kube-controller-manager:v1.14.0 k8s.gcr.io/kube-controller-manager:v1.14.0
+	docker tag registry.aliyuncs.com/google_containers/kube-proxy:v1.14.0 k8s.gcr.io/kube-proxy:v1.14.0
+	docker tag registry.aliyuncs.com/google_containers/kube-scheduler:v1.14.0 k8s.gcr.io/kube-scheduler:v1.14.0
+	docker tag registry.aliyuncs.com/google_containers/coredns:1.3.1 k8s.gcr.io/coredns:1.3.1
+	docker tag registry.aliyuncs.com/google_containers/etcd:3.3.10 k8s.gcr.io/etcd:3.3.10
+	docker tag registry.cn-hangzhou.aliyuncs.com/kubernete/kubernetes-dashboard-amd64:v1.10.0 k8s.gcr.io/kubernetes-dashboard-amd64:v1.10.0
+	docker tag registry.aliyuncs.com/google_containers/pause:3.1 k8s.gcr.io/pause:3.1
+	
+	docker rmi registry.aliyuncs.com/google_containers/kube-apiserver:v1.14.0
+	docker rmi registry.aliyuncs.com/google_containers/kube-controller-manager:v1.14.0
+	docker rmi registry.aliyuncs.com/google_containers/kube-scheduler:v1.14.0
+	docker rmi registry.aliyuncs.com/google_containers/kube-proxy:v1.14.0
+	docker rmi registry.aliyuncs.com/google_containers/etcd:3.3.10
+	docker rmi registry.aliyuncs.com/google_containers/coredns:1.3.1
+	
+	kubeadm config print init-defaults > kubeadm.conf
+	kubeadm config images pull --config kubeadm.conf
+	kubeadm config images pull --config kubeadm.conf
+	
+	kubeadm init --kubernetes-version=v1.14.0 --pod-network-cidr=172.22.0.0/16 --apiserver-advertise-address=192.168.122.89
+
+	kubeadm join 192.168.122.89:6443 --token d9yqld.l743ws8hzhgc52tb     --discovery-token-ca-cert-hash sha256:7beae0395e6d48a5b4d6a986bb8043f934a62e4fe58e48933c3644e4b3364564
+	
+	W0327 17:45:45.351122    4240 strict.go:47] unknown configuration schema.GroupVersionKind{Group:"kubeadm.k8s.io", Version:"v1beta1", Kind:"MasterConfiguration"} for scheme definitions in "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/scheme/scheme.go:31" and "k8s.io/kubernetes/cmd/kubeadm/app/componentconfigs/scheme.go:28"
+	[config] WARNING: Ignored YAML document with GroupVersionKind kubeadm.k8s.io/v1beta1, Kind=MasterConfiguration
+	[init] Using Kubernetes version: v1.13.3
+	[preflight] Running pre-flight checks
+			[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 17.12.1-ce. Latest validated version: 18.06
+	[preflight] Pulling images required for setting up a Kubernetes cluster
+	[preflight] This might take a minute or two, depending on the speed of your internet connection
+	[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+	[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+	[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+	[kubelet-start] Activating the kubelet service
+	[certs] Using certificateDir folder "/etc/kubernetes/pki"
+	[certs] Generating "ca" certificate and key
+	[certs] Generating "apiserver" certificate and key
+	[certs] apiserver serving cert is signed for DNS names [template.me kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 172.16.56.11]
+	[certs] Generating "apiserver-kubelet-client" certificate and key
+	[certs] Generating "front-proxy-ca" certificate and key
+	[certs] Generating "front-proxy-client" certificate and key
+	[certs] Generating "etcd/ca" certificate and key
+	[certs] Generating "etcd/peer" certificate and key
+	[certs] etcd/peer serving cert is signed for DNS names [template.me localhost] and IPs [172.16.56.11 127.0.0.1 ::1]
+	[certs] Generating "etcd/server" certificate and key
+	[certs] etcd/server serving cert is signed for DNS names [template.me localhost] and IPs [172.16.56.11 127.0.0.1 ::1]
+	[certs] Generating "etcd/healthcheck-client" certificate and key
+	[certs] Generating "apiserver-etcd-client" certificate and key
+	[certs] Generating "sa" key and public key
+	[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+	[kubeconfig] Writing "admin.conf" kubeconfig file
+	[kubeconfig] Writing "kubelet.conf" kubeconfig file
+	[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+	[kubeconfig] Writing "scheduler.conf" kubeconfig file
+	[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+	[control-plane] Creating static Pod manifest for "kube-apiserver"
+	[control-plane] Creating static Pod manifest for "kube-controller-manager"
+	[control-plane] Creating static Pod manifest for "kube-scheduler"
+	[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+	[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+	[apiclient] All control plane components are healthy after 30.504099 seconds
+	[uploadconfig] storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+	[kubelet] Creating a ConfigMap "kubelet-config-1.13" in namespace kube-system with the configuration for the kubelets in the cluster
+	[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "template.me" as an annotation
+	[mark-control-plane] Marking the node template.me as control-plane by adding the label "node-role.kubernetes.io/master=''"
+	[mark-control-plane] Marking the node template.me as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+	[bootstrap-token] Using token: abcdef.0123456789abcdef
+	[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+	[bootstraptoken] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+	[bootstraptoken] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+	[bootstraptoken] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+	[bootstraptoken] creating the "cluster-info" ConfigMap in the "kube-public" namespace
+	[addons] Applied essential addon: CoreDNS
+	[addons] Applied essential addon: kube-proxy
+
+	Your Kubernetes master has initialized successfully!
+
+	To start using your cluster, you need to run the following as a regular user:
+
+	  mkdir -p $HOME/.kube
+	  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+	You should now deploy a pod network to the cluster.
+	Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+	  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+	You can now join any number of machines by running the following on each node
+	as root:
+
+	  kubeadm join 172.16.56.11:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:df5aaf07f470f716aaf8a2e505f896928c31c7edcd3a40039a8b55c5a139bd03
 
 
+	# kubeadm join 172.16.56.11:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:df5aaf07f470f716aaf8a2e505f896928c31c7edcd3a40039a8b55c5a139bd03
+	[preflight] Running pre-flight checks
+			[WARNING SystemVerification]: this Docker version is not on the list of validated versions: 17.12.1-ce. Latest validated version: 18.06
+	[discovery] Trying to connect to API Server "172.16.56.11:6443"
+	[discovery] Created cluster-info discovery client, requesting info from "https://172.16.56.11:6443"
+	[discovery] Requesting info from "https://172.16.56.11:6443" again to validate TLS against the pinned public key
+	[discovery] Cluster info signature and contents are valid and TLS certificate validates against pinned roots, will use API Server "172.16.56.11:6443"
+	[discovery] Successfully established connection with API Server "172.16.56.11:6443"
+	[join] Reading configuration from the cluster...
+	[join] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+	[kubelet] Downloading configuration for the kubelet from the "kubelet-config-1.13" ConfigMap in the kube-system namespace
+	[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+	[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+	[kubelet-start] Activating the kubelet service
+	[tlsbootstrap] Waiting for the kubelet to perform the TLS Bootstrap...
+	[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "node1" as an annotation
 
+	This node has joined the cluster:
+	* Certificate signing request was sent to apiserver and a response was received.
+	* The Kubelet was informed of the new secure connection details.
 
+	Run 'kubectl get nodes' on the master to see this node join the cluster.
 
+Calico Problem
+	iptables -I INPUT -p tcp --dport 179 -j ACCEPT
+	Warning  Unhealthy  8s (x15 over 2m28s)  kubelet, node1     Readiness probe failed: calico/node is not ready: BIRD is not ready: BGP not established with 192.168.122.84
+	
+	The calico/node container may report an “unready” status in Kubernetes with this message. In most cases, this means a particular peer is unreachable in the cluster. Users should ensure BGP connectivity between the two peers is allowed in their environment.
 
+	This can also occur when inactive Node resources are configured when using node-to-node mesh. Resolve cases like this by decomissioning the stale nodes.
 
+	Lastly this can occur when BGP connections to non-mesh peers go down. If this is a common occurance in your BGP topology, you can disable BIRD readiness checks. See node readiness for more information.
+	
+Calico INSTALL
+	# cat calico/etcd.yaml 
+	# This manifest installs the Calico etcd on the kubeadm master.  This uses a DaemonSet
+	# to force it to run on the master even when the master isn't schedulable, and uses
+	# nodeSelector to ensure it only runs on the master.
+	apiVersion: extensions/v1beta1
+	kind: DaemonSet
+	metadata:
+	  name: calico-etcd
+	  namespace: kube-system
+	  labels:
+		k8s-app: calico-etcd
+	spec:
+	  template:
+		metadata:
+		  labels:
+			k8s-app: calico-etcd
+		  annotations:
+			# Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
+			# reserves resources for critical add-on pods so that they can be rescheduled after
+			# a failure.  This annotation works in tandem with the toleration below.
+			scheduler.alpha.kubernetes.io/critical-pod: ''
+		spec:
+		  tolerations:
+			# This taint is set by all kubelets running `--cloud-provider=external`
+			# so we should tolerate it to schedule the Calico pods
+			- key: node.cloudprovider.kubernetes.io/uninitialized
+			  value: "true"
+			  effect: NoSchedule
+			# Allow this pod to run on the master.
+			- key: node-role.kubernetes.io/master
+			  effect: NoSchedule
+			# Allow this pod to be rescheduled while the node is in "critical add-ons only" mode.
+			# This, along with the annotation above marks this pod as a critical add-on.
+			- key: CriticalAddonsOnly
+			  operator: Exists
+		  # Only run this pod on the master.
+		  nodeSelector:
+			node-role.kubernetes.io/master: ""
+		  hostNetwork: true
+		  containers:
+			- name: calico-etcd
+			  image: quay.io/coreos/etcd:v3.3.9
+			  imagePullPolicy: IfNotPresent
+			  env:
+				- name: CALICO_ETCD_IP
+				  valueFrom:
+					fieldRef:
+					  fieldPath: status.podIP
+			  command:
+			  - /usr/local/bin/etcd
+			  args:
+			  - --name=calico
+			  - --data-dir=/var/etcd/calico-data
+			  - --advertise-client-urls=http://$(CALICO_ETCD_IP):6666
+			  - --listen-client-urls=http://0.0.0.0:6666
+			  - --listen-peer-urls=http://0.0.0.0:6667
+			  - --auto-compaction-retention=1
+			  volumeMounts:
+				- name: var-etcd
+				  mountPath: /var/etcd
+		  volumes:
+			- name: var-etcd
+			  hostPath:
+				path: /var/etcd
 
+	---
 
+	# This manifest installs the Service which gets traffic to the Calico
+	# etcd.
+	apiVersion: v1
+	kind: Service
+	metadata:
+	  labels:
+		k8s-app: calico-etcd
+	  name: calico-etcd
+	  namespace: kube-system
+	spec:
+	  # Select the calico-etcd pod running on the master.
+	  selector:
+		k8s-app: calico-etcd
+	  # This ClusterIP needs to be known in advance, since we cannot rely
+	  # on DNS to get access to etcd.
+	  clusterIP: 10.96.232.136
+	  ports:
+		- port: 6666
 
+	-----------------------------------------------------------------------------------
+	# cat calico/calico.yaml 
+	# Calico Version v3.5.2
+	# https://docs.projectcalico.org/v3.5/releases#v3.5.2
+	# This manifest includes the following component versions:
+	#   calico/node:v3.5.2
+	#   calico/cni:v3.5.2
+	#   calico/kube-controllers:v3.5.2
 
+	# This ConfigMap is used to configure a self-hosted Calico installation.
+	kind: ConfigMap
+	apiVersion: v1
+	metadata:
+	  name: calico-config
+	  namespace: kube-system
+	data:
+	  # Configure this with the location of your etcd cluster.
+	  etcd_endpoints: "http://10.96.232.136:6666"
 
+	  # If you're using TLS enabled etcd uncomment the following.
+	  # You must also populate the Secret below with these files.
+	  etcd_ca: ""   # "/calico-secrets/etcd-ca"
+	  etcd_cert: "" # "/calico-secrets/etcd-cert"
+	  etcd_key: ""  # "/calico-secrets/etcd-key"
+	  # Typha is disabled.
+	  typha_service_name: "none"
+	  # Configure the Calico backend to use.
+	  calico_backend: "bird"
 
+	  # Configure the MTU to use
+	  veth_mtu: "1440"
+
+	  # The CNI network configuration to install on each node.  The special
+	  # values in this config will be automatically populated.
+	  cni_network_config: |-
+		{
+		  "name": "k8s-pod-network",
+		  "cniVersion": "0.3.0",
+		  "plugins": [
+			{
+			  "type": "calico",
+			  "log_level": "info",
+			  "etcd_endpoints": "__ETCD_ENDPOINTS__",
+			  "etcd_key_file": "__ETCD_KEY_FILE__",
+			  "etcd_cert_file": "__ETCD_CERT_FILE__",
+			  "etcd_ca_cert_file": "__ETCD_CA_CERT_FILE__",
+			  "mtu": __CNI_MTU__,
+			  "ipam": {
+				  "type": "calico-ipam"
+			  },
+			  "policy": {
+				  "type": "k8s"
+			  },
+			  "kubernetes": {
+				  "kubeconfig": "__KUBECONFIG_FILEPATH__"
+			  }
+			},
+			{
+			  "type": "portmap",
+			  "snat": true,
+			  "capabilities": {"portMappings": true}
+			}
+		  ]
+		}
+
+	---
+
+	# The following contains k8s Secrets for use with a TLS enabled etcd cluster.
+	# For information on populating Secrets, see http://kubernetes.io/docs/user-guide/secrets/
+	apiVersion: v1
+	kind: Secret
+	type: Opaque
+	metadata:
+	  name: calico-etcd-secrets
+	  namespace: kube-system
+	data:
+	  # Populate the following with etcd TLS configuration if desired, but leave blank if
+	  # not using TLS for etcd.
+	  # The keys below should be uncommented and the values populated with the base64
+	  # encoded contents of each file that would be associated with the TLS data.
+	  # Example command for encoding a file contents: cat <file> | base64 -w 0
+	  # etcd-key: null
+	  # etcd-cert: null
+	  # etcd-ca: null
+
+	---
+	# This manifest installs the calico/node container, as well
+	# as the Calico CNI plugins and network config on
+	# each master and worker node in a Kubernetes cluster.
+	kind: DaemonSet
+	apiVersion: extensions/v1beta1
+	metadata:
+	  name: calico-node
+	  namespace: kube-system
+	  labels:
+		k8s-app: calico-node
+	spec:
+	  selector:
+		matchLabels:
+		  k8s-app: calico-node
+	  updateStrategy:
+		type: RollingUpdate
+		rollingUpdate:
+		  maxUnavailable: 1
+	  template:
+		metadata:
+		  labels:
+			k8s-app: calico-node
+		  annotations:
+			# This, along with the CriticalAddonsOnly toleration below,
+			# marks the pod as a critical add-on, ensuring it gets
+			# priority scheduling and that its resources are reserved
+			# if it ever gets evicted.
+			scheduler.alpha.kubernetes.io/critical-pod: ''
+		spec:
+		  nodeSelector:
+			beta.kubernetes.io/os: linux
+		  hostNetwork: true
+		  tolerations:
+			# Make sure calico-node gets scheduled on all nodes.
+			- effect: NoSchedule
+			  operator: Exists
+			# Mark the pod as a critical add-on for rescheduling.
+			- key: CriticalAddonsOnly
+			  operator: Exists
+			- effect: NoExecute
+			  operator: Exists
+		  serviceAccountName: calico-node
+		  # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+		  # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+		  terminationGracePeriodSeconds: 0
+		  initContainers:
+			# This container installs the Calico CNI binaries
+			# and CNI network config file on each node.
+			- name: install-cni
+			  image: calico/cni:v3.5.2
+			  imagePullPolicy: IfNotPresent
+			  command: ["/install-cni.sh"]
+			  env:
+				# Name of the CNI config file to create.
+				- name: CNI_CONF_NAME
+				  value: "10-calico.conflist"
+				# The CNI network config to install on each node.
+				- name: CNI_NETWORK_CONFIG
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: cni_network_config
+				# The location of the Calico etcd cluster.
+				- name: ETCD_ENDPOINTS
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_endpoints
+				# CNI MTU Config variable
+				- name: CNI_MTU
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: veth_mtu
+				# Prevents the container from sleeping forever.
+				- name: SLEEP
+				  value: "false"
+			  volumeMounts:
+				- mountPath: /host/opt/cni/bin
+				  name: cni-bin-dir
+				- mountPath: /host/etc/cni/net.d
+				  name: cni-net-dir
+				- mountPath: /calico-secrets
+				  name: etcd-certs
+		  containers:
+			# Runs calico/node container on each Kubernetes node.  This
+			# container programs network policy and routes on each
+			# host.
+			- name: calico-node
+			  image: calico/node:v3.5.2
+			  imagePullPolicy: IfNotPresent
+			  env:
+				# The location of the Calico etcd cluster.
+				- name: ETCD_ENDPOINTS
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_endpoints
+				# Location of the CA certificate for etcd.
+				- name: ETCD_CA_CERT_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_ca
+				# Location of the client key for etcd.
+				- name: ETCD_KEY_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_key
+				# Location of the client certificate for etcd.
+				- name: ETCD_CERT_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_cert
+				# Set noderef for node controller.
+				- name: CALICO_K8S_NODE_REF
+				  valueFrom:
+					fieldRef:
+					  fieldPath: spec.nodeName
+				# Choose the backend to use.
+				- name: CALICO_NETWORKING_BACKEND
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: calico_backend
+				# Cluster type to identify the deployment type
+				- name: CLUSTER_TYPE
+				  value: "k8s,bgp"
+				# Auto-detect the BGP IP address.
+				- name: IP
+				  value: "autodetect"
+				# Enable IPIP
+				- name: CALICO_IPV4POOL_IPIP
+				  value: "Always"
+				# Set MTU for tunnel device used if ipip is enabled
+				- name: FELIX_IPINIPMTU
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: veth_mtu
+				# The default IPv4 pool to create on startup if none exists. Pod IPs will be
+				# chosen from this range. Changing this value after installation will have
+				# no effect. This should fall within `--cluster-cidr`.
+				- name: CALICO_IPV4POOL_CIDR
+				  value: "172.22.0.0/16"
+				# Disable file logging so `kubectl logs` works.
+				- name: CALICO_DISABLE_FILE_LOGGING
+				  value: "true"
+				# Set Felix endpoint to host default action to ACCEPT.
+				- name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+				  value: "ACCEPT"
+				# Disable IPv6 on Kubernetes.
+				- name: FELIX_IPV6SUPPORT
+				  value: "false"
+				# Set Felix logging to "info"
+				- name: FELIX_LOGSEVERITYSCREEN
+				  value: "info"
+				- name: FELIX_HEALTHENABLED
+				  value: "true"
+			  securityContext:
+				privileged: true
+			  resources:
+				requests:
+				  cpu: 250m
+			  livenessProbe:
+				httpGet:
+				  path: /liveness
+				  port: 9099
+				  host: localhost
+				periodSeconds: 10
+				initialDelaySeconds: 10
+				failureThreshold: 6
+			  readinessProbe:
+				exec:
+				  command:
+				  - /bin/calico-node
+				  - -bird-ready
+				  - -felix-ready
+				periodSeconds: 10
+			  volumeMounts:
+				- mountPath: /lib/modules
+				  name: lib-modules
+				  readOnly: true
+				- mountPath: /run/xtables.lock
+				  name: xtables-lock
+				  readOnly: false
+				- mountPath: /var/run/calico
+				  name: var-run-calico
+				  readOnly: false
+				- mountPath: /var/lib/calico
+				  name: var-lib-calico
+				  readOnly: false
+				- mountPath: /calico-secrets
+				  name: etcd-certs
+		  volumes:
+			# Used by calico/node.
+			- name: lib-modules
+			  hostPath:
+				path: /lib/modules
+			- name: var-run-calico
+			  hostPath:
+				path: /var/run/calico
+			- name: var-lib-calico
+			  hostPath:
+				path: /var/lib/calico
+			- name: xtables-lock
+			  hostPath:
+				path: /run/xtables.lock
+				type: FileOrCreate
+			# Used to install CNI.
+			- name: cni-bin-dir
+			  hostPath:
+				path: /opt/cni/bin
+			- name: cni-net-dir
+			  hostPath:
+				path: /etc/cni/net.d
+			# Mount in the etcd TLS secrets with mode 400.
+			# See https://kubernetes.io/docs/concepts/configuration/secret/
+			- name: etcd-certs
+			  secret:
+				secretName: calico-etcd-secrets
+				defaultMode: 0400
+	---
+
+	apiVersion: v1
+	kind: ServiceAccount
+	metadata:
+	  name: calico-node
+	  namespace: kube-system
+
+	---
+	# This manifest deploys the Calico Kubernetes controllers.
+	# See https://github.com/projectcalico/kube-controllers
+	apiVersion: extensions/v1beta1
+	kind: Deployment
+	metadata:
+	  name: calico-kube-controllers
+	  namespace: kube-system
+	  labels:
+		k8s-app: calico-kube-controllers
+	  annotations:
+		scheduler.alpha.kubernetes.io/critical-pod: ''
+	spec:
+	  # The controllers can only have a single active instance.
+	  replicas: 1
+	  strategy:
+		type: Recreate
+	  template:
+		metadata:
+		  name: calico-kube-controllers
+		  namespace: kube-system
+		  labels:
+			k8s-app: calico-kube-controllers
+		spec:
+		  nodeSelector:
+			beta.kubernetes.io/os: linux
+		  # The controllers must run in the host network namespace so that
+		  # it isn't governed by policy that would prevent it from working.
+		  hostNetwork: true
+		  tolerations:
+			# Mark the pod as a critical add-on for rescheduling.
+			- key: CriticalAddonsOnly
+			  operator: Exists
+			- key: node-role.kubernetes.io/master
+			  effect: NoSchedule
+		  serviceAccountName: calico-kube-controllers
+		  containers:
+			- name: calico-kube-controllers
+			  image: calico/kube-controllers:v3.5.2
+			  imagePullPolicy: IfNotPresent
+			  env:
+				# The location of the Calico etcd cluster.
+				- name: ETCD_ENDPOINTS
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_endpoints
+				# Location of the CA certificate for etcd.
+				- name: ETCD_CA_CERT_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_ca
+				# Location of the client key for etcd.
+				- name: ETCD_KEY_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_key
+				# Location of the client certificate for etcd.
+				- name: ETCD_CERT_FILE
+				  valueFrom:
+					configMapKeyRef:
+					  name: calico-config
+					  key: etcd_cert
+				# Choose which controllers to run.
+				- name: ENABLED_CONTROLLERS
+				  value: policy,namespace,serviceaccount,workloadendpoint,node
+			  volumeMounts:
+				# Mount in the etcd TLS secrets.
+				- mountPath: /calico-secrets
+				  name: etcd-certs
+			  readinessProbe:
+				exec:
+				  command:
+				  - /usr/bin/check-status
+				  - -r
+		  volumes:
+			# Mount in the etcd TLS secrets with mode 400.
+			# See https://kubernetes.io/docs/concepts/configuration/secret/
+			- name: etcd-certs
+			  secret:
+				secretName: calico-etcd-secrets
+				defaultMode: 0400
+
+	---
+
+	apiVersion: v1
+	kind: ServiceAccount
+	metadata:
+	  name: calico-kube-controllers
+	  namespace: kube-system
+	---
+
+	# Include a clusterrole for the kube-controllers component,
+	# and bind it to the calico-kube-controllers serviceaccount.
+	kind: ClusterRole
+	apiVersion: rbac.authorization.k8s.io/v1beta1
+	metadata:
+	  name: calico-kube-controllers
+	rules:
+	  # Pods are monitored for changing labels.
+	  # The node controller monitors Kubernetes nodes.
+	  # Namespace and serviceaccount labels are used for policy.
+	  - apiGroups:
+		  - ""
+		resources:
+		  - pods
+		  - nodes
+		  - namespaces
+		  - serviceaccounts
+		verbs:
+		  - watch
+		  - list
+	  # Watch for changes to Kubernetes NetworkPolicies.
+	  - apiGroups:
+		  - networking.k8s.io
+		resources:
+		  - networkpolicies
+		verbs:
+		  - watch
+		  - list
+	---
+	kind: ClusterRoleBinding
+	apiVersion: rbac.authorization.k8s.io/v1beta1
+	metadata:
+	  name: calico-kube-controllers
+	roleRef:
+	  apiGroup: rbac.authorization.k8s.io
+	  kind: ClusterRole
+	  name: calico-kube-controllers
+	subjects:
+	- kind: ServiceAccount
+	  name: calico-kube-controllers
+	  namespace: kube-system
+	---
+	# Include a clusterrole for the calico-node DaemonSet,
+	# and bind it to the calico-node serviceaccount.
+	kind: ClusterRole
+	apiVersion: rbac.authorization.k8s.io/v1beta1
+	metadata:
+	  name: calico-node
+	rules:
+	  # The CNI plugin needs to get pods, nodes, and namespaces.
+	  - apiGroups: [""]
+		resources:
+		  - pods
+		  - nodes
+		  - namespaces
+		verbs:
+		  - get
+	  - apiGroups: [""]
+		resources:
+		  - endpoints
+		  - services
+		verbs:
+		  # Used to discover service IPs for advertisement.
+		  - watch
+		  - list
+	  - apiGroups: [""]
+		resources:
+		  - nodes/status
+		verbs:
+		  # Needed for clearing NodeNetworkUnavailable flag.
+		  - patch
+	---
+	apiVersion: rbac.authorization.k8s.io/v1beta1
+	kind: ClusterRoleBinding
+	metadata:
+	  name: calico-node
+	roleRef:
+	  apiGroup: rbac.authorization.k8s.io
+	  kind: ClusterRole
+	  name: calico-node
+	subjects:
+	- kind: ServiceAccount
+	  name: calico-node
+	  namespace: kube-system
+	---
 
 
 
