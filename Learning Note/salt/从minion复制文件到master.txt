@@ -1,0 +1,5 @@
+从minion复制文件到master
+1. 出于安全原因默认情况是不可以从minion上复制文件到master的（但是cp.push 命令依然会返回True） 首先需要修改master配置文件，设置 file_recv: True， 在配置文件中也可以设置传输文件的最大大小，默认为100M。 修改配置后需要重启master
+2. 执行命令：
+salt '*91' --log-level=all  cp.push /home/salt/software/solr-4.7.2-src.tar.gz
+文件复制到的默认位置为：/var/cache/salt/master/minions/YTJ159-91/files/ 文件将保持在minion上的目录结构，例如上例子文件会复制到：/var/cache/salt/master/minions/YTJ159-91/files/home/salt/softwar

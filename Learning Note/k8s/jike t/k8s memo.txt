@@ -436,7 +436,7 @@ ETCD
 	ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key
 
 
-问题
+命令手册
 	
 	kubectl exec -it redis-app-6594cf5f6f-7lsmr -- /bin/sh
 	kubectl get pods -n kube-system -o wide
@@ -445,8 +445,17 @@ ETCD
 	tcpdump -i cni0 -nn host 172.16.1.11 -vv
 
 	kubectl -n dehong-test 
-
-
+	kubectl api-resources -o wide
+	e.g.
+		storageclasses                    sc           storage.k8s.io                 false        StorageClass                     [create delete deletecollection get list patch update watch]
+	
+	kubectl api-resources --api-group='apps' -o wide
+	NAME                  SHORTNAMES   APIGROUP   NAMESPACED   KIND                 VERBS
+	controllerrevisions                apps       true         ControllerRevision   [create delete deletecollection get list patch update watch]
+	daemonsets            ds           apps       true         DaemonSet            [create delete deletecollection get list patch update watch]
+	deployments           deploy       apps       true         Deployment           [create delete deletecollection get list patch update watch]
+	replicasets           rs           apps       true         ReplicaSet           [create delete deletecollection get list patch update watch]
+	statefulsets          sts          apps       true         StatefulSet          [create delete deletecollection get list patch update watch]
 
 
 Calico
