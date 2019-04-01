@@ -457,7 +457,69 @@ ETCD
 	replicasets           rs           apps       true         ReplicaSet           [create delete deletecollection get list patch update watch]
 	statefulsets          sts          apps       true         StatefulSet          [create delete deletecollection get list patch update watch]
 
-
+TLS Bootstrapping
+	[root@node1 ~]# kubectl get clusterrole system:node-bootstrapper -n kube-system -o yaml
+	apiVersion: rbac.authorization.k8s.io/v1
+	kind: ClusterRole
+	metadata:
+	  annotations:
+		rbac.authorization.kubernetes.io/autoupdate: "true"
+	  creationTimestamp: "2019-03-28T03:22:04Z"
+	  labels:
+		kubernetes.io/bootstrapping: rbac-defaults
+	  name: system:node-bootstrapper
+	  resourceVersion: "58"
+	  selfLink: /apis/rbac.authorization.k8s.io/v1/clusterroles/system%3Anode-bootstrapper
+	  uid: a8b3ed4f-5108-11e9-8190-5254005c6f5b
+	rules:
+	- apiGroups:
+	  - certificates.k8s.io
+	  resources:
+	  - certificatesigningrequests
+	  verbs:
+	  - create
+	  - get
+	  - list
+	  - watch
+	[root@node1 ~]# kubectl get clusterrolebinding -n kube-system|grep boots
+	kubeadm:kubelet-bootstrap                              3d7h
+	kubeadm:node-autoapprove-bootstrap                     3d7h
+	[root@node1 ~]# kubectl get clusterrolebinding kubeadm:kubelet-bootstrap -n kube-system -o yaml
+	apiVersion: rbac.authorization.k8s.io/v1
+	kind: ClusterRoleBinding
+	metadata:
+	  creationTimestamp: "2019-03-28T03:22:07Z"
+	  name: kubeadm:kubelet-bootstrap
+	  resourceVersion: "184"
+	  selfLink: /apis/rbac.authorization.k8s.io/v1/clusterrolebindings/kubeadm%3Akubelet-bootstrap
+	  uid: aacb2cd1-5108-11e9-8190-5254005c6f5b
+	roleRef:
+	  apiGroup: rbac.authorization.k8s.io
+	  kind: ClusterRole
+	  name: system:node-bootstrapper
+	subjects:
+	- apiGroup: rbac.authorization.k8s.io
+	  kind: Group
+	  name: system:bootstrappers:kubeadm:default-node-token
+	[root@node1 ~]# kubectl get clusterrolebinding kubeadm:node-autoapprove-bootstrap -n kube-system -o yaml
+	apiVersion: rbac.authorization.k8s.io/v1
+	kind: ClusterRoleBinding
+	metadata:
+	  creationTimestamp: "2019-03-28T03:22:07Z"
+	  name: kubeadm:node-autoapprove-bootstrap
+	  resourceVersion: "186"
+	  selfLink: /apis/rbac.authorization.k8s.io/v1/clusterrolebindings/kubeadm%3Anode-autoapprove-bootstrap
+	  uid: aad08366-5108-11e9-8190-5254005c6f5b
+	roleRef:
+	  apiGroup: rbac.authorization.k8s.io
+	  kind: ClusterRole
+	  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+	subjects:
+	- apiGroup: rbac.authorization.k8s.io
+	  kind: Group
+	  name: system:bootstrappers:kubeadm:default-node-token
+	
+	
 Calico
 
 	yum install conntrack ipvsadm ipset jq sysstat curl iptables libseccomp bash-completion yum-utils device-mapper-persistent-data lvm2 net-tools conntrack-tools vim libtool-ltdl
