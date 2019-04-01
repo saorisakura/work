@@ -1252,7 +1252,133 @@ Calico INSTALL
 	---
 
 
+openssl 证书操作命令
+	一、简介
 
+	openssl命令集充分体现了unix编程的KISS精神——每个命令的功能都简单而且独立，通过脚本语言将其组合在一起就能实现强大的功能。
+
+	这里只简单介绍一些我们常用的命令，各个命令的详细帮助可以查阅对应的manpages，
+
+	 
+
+	二、常用功能
+
+	1）生成CA和证书
+
+	复制代码
+	# to create RSA Certificate
+	openssl genrsa -des -passout pass:"123456" -out rsa_ca_prikey.key 1024 
+	openssl req -config caOpenssl.cnf -key rsa_ca_prikey.key -passin pass:"123456" -new -out rsa_ca_cert.req 
+	openssl x509 -req -in rsa_ca_cert.req -signkey rsa_ca_prikey.key -passin pass:"123456" -out rsa_ca_cert.pem 
+
+	openssl genrsa -des -passout pass:"123456" -out rsa_site_prikey.key 1024 
+	openssl req -config siteOpenssl.cnf -key rsa_site_prikey.key -passin pass:"123456" -new -out rsa_site_cert.req 
+	openssl x509 -req -in rsa_site_cert.req -CA rsa_ca_cert.pem -CAkey rsa_ca_prikey.key -passin pass:"123456" -out rsa_site_cert.pem -CAcreateserial 
+
+
+	# to create ECC Certificate 
+	openssl ecparam -genkey -name prime256v1 -out ecc_ca_prikey.key  
+	openssl req -config caOpenssl.cnf -key ecc_ca_prikey.key -new -out ecc_ca_cert.req 
+	openssl x509 -req -in ecc_ca_cert.req -signkey ecc_ca_prikey.key -out ecc_ca_cert.pem 
+
+	openssl ecparam -genkey -name prime256v1 -out ecc_site_prikey.key  
+	openssl req -config siteOpenssl.cnf -key ecc_site_prikey.key -new -out ecc_site_cert.req 
+	openssl x509 -req -in ecc_site_cert.req -CA ecc_ca_cert.pem -CAkey ecc_ca_prikey.key -out ecc_site_cert.pem -CAcreateserial 
+
+
+	# to create DSA Certificate 
+	openssl dsaparam -genkey 512 -out dsa_ca_prikey.key 
+	openssl req -config caOpenssl.cnf -key dsa_ca_prikey.key -new -out dsa_ca_cert.req 
+	openssl x509 -req -in dsa_ca_cert.req -signkey dsa_ca_prikey.key -out dsa_ca_cert.pem 
+
+	openssl dsaparam -genkey 512 -out dsa_site_prikey.key 
+	openssl req -config siteOpenssl.cnf -key dsa_site_prikey.key -new -out dsa_site_cert.req 
+	openssl x509 -req -in dsa_site_cert.req -CA dsa_ca_cert.pem -CAkey dsa_ca_prikey.key -out dsa_site_cert.pem -CAcreateserial
+	复制代码
+	2）查看证书
+
+	复制代码
+	# 查看KEY信息
+	$ openssl rsa -noout -text -in myserver.key
+
+	# 查看CSR信息
+	$ openssl req -noout -text -in myserver.csr
+
+	# 查看证书信息
+	$ openssl x509 -noout -text -in ca.pem
+
+	# 查看证书公钥对应的RSA模
+	$ openssl x509 -in mysite.pem -noout -modulus
+
+	# 查看证书subject项
+	$ openssl x509 -in mysite.pem -noout -subject -nameopt multiline
+
+	# 查看证书issuer项
+	$ openssl x509 -in mysite.pem -noout -issuer -nameopt multiline
+
+	# 检查证书用途
+	$ openssl x509 -purpose -noout -in 192.168.200.7.cer
+	复制代码
+	3）验证证书
+
+	# 会提示self signed
+	$ openssl verify ca_cert.pem
+
+	# 因为myserver.crt 是幅ca.crt发布的，所以会验证成功
+	$ openssl verify -CAfile ca_cert.pem site_cert.pem
+	4）格式转换
+
+	复制代码
+	# PKCS转换为PEM
+	> openssl pkcs12 -in myserver.pfx -out myserver.pem -nodes
+
+	# PEM转换为DER
+	> openssl x509 -outform der -in myserver.pem -out myserver.[der|crt]
+
+	# PEM提取KEY
+	> openssl RSA -in myserver.pem -out myserver.key
+
+	# DER转换为PEM
+	> openssl x509 -inform der -in myserver.[cer|crt] -out myserver.pem
+
+	# PEM转换为PKCS
+	> openssl pkcs12 -export -inkey myserver.key -in myserver.pem  -out myserver.pfx -certfile ca.crt
+	> openssl pkcs12 -export -inkey www.mysite.com.key -in www.mysite.com.pem -passin pass:123456 -passout pass:123456 -out www.mysite.com.p12
+	复制代码
+	 
+	5）去掉key的密码保护
+
+	 
+	 
+	7、测试证书
+	Openssl提供了简单的client和server工具，可以用来模拟SSL连接，做测试使用。
+
+	复制代码
+	# 连接到远程服务器
+	> openssl s_client -connect www.google.com.hk:443
+
+	# 模拟的HTTPS服务，可以返回Openssl相关信息 
+	# -accept 用来指定监听的端口号 
+	# -cert -key 用来指定提供服务的key和证书
+	> openssl s_server -accept 443 -cert myserver.crt -key myserver.key -www
+
+	# 可以将key和证书写到同一个文件中
+	> cat myserver.crt myserver.key > myserver.pem
+	# 使用的时候只提供一个参数就可以了
+	> openssl s_server -accept 443 -cert myserver.pem -www
+
+	# 可以将服务器的证书保存下来
+	> openssl s_client -connect www.google.com.hk:443 </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > remoteserver.pem
+	# 转换成DER文件，就可以在Windows下直接查看了
+	> openssl x509 -outform der -in remoteserver.pem -out remoteserver.cer
+	复制代码
+	 
+	8、计算MD5和SHA1
+	# MD5 digest
+	> openssl dgst -md5 filename
+
+	# SHA1 digest
+	> openssl dgst -sha1 filename
 
 
 
