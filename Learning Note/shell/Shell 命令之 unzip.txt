@@ -1,0 +1,25 @@
+Shell 命令之 unzip
+ 发表于 2018-11-01
+解压到当前目录
+# 如果文件已存在，会提示是否替换，可以使用 -o 或 -n 参数简化交互；
+$unzip test.zip
+解压到指定目录
+# 解压后的文件路径:/{targetPath}/test
+$unzip -d {targetPath} test.zip
+不覆盖已经存在的文件
+$unzip -n test.zip
+强制覆盖已经存在的文件
+$unzip -o test.zip
+查看压缩包中的文件列表
+# 文件大小、时间、文件名称
+$unzip -l test.zip
+查看压缩包中的文件信息【更详细】
+# 文件大小、压缩比、日期、文件名称
+$unzip -v test.zip
+检查压缩包是否损坏
+$unzip -t test.zip
+显示压缩文件的备注
+$unzip -z test.zip
+执行解压不显示任何信息
+$unzip -q test.zip
+$unzip -oq test.zip # 静默解压没有任何提示

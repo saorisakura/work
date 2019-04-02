@@ -1,0 +1,4 @@
+OVS
+
+install
+	yum install openvswitch openvswitch-controller openvswitch-test python-openvswitch
