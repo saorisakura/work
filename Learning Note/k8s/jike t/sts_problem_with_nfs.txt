@@ -1,0 +1,213 @@
+[root@node1 ~]# cat nginx_sts_pvc.yaml 
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+
+[root@node1 ~]# cat nginx_sts.yaml 
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web
+
+yum install nfs-utils-----------------------------解决方案
+
+]# kubectl describe pods web-0
+Name:               web-0
+Namespace:          default
+Priority:           0
+PriorityClassName:  <none>
+Node:               node3/192.168.122.84
+Start Time:         Tue, 02 Apr 2019 18:08:34 +0800
+Labels:             app=nginx
+                    controller-revision-hash=web-7f49674c6
+                    statefulset.kubernetes.io/pod-name=web-0
+Annotations:        <none>
+Status:             Pending
+IP:                 
+Controlled By:      StatefulSet/web
+Containers:
+  nginx:
+    Container ID:   
+    Image:          nginx:1.9.1
+    Image ID:       
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       ContainerCreating
+    Ready:          False
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /usr/share/nginx/html from www (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-nwr9r (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             False 
+  ContainersReady   False 
+  PodScheduled      True 
+Volumes:
+  www:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  www-web-0
+    ReadOnly:   false
+  default-token-nwr9r:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-nwr9r
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type     Reason            Age        From               Message
+  ----     ------            ----       ----               -------
+  Warning  FailedScheduling  2m45s      default-scheduler  pod has unbound immediate PersistentVolumeClaims (repeated 2 times)
+  Normal   Scheduled         2m45s      default-scheduler  Successfully assigned default/web-0 to node3
+  Warning  FailedMount       <invalid>  kubelet, node3     MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-28964.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-28977.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-28979.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-28982.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-28984.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-29039.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-29110.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-29240.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
+  Warning  FailedMount  <invalid>  kubelet, node3  Unable to mount volumes for pod "web-0_default(4fb4f133-54ca-11e9-8190-5254005c6f5b)": timeout expired waiting for volumes to attach or mount for pod "default"/"web-0". list of unmounted volumes=[www]. list of unattached volumes=[www default-token-nwr9r]
+  Warning  FailedMount  <invalid>  kubelet, node3  (combined from similar events): MountVolume.SetUp failed for volume "pv-to-pod" : mount failed: exit status 32
+Mounting command: systemd-run
+Mounting arguments: --description=Kubernetes transient mount for /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod --scope -- mount -t nfs 192.168.122.1:/home/k8s_disk_ext /var/lib/kubelet/pods/4fb4f133-54ca-11e9-8190-5254005c6f5b/volumes/kubernetes.io~nfs/pv-to-pod
+Output: Running scope as unit run-29490.scope.
+mount: wrong fs type, bad option, bad superblock on 192.168.122.1:/home/k8s_disk_ext,
+       missing codepage or helper program, or other error
+       (for several filesystems (e.g. nfs, cifs) you might
+       need a /sbin/mount.<type> helper program)
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.
