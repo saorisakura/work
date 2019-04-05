@@ -1,0 +1,516 @@
+kubenetes master使用curl 操作API
+前提条件: 已经使用kubeadm 安装集群
+
+ 
+
+查看 kebelet.conf 配置内容
+
+复制代码
+ kubectl --kubeconfig /etc/kubernetes/kubelet.conf config view
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: REDACTED
+    server: https://{master node local ip}:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: admin
+  name: admin@kubernetes
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet@kubernetes
+current-context: admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: admin
+  user:
+    client-certificate-data: REDACTED
+    client-key-data: REDACTED
+- name: kubelet
+  user:
+    client-certificate-data: REDACTED
+    client-key-data: REDACTED
+复制代码
+ 
+
+我们对应到kubelet.conf中，发现每个REDACTED字样对应的都是一段数据，这段数据是由对应的数字证书内容或密钥内容转换(base64)而来的，在访问apiserver时会用到
+
+复制代码
+node节点操作：
+
+# kubectl get pods
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+# kubectl --kubeconfig /etc/kubernetes/kubelet.conf get pods
+NAME                         READY     STATUS    RESTARTS   AGE
+my-nginx-1948696469-359d6    1/1       Running   2          26d
+my-nginx-1948696469-3g0n7    1/1       Running   3          26d
+my-nginx-1948696469-xkzsh    1/1       Running   2          26d
+my-ubuntu-2560993602-5q7q5   1/1       Running   2          26d
+my-ubuntu-2560993602-lrrh0   1/1       Running   2          26d
+复制代码
+ 
+
+kubeadm创建k8s集群时，会在master node上创建一些用于组件间访问的证书、密钥和token文件，上面的kubeconfig中的“REDACTED”所代表的内容就是从这些文件转化而来的：
+
+ 
+
+复制代码
+/etc/kubernetes/pki# ls
+apiserver-key.pem  apiserver.pem  apiserver-pub.pem  ca-key.pem  ca.pem  ca-pub.pem  sa-key.pem  sa-pub.pem  tokens.csv
+
+apiserver-key.pem：kube-apiserver的私钥文件
+apiserver.pem：kube-apiserver的公钥证书
+apiserver-pub.pem kube-apiserver的公钥文件
+ca-key.pem：CA的私钥文件
+ca.pem：CA的公钥证书
+ca-pub.pem ：CA的公钥文件
+sa-key.pem ：serviceaccount私钥文件
+sa-pub.pem ：serviceaccount的公钥文件
+tokens.csv：kube-apiserver用于校验的token文件
+复制代码
+ 
+
+我们在 node节点上通过curl 测试一下通过安全通道访问master node上的kube-apiserver，kubenetes 的authentication（包括：客户端证书认证、basic auth、static token等）只要通过其中一个即可。当前kube-apiserver开启了客户端证书认证（–client-ca-file）和static token验证(–token-auth-file)，我们只要通过其中一个，就可以通过authentication，于是我们使用static token方式。static token file的内容格式：
+
+复制代码
+token,user,uid,"group1,group2,group3"
+
+对应的内容
+ 
+
+# cat /etc/kubernetes/pki/tokens.csv
+{token},{user},812ffe41-cce0-11e6-9bd3-00163e1001d7,system:kubelet-bootstrap
+复制代码
+ 
+
+用这个token通过curl与apiserver交互：
+
+复制代码
+# curl --cacert /etc/kubernetes/pki/ca.pem -H "Authorization: Bearer {token}"  https://{master node local ip}:6443
+{
+  "paths": [
+    "/api",
+    "/api/v1",
+    "/apis",
+    "/apis/apps",
+    "/apis/apps/v1beta1",
+    "/apis/authentication.k8s.io",
+    "/apis/authentication.k8s.io/v1beta1",
+    "/apis/authorization.k8s.io",
+    "/apis/authorization.k8s.io/v1beta1",
+    "/apis/autoscaling",
+    "/apis/autoscaling/v1",
+    "/apis/batch",
+    "/apis/batch/v1",
+    "/apis/batch/v2alpha1",
+    "/apis/certificates.k8s.io",
+    "/apis/certificates.k8s.io/v1alpha1",
+    "/apis/extensions",
+    "/apis/extensions/v1beta1",
+    "/apis/policy",
+    "/apis/policy/v1beta1",
+    "/apis/rbac.authorization.k8s.io",
+    "/apis/rbac.authorization.k8s.io/v1alpha1",
+    "/apis/storage.k8s.io",
+    "/apis/storage.k8s.io/v1beta1",
+    "/healthz",
+    "/healthz/poststarthook/bootstrap-controller",
+    "/healthz/poststarthook/extensions/third-party-resources",
+    "/healthz/poststarthook/rbac/bootstrap-roles",
+    "/logs",
+    "/metrics",
+    "/swaggerapi/",
+    "/ui/",
+    "/version"
+  ]
+}
+复制代码
+ 
+
+类型为ReplicationController: 通过curl 调用 kube-apiserver操作命令如：
+
+复制代码
+registry="docker.cinyi.com:443"
+#取出项目目录
+javadir=`echo $WORKSPACE | awk -F'/' '{print $5}'`
+#取出war包名称
+javaname=`ls $WORKSPACE/target/*war | awk -F'/' '{print $7}' | cut -d . -f 1`
+#tag 时间
+image_data=`date +%F_%H_%S`
+
+
+mkdir -p /data/docker_project/$javadir
+rm /data/docker_profile/$javadir/$javaname.war -rf
+mv $WORKSPACE/target/$javaname.war /data/docker_project/$javadir
+
+#在/data/docker_project 目录下有一个dockerfile模版，根据war包的名字替换成新的dockerfile
+sed "s/jenkins/$javaname/g" /data/docker_project/Dockerfile >/data/docker_project/$javadir/Dockerfile
+
+if docker images | grep $javaname ; then
+　　docker rmi -f `docker images | grep $javaname | awk '{print $3}'`
+fi
+
+#打包，上传到registry
+docker build -t docker.cinyi.com:443/senyint/$javaname:$image_data /data/docker_project/$javadir/
+docker push docker.cinyi.com:443/senyint/$javaname:$image_data
+
+
+#生成rc 和 server yaml文件
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_rc.yaml >/data/docker_project/$javadir/${javaname}_rc.yaml
+#定义image版本号
+sed -i "s/lastest/$image_data/g" /data/docker_project/$javadir/${javaname}_rc.yaml
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_service.yaml >/data/docker_project/$javadir/${javaname}_service.yaml
+
+ 
+
+
+#定义namespace 为test：
+
+k8s_apicurl="curl --cacert /root/ca.pem"
+k8s_url="https://192.168.20.227:6443"
+
+#创建namespaces
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces | grep test >/dev/null` ;then
+　　$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces -d "$(cat /data/docker_project/namespaces.yaml)"
+fi
+
+
+#创建service
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces/test/services | grep "im-web" >/dev/null` ; then
+　　$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces/test/services -d "$(cat /data/docker_project/$javadir/${javaname}_service.yaml)"
+fi
+
+#创建ReplicationController
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces/test/replicationcontrollers | grep "im-web" >/dev/null` ; then
+　　$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces/test/replicationcontrollers/ -d "$(cat /data/docker_project/$javadir/${javaname}_rc.yaml)"
+else
+#滚动升级
+　　ssh root@192.168.20.227 "kubectl rolling-update $javaname --image=docker.cinyi.com:443/senyint/$javaname:$image_data --namespace=test"
+fi
+
+复制代码
+ 
+
+ 
+
+类型为deployment: 通过curl 调用 kube-apiserver操作命令如： 对war包发版
+
+复制代码
+registry="docker.cinyi.com:443"
+#取出项目目录
+javadir=`echo $WORKSPACE | awk -F'/' '{print $5}'`
+#取出war包名称
+javaname=`ls $WORKSPACE/target/*war | awk -F'/' '{print $7}' | cut -d . -f 1`
+#tag 时间
+image_data=`date +%F_%H_%M`
+
+
+mkdir -p /data/docker_project/$javadir
+rm /data/docker_profile/$javadir/$javaname.war -rf
+mv $WORKSPACE/target/$javaname.war /data/docker_project/$javadir
+
+#在/data/docker_project 目录下有一个dockerfile模版，根据war包的名字替换成新的dockerfile
+sed "s/jenkins/$javaname/g" /data/docker_project/Dockerfile >/data/docker_project/$javadir/Dockerfile
+
+if docker images | grep $javaname ; then
+docker rmi -f `docker images | grep $javaname | awk '{print $3}'`
+fi
+
+#打包，上传到registry
+docker build -t docker.cinyi.com:443/senyint/$javaname:$image_data /data/docker_project/$javadir/
+docker push docker.cinyi.com:443/senyint/$javaname:$image_data
+
+
+#生成rc 和 server yaml文件
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_deployment.yaml >/data/docker_project/$javadir/${javaname}_deployment.yaml
+
+#替换image版本号
+echo 11111
+sed -i "s/latest/$image_data/g" /data/docker_project/$javadir/${javaname}_deployment.yaml
+
+echo 2222
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_service.yaml >/data/docker_project/$javadir/${javaname}_service.yaml
+
+ 
+
+
+#定义namespace 为test：
+
+k8s_apicurl="curl --cacert /root/ca.pem"
+k8s_url="https://192.168.20.227:6443"
+
+#创建namespaces
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces | grep test >/dev/null` ;then
+$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces -d "$(cat /data/docker_project/namespaces.yaml)"
+fi
+
+
+#创建service
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces/test/services | grep "${javaname}" >/dev/null` ; then
+$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces/test/services -d "$(cat /data/docker_project/$javadir/${javaname}_service.yaml)"
+fi
+
+#创建Deployment
+if `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/ | grep "${javaname}" >/dev/null` ; then
+#滚动升级
+ $k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X PUT $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/${javaname} -d "$(cat /data/docker_project/$javadir/${javaname}_deployment.yaml)"
+else
+$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/ -d "$(cat /data/docker_project/$javadir/${javaname}_deployment.yaml)"
+
+fi
+
+复制代码
+ 
+
+类型为deployment: 通过curl 调用 kube-apiserver操作命令如： 对tar.gz包发版
+
+复制代码
+registry="docker.cinyi.com:443"
+#取出项目目录
+javadir=`echo $WORKSPACE | awk -F'/' '{print $5}'`
+#取出war包名称
+javaname=`ls $WORKSPACE/pay-web/target/*tar.gz | awk -F'/' '{print $8}' | cut -d . -f 1`
+#tag 时间
+image_data=`date +%F_%H_%M`
+
+mkdir -p /data/docker_project/$javadir
+rm /data/docker_profile/$javadir/$javaname.war -rf
+mv $WORKSPACE/pay-web/target/$javaname.tar.gz /data/docker_project/$javadir
+#在/data/docker_project 目录下有一个dockerfile模版，根据war包的名字替换成新的dockerfile
+sed "s/jenkins.war/$javaname.tar.gz/g" /data/docker_project/Dockerfile.bak >/data/docker_project/$javadir/Dockerfile
+if  docker images | grep $javaname ; then
+    docker rmi -f `docker images | grep $javaname | awk '{print $3}'`
+fi
+#打包，上传到registry
+cp /data/docker_project/supervisor_payapi.conf  /data/docker_project/$javadir/
+cp /data/docker_project/jdk.tar.gz  /data/docker_project/$javadir/
+cp /data/docker_project/supervisord.conf  /data/docker_project/$javadir/
+docker build -t docker.cinyi.com:443/senyint/$javaname:$image_data /data/docker_project/$javadir/
+docker push docker.cinyi.com:443/senyint/$javaname:$image_data
+
+#生成rc 和 server yaml文件
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_deployment.yaml >/data/docker_project/$javadir/${javaname}_deployment.yaml
+#替换image版本号
+echo 11111
+sed -i "s/latest/$image_data/g" /data/docker_project/$javadir/${javaname}_deployment.yaml
+echo 2222
+sed "s/im-web/$javaname/g" /data/docker_project/im-web_service.yaml >/data/docker_project/$javadir/${javaname}_service.yaml
+ 
+
+#定义namespace 为test：
+k8s_apicurl="curl --cacert /root/ca.pem"
+k8s_url="https://192.168.20.227:6443"
+#创建namespaces
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces | grep test >/dev/null` ;then
+  $k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces -d "$(cat /data/docker_project/namespaces.yaml)"
+fi
+
+#创建service
+if ! `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/api/v1/namespaces/test/services  | grep "${javaname}" >/dev/null` ; then
+    $k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/api/v1/namespaces/test/services -d "$(cat /data/docker_project/$javadir/${javaname}_service.yaml)"
+fi
+#创建Deployment
+if `$k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/ | grep "${javaname}" >/dev/null` ; then
+    #滚动升级
+ $k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61"    -H "content-Type: application/yaml" -X PUT $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/${javaname} -d "$(cat /data/docker_project/$javadir/${javaname}_deployment.yaml)"
+else
+    $k8s_apicurl -H "Authorization: Bearer 199e9c8d4ce99c61" -H "content-Type: application/yaml" -X POST $k8s_url/apis/extensions/v1beta1/namespaces/test/deployments/ -d "$(cat /data/docker_project/$javadir/${javaname}_deployment.yaml)"
+fi
+复制代码
+ 
+
+ Dockerfile
+
+复制代码
+FROM       senyint/centos7.3:latest
+
+MAINTAINER fengjian <fengjian@senyint.com.com>
+
+RUN mkdir -p /data/webserver/pay-web-package
+
+ADD jdk.tar.gz /data
+
+ADD jenkins.war /data/webserver/pay-web-package
+
+ADD supervisord.conf /etc/supervisord.conf
+
+ADD supervisor_payapi.conf  /etc/supervisor.conf.d/supervisor_payapi.conf
+
+RUN mkdir -p /etc/supervisor.conf.d && \
+    mkdir -p /var/log/supervisor
+
+ENTRYPOINT ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisord.conf"]
+复制代码
+ 
+
+ 
+
+使用 rolling-update进行升级必须使用 ReplicationController 类型，deployment不支持。
+
+ jenkins 对应的目录文件。
+
+
+
+[root@docker1 ~]# kubectl rolling-update fengjian --image=docker.cinyi.com:443/senyint/im-web:v1 --namespace=fengjian20170221
+
+ 
+
+deployment 使用命令升级方法
+
+[root@docker1 ~]# kubectl set image deployment/pay-startup-package pay-startup-package=docker.cinyi.com/senyint/pay-startup-package:2017-03-27_15_56 --namespace=test
+
+ 
+
+复制代码
+[root@docker5 docker_project]# cat configmap.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: testenv
+  namespace: test
+data:
+  mysql_server: 192.168.20.131
+  redis_server: 192.168.20.116
+  mongo_server: 192.168.20.116
+复制代码
+复制代码
+[root@docker5 docker_project]# cat Dockerfile 
+FROM       senyint/java1.8:latest
+
+MAINTAINER fengjian <fengjian@senyint.com.com>
+
+ENV docker.cinyi.com 192.168.20.135
+
+ADD jenkins.war /data/webserver/
+
+RUN unzip /data/webserver/jenkins.war -d /data/webserver && \
+    rm /data/webserver/jenkins.war
+复制代码
+复制代码
+[root@docker5 docker_project]# cat im-web_deployment.yaml 
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: im-web
+  namespace: test
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: im-web
+    spec:
+      volumes:
+      - name: workdir
+        hostPath:
+          path: "/data/log/im-web"
+      containers:
+      - name: im-web
+        image: docker.cinyi.com:443/senyint/im-web:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: workdir
+          mountPath: /data/tomcat/logs
+        env:
+        - name: mysql_server
+          valueFrom:
+            configMapKeyRef:
+              name: testenv
+              key: mysql_server
+        - name: redis_server
+          valueFrom:
+            configMapKeyRef:
+              name: testenv
+              key: redis_server
+        - name: mongo_server
+          valueFrom:
+            configMapKeyRef:
+              name: testenv
+              key: mongo_server
+复制代码
+复制代码
+[root@docker5 docker_project]# cat im-web_service.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: im-web
+  labels:
+    name: im-web
+spec:
+  ports:
+  - port: 80
+    containerPort: 80
+  selector:
+    name: im-web
+复制代码
+复制代码
+[root@docker5 docker_project]# cat namespaces.yaml 
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+  label:
+    name: test
+复制代码
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+查看ingress 内容
+
+ [root@docker1 ~]# curl --cacert /root/ca.pem -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET  https://192.168.20.227:6443/apis/extensions/v1beta1/ingresses
+
+ 
+
+查看 namespaces下的 ingress
+
+GET /apis/extensions/v1beta1/namespaces/{namespace}/ingresses
+
+删除namespaces 下的ingress
+
+DELETE /apis/extensions/v1beta1/namespaces/{namespace}/ingresses
+
+创建
+
+POST /apis/extensions/v1beta1/namespaces/{namespace}/ingresses
+
+
+读取
+
+GET /apis/extensions/v1beta1/namespaces/{namespace}/ingresses/{name}
+curl --cacert /root/ca.pem -H "Authorization: Bearer 199e9c8d4ce99c61" -X GET  https://192.168.20.227:6443/apis/extensions/v1beta1/namespaces/test/ingresses/dashboard-ingress
+替换
+
+PUT /apis/extensions/v1beta1/namespaces/{namespace}/ingresses/{name}
+删除
+
+DELETE /apis/extensions/v1beta1/namespaces/{namespace}/ingresses/{name}
+
+
+更新
+
+PATCH /apis/extensions/v1beta1/namespaces/{namespace}/ingresses/{name}
+
+
+docker registry 查看镜像：
+
+[root@bcbf4a94a152 ~]# curl https://docker.cinyi.com/v2/_catalog 
+
+docker registry 查看版本号:
+
+[root@bcbf4a94a152 ~]# curl https://docker.cinyi.com/v2/senyint/im-web/tags/list

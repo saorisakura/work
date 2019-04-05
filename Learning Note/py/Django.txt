@@ -1,0 +1,102 @@
+Django+mysql配置与简单操作数据库实例代码
+
+这篇文章主要介绍了Django+mysql配置与简单操作数据库实例,需要的朋友可以参考下
+
+ 第一步:下载mysql驱动
+
+cmd进入创建好的django项目目录：使用命令
+
+?
+1
+pip install mysqlclient
+等待安装成功！
+
+第二步:在settings.py中配置mysql连接参数（没有mysql的先装mysql）
+
+DATABASES = {
+  'default': {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': '数据库名(你得先在mysql中创建数据库)',
+    'USER':'mysql用户名（如root）',
+    'PASSWORD':'密码（如123456789）',
+    'HOST':'域名（127.0.0.1或localhost）',
+    'PORT':'端口号（3306）',
+  }
+}
+第三步：在models.py中创建model类
+
+from django.db import models
+# Create your models here. 类似于MVC架构中的Model
+class Article(models.Model):
+  title = models.CharField(max_length=60,default='title')
+  content = models.TextField(null=True)
+第四步：根据model类创建数据库表
+
+1、cmd进入django项目路径下
+
+2、Python manage.py migrate #创建表结构，非model类的其他表，django所需要的
+
+3、python manage.py makemigrations app名 #做数据迁移的准备
+
+如：python manage.py makemigrations myblog myblog是我项目中的app名字
+
+4、python manage.py migrate # 执行迁移，创建medel表结构
+
+第五步：开始写代码吧
+
+首先说下需求，就是在代码里向MySQL中插入一条记录并显示到页面
+
+1、在templates下新建一个模板，其实就是页面，如index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<h2> {{article.title}}</h2>
+内容:{{ article.content }}
+</body>
+</html>
+使用{{ }}在页面进行数据显示，这里看下就明白
+
+2、配置URL
+
+1、在项目下的urls.py（注意是项目下的urls.py）配置url映射：
+
+from django.conf.urls import url,include
+from django.contrib import admin
+#根url配置
+urlpatterns = [
+  #url(页面正则,响应的方法名称)
+  url(r'^admin/', admin.site.urls),
+  url(r'^myblog/',include('myblog.urls')),
+]
+这里注意有一个include（'myblog.urls'）是我们接下来要配置的二级url,在app下的urls.py中配置
+
+from django.conf.urls import url
+from django.contrib import admin
+from . import views
+urlpatterns = [
+  #url(页面正则,响应的方法名称) ^index$:表示要以index开始和结束，正则约束
+  url(r'^index/$',views.index),
+]
+现在一个路径为'localhost:8000/myblog/index/'的访问路径就配好了，url(r'^index/$',views.index)就表示最终/myblog/index/这个路径由views.py中的index方法来响应。
+
+3、写响应函数:如像数据中插入一个数据，并显示在页面上
+
+from django.shortcuts import render
+from django.http import HttpResponse
+from myblog.models import Article
+# Create your views here.
+def index(request):
+  article = Article(title='标题',content='内容！')
+  article.save()
+  return render(request,'index.html',{'article':article}
+第六步：运行项目
+
+我这里使用的pycharm，点击运行按钮即可，没有pycharm的可使用：
+
+python manage.py runserver
+来开启服务器，然后咋浏览器输入http://localhost:8000/myblog/index/, 打完收工！

@@ -1,0 +1,35 @@
+docker批量删除容器、镜像
+1、删除所有容器
+docker rm `docker ps -a -q`
+2、删除所有镜像
+docker rmi `docker images -q`
+3、按条件删除镜像
+　　没有打标签
+
+docker rmi `docker images -q | awk '/^<none>/ { print $3 }'`
+　　镜像名包含关键字
+
+docker rmi --force `docker images | grep doss-api | awk '{print $3}'`    //其中doss-api为关键字
+
+Docker镜像的备份和恢复
+2017年04月15日
+备份：
+# docker save -o [tar包真实路径] [镜像名 ]
+如：docker save -o /usr/docker_data/mongo-backup.tar mongo
+
+导出:
+docker export mongo > /usr /docker_data /mongo -export.tar
+
+恢复：
+docker load -i [tar包真实路径]
+如：docker load -i /usr/docker_data/mongo-backup.tar
+
+导入：
+docker import - /usr/docker_data/mongo-backup.tar
+
+通过docker images命令查看镜像
+
+注：导出 export 与 保存 save 的区别
+ (1).export导出的镜像文件大小  小于 save保存的镜像
+
+ (2).export 导出（import导入）是根据容器拿到的镜像，再导入时会丢失镜像所有的历史，所以无法进行回滚操作（docker tag <LAYER ID> <IMAGE NAME>）；而save保存（load加载）的镜像，没有丢失镜像的历史，可以回滚到之前的层（layer）。（查看方式：docker images --tree）
