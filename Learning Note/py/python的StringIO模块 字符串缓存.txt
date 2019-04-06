@@ -1,0 +1,164 @@
+python的StringIO模块
+StringIO经常被用来作字符串的缓存，因为StringIO的一些接口和文件操作是一致的，也就是说同样的代码，可以同时当成文件操作或者StringIO操作。
+
+ 
+
+一、StringIO中的常用方法
+
+1、read
+
+用法：
+
+s.read([n])：参数n用于限定读取的长度，类型为int，默认为从当前位置读取对象s中所有的数据。读取结束后，位置被移动。
+
+ 
+
+2、readline
+
+用法：
+
+s.readline([length])：length用于限定读取的结束位置，类型为int，缺省为None，即从当前位置读取至下一个以'\n'为结束符的当前行。读位置被移动。
+
+ 
+
+3、readlines
+
+用法：
+
+s.readlines()：读取所有行
+
+ 
+
+4、write
+
+用法：
+
+s.write(s)：从读写位置将参数s写入到对象s。参数为str或unicode类型，读写位置被移动。
+
+ 
+
+5、writeline
+
+用法：
+
+s.writeline(s)：从读写位置将list写入给对象s。参数list为一个列表，列表的成员为str或unicode类型。读写位置被移动
+
+ 
+
+6、getvalue
+
+用法：
+
+s.getvalue()：返回对象s中的所有数据
+
+ 
+
+7、truncate
+
+用法：
+
+s.truncate([size])：从读写位置起切断数据，参数size限定裁剪长度，默认为None
+
+ 
+
+8、tell
+
+用法：
+
+s.tell()　　#返回当前读写位置
+
+ 
+
+9、seek
+
+用法：
+
+s.seek(pos[,mode])：移动当前读写位置至pos处，可选参数mode为0时将读写位置移动到pos处，为1时将读写位置从当前位置移动pos个长度，为2时读写位置置于末尾处再向后移动pos个长度。默认为0
+
+ 
+
+10、close
+
+用法：
+
+s.close()：释放缓冲区，执行此函数后，数据将被释放，也不可再进行操作。
+
+ 
+
+11、isatty
+
+用法：
+
+s.isatty()：此函数总是返回0。不论StringIO对象是否已被close。
+
+ 
+
+12、flush
+
+用法：
+
+s.flush()：刷新缓冲区。
+
+ 
+
+二、String使用示例
+
+下面是一个利用StringIO缓冲及paramiko的RSAKey生成密钥对函数：
+
+复制代码
+#!/usr/bin/env python
+#coding: utf-8
+
+import StringIO
+import os
+from paramiko import RSAKey
+def gen_keys(key=""):
+    """
+    生成公钥 私钥
+    """
+
+    output = StringIO.StringIO()
+    sbuffer = StringIO.StringIO()
+    key_content = {}
+    #如果私钥不存在，生成一个私钥，并将私钥缓存到output中 
+    if not key:
+        try:
+            key = RSAKey.generate(2048)
+            key.write_private_key(output)
+            private_key = output.getvalue()
+        except IOError:
+            raise IOError('gen_keys: there was an error writing to the file')
+        except SSHException:
+            raise SSHException('gen_keys: the key is invalid')
+    #如果私钥存在，直接获取该私钥
+    else:
+        private_key = key
+        output.write(private_key)
+        print output.getvalue()
+        try:
+            key = RSAKey.from_private_key(output)
+        except SSHException, e:
+            #raise SSHException(e)
+            print e
+    #利用上面的私钥生成公钥
+    for data in [key.get_name(),
+                 " ",
+                 key.get_base64(),
+                 " %s@%s" % ("yap", os.uname()[1])]:
+        sbuffer.write(data)
+    public_key = sbuffer.getvalue()
+    key_content['public_key'] = public_key
+    key_content['private_key'] = private_key
+    #logger.info('gen_keys:   key content:%s' % key_content)
+    return key_content
+
+ga = gen_keys()
+
+print ga
+复制代码
+ 
+
+执行的结果输出如下：
+
+复制代码
+{'public_key': u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDr1wB1+waFdjkhXcJ2xj5YNbYTpXTsiTuFNHptz256MNOIVHM97p8Bzzi2SUOecU7Ol8oOc+UIqqjUsu62tSpwqRAhTPizTt7uo/E6rbuiyw9mV9BYj5uyrHHdvqbh0vHNUJmI3k6HX7WSOkHrhgeLjMIil+0oSAvtlmEtXxQAAkupOy0pM95vRJFtWPv9+ehf66FKBXjytAmIUQjVD63zXJzGza5/8oa/OmIhqtc7kN+cmgZsNCq1xiDYMUy+3CayCDcSMAb9HtOVrxApNLiJJ0QQlrgNy4bDLtg0g5EVVBAnFqmVjVWq7nPtqKFfPigSUAnAxECGdEtu2XJplOET yap@mysoft-ci', 'private_key': u'-----BEGIN RSA PRIVATE KEY-----\nMIIEpgIBAAKCAQEA69cAdfsGhXY5IV3CdsY+WDW2E6V07Ik7hTR6bc9uejDTiFRz\nPe6fAc84tklDnnFOzpfKDnPlCKqo1LLutrUqcKkQIUz4s07e7qPxOq27ossPZlfQ\nWI+bsqxx3b6m4dLxzVCZiN5Oh1+1kjpB64YHi4zCIpftKEgL7ZZhLV8UAAJLqTst\nKTPeb0SRbVj7/fnoX+uhSgV48rQJiFEI1Q+t81ycxs2uf/KGvzpiIarXO5DfnJoG\nbDQqtcYg2DFMvtwmsgg3EjAG/R7Tla8QKTS4iSdEEJa4DcuGwy7YNIORFVQQJxap\nlY1Vqu5z7aihXz4oElAJwMRAhnRLbtlyaZThEwIDAQABAoIBAQDZJS8hci4A+GeF\n10RUBBgnM90fnbpYh8qrzTPko5c/HnHGFqu9HFZ/XgMDo9WEryM2iP/b6s24+xlU\nLiQpSgl3jdJyNuLOhhIxe/WCZ7BaJclaHASTZjaffrOgzgft6UIGHu4e3UFE19Tg\nfI9xggi0brfZDjWoXx3MdienlOFfVvkiJc0YB8fawHvSmbKbzu/M58wP4zZKv/wP\nIHyxH10CkTAHP2/KvQ00kKheFdx6IY3VF44u5UsM4ZvaCqkzaVqDgHkaUqBLBdug\nxMhE1etOnODm+f6qrk4BsZxsTORiheJyT97QS8KOzZV7ouBcoOzz8gB0Tglz+wT4\nHgOnVAHxAoGBAPvGxlvSaq0uKNRIPv+eyyHu2HDw/ehHo3T7HTFh4g/KjCNRVNAR\nTrAFhVn/bwFyuCxVMPeA3Zo+ZTBue5VA979rv22JFg4tM/vrkDAz1h+EvY+tp4Nv\naNHie6nQY6jJgPQybG/9UwVwk2nlmtwJtNvTHwsd/8Kzljp342dja1gfAoGBAO/L\nyfwNlRYxiXj2rqmt7NcSqhcFf4Qv3s3UMaUPMOr7jgAsQfMigDO/bTYGmOMqVrGa\ny3YnbCROxE2wjqE1vf4F+yWv+xEqX/3cd/rFyPb15x9+KtbkD11A4xzAURVYakpO\n6w/1TAbBFFDVVm15cHJ3ymJd6PGm5XYMvw+6P6iNAoGBAM2DoHBdHlSERDGbU0km\nXhsxshzmqesLZuJbA6ZGhtdq9t7xSXCZYAiQSRyAQyUEdk9Brrmox7payhAxbtES\n+eeXVOddKdKilTdCPi0KcvLBUFZSYlUIAKCp5VVk06R37rnl2tvDBRyAmuOq1rBb\nf/SbrVBOyXEtVCgfqlC/N2TzAoGBAMZa2VrA1XkFQwUncLV05DvH+aCPcLqkanXy\nN5qkpT9LFFw6P9dhy5CCoVEWRfNq+0lwlSrIU2D5MtJc4K6jaOSuh9/V4SWC2uKA\nM1LhtmnqYOOhFsio37iwyuzmfGvethV/kFuj+d6AalCvGA34bTaStnuF2QHDn311\n77mPw8alAoGBAK5cGdvlcPE1u/l9DMthjZjYwKp3dBm5sbBOiri+0l+ML5Aje+B+\nOJtKp1F4wqz4iA9SadeYJjBAqpnIXz405I5RcmDH2y1845k7gzN++6PEp+kbSmQV\n5DTiUiRtx9G7Woaz+L9ircyuuLkzJRrwTwQWeaMkaYt/OPpP8ERV+Aha\n-----END RSA PRIVATE KEY-----\n'}

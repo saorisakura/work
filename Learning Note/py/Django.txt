@@ -179,3 +179,143 @@ def key(d,key_name):
   <td>3</td>              
   <td>key3</td>           
   <td>{{ dicts|key:"key3" }}</td>          
+
+  
+
+Django中的数据记录的增、删、改、查
+2015年06月26日 20:31:07
+Django中数据的增删改查操作如下：
+
+我们以一个model：User为例，User有三个字段，一个是username、passwd、phonenumber
+
+（1）增加一条记录
+
+添加一个username、passwd、phonenumber字段值为s_username、s_passwd、s_phonenumber的记录
+
+user=User()
+
+user.username=s_username
+
+user.passwd=s_passwd
+
+user.phonenumber=s_phonenumber
+
+user.save()
+
+或
+
+user=User(username=s_username,passwd=s_passwd,phonenumber=s_phonenumber)
+
+user.save()
+
+(2)删除记录
+
+删除一条username为‘yy’的记录
+
+User.objects.get(username='yy').delete()
+
+删除一组记录，假设一个电话号码可以对应多个user，现在要删除电话号码为‘123456’的所有用户
+
+User.objects.filter(phonenumber='123456').delete()
+
+(3)修改记录
+
+把username为‘dw’的记录的手机号修改为‘88888’
+
+user=User.objects.get(username='dw')
+
+user.phonenumber='88888'
+
+user.save()
+
+(4)查询记录
+
+查询用username为‘dw’的记录
+
+user=User.objects.get(username='dw'),用get查询出来的记录是一个User对象
+
+查询phonenumber为‘88888’的所有用户
+
+user=User.objects.filter(phonenumber='88888') 用filter查询的结果得到的是一个列表
+
+Django对数据库进行添加与更新
+2018年06月07日 09:03:58
+先把models.py摆这儿
+
+#models.py
+class UserProfile(AbstractUser):
+    '''
+    继承Django的AbstractUser 并向里面添加两条数据内容怀疑
+    '''
+    gender = models.CharField(max_length=6,choices=(('male','男'),('female','女')),default='female',verbose_name='性别')
+    memo = models.TextField(null=True, blank=True,verbose_name='便签')
+    class Meta:
+        verbose_name = '用户信息'
+        verbose_name_plural = verbose_name #指定模型的复数形式是什么,如果不指定Django会自动在模型名称后加一个’s’
+ 
+class UserTodo(models.Model):
+    created_time = models.DateTimeField(default=datetime.now(),verbose_name='创建时间')
+    user_id = models.ForeignKey(UserProfile,on_delete=models.C    ASCADE)  #设置外键，关联到UserProfile表
+    # models.CASCADE表示若删除某一用户，则该用户下的所有UserTodo也会被删除
+    ToDolist = models.CharField(max_length=255,verbose_name='todo')
+    done = models.BooleanField(default=False,verbose_name='完成状态')
+    class Meta:
+        verbose_name = '用户自增信息'
+        verbose_name_plural = verbose_name
+一、将数据保存到数据库中（在views.py中）
+完成model后，在Terminal运行python manage.py makemigrations 生成数据库。然后可以进行保存操作
+
+对于没有没有外键的数据库：
+from .models import UserProfile
+from django.contrib.auth.hashers import make_password
+user_profile = UserProfile()
+user_profile.username = username
+user_profile.email = email
+user_profile.password = make_password(password) #make_password是django自带的给password重新编码技术，存储在数据库中
+user_profile.is_active = True #判断用户是否激活
+user_profile.save()
+有外键的数据库
+1、首先应先获取关联的数据库的信息，如果为用户则为用的在数据库中的ID
+
+user_id = UserProfile.objects.get(username=request.user) #request.user表示当前登陆的用户名称，后台实际上是用户名
+2、保存到数据库中
+user_todo = UserTodo(ToDolist=todo,done=done,user_id=user_id,created_time=datetime.now()) 保存到数据库中时按照用户名所在的id进行保存
+user_todo.save()
+二、对数据库进行更新及查询的操作
+动机是当用户点击网页上的X号是对数据库中的done进行更新，更新为True。
+
+一开始想着按照id进行更新，但是当用户多了以后id与网页上显示的id肯定不相同。
+
+经过我的苦苦思索，每个用户中创建todo的时间肯定不相同，因此可以依据created_time可以进行搜索，来对done进行更新。
+
+说干就干！
+
+1、先查询我们想要的那一条数据
+用户的todo显示在网页上时是按照created_time进行了排序，因此在更新的时候也按照created_time进行排序，这样子便不会出错。
+
+user_id = UserProfile.objects.get(username=request.user) #获取当前登陆用户的todo id（按照后台的打印实际上为用户名）
+todo_query = UserTodo.objects.filter(user_email=user_id, done=False) #按照user_id、done进行对数据库的筛选
+#在UserTodo表中找出user_id以及该用户下done=False的数据
+#todo_query的类型为<class 'django.db.models.query.QuerySet'>
+todo_query = todo_query.order_by("created_time")  # 按照截至日期按照从小到大的顺序进行筛选，若要从大到小排序则("-created_time")
+现在的结果是我们已经得到了该用户名下的所有done=False的数据，并且已经完成了排序
+
+接下来就是找到我们想要的那一条数据
+
+todo_dict = todo_query.values("created_time") #经过values，得到created_time的那一列数据
+类型依旧为QuerySet，但只有一种数据，即全部是created_time的数据，这时就可以提取我们想要的数据了
+
+time_dict[3]['created_time'] #QuerySet中第四个名称为created_time的数据（序号从0开始，因此3是第四个）3为网页上元素的索引
+打印print(time_dict[3]['created_time'])的结果为：2018-06-07 01:45:10.938825+00:00
+到此已经完成数据的查询。
+
+2、对数据进行更新
+已经是小菜一碟了hiahiahia。。。
+
+按照上述查询到的created_time，来找出当前用户下符合这一个cteated_time 的记录（肯定只有一条）
+
+time_index = time_dict[id]['created_time'] #id为从前端传过来的网页上元素的id
+User = UserTodo.objects.get(user_id=user_id,created_time=time_index)
+User.done = True
+User.save()
+Done！

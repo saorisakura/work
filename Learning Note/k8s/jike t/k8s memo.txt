@@ -1,3 +1,8 @@
+to do
+	calico 如何配置RR IPPOOL Felix NetworkPolicies
+	calico/node
+	prometheus相关细节
+
 Docker
 	OS requirements
 	To install Docker CE, you need a maintained version of CentOS 7. Archived versions aren’t supported or tested.
