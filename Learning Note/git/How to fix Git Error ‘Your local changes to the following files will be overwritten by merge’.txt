@@ -1,0 +1,86 @@
+How to fix Git Error ‘Your local changes to the following files will be overwritten by merge’
+  By Kevin Arrows   October 28, 2018 0 3 minutes read
+The error message “Your local changes to the following files will be overwritten by merge” occurs in Git version control mechanism. This error occurs if you have modified a file which also has modifications in the remote repository.
+
+Git Error: Your local changes to the following files will be overwritten by merge while coding
+Git Error: Your local changes to the following files will be overwritten by merge
+This error message is avoided IF there are no uncommitted files that also have modifications in the remote repository. When experiencing this message, it is best to consult your other team members and ask for their opinion. Whether you want to merge your local changes or keep the version present in the repository, it is best to keep everyone on board.
+
+
+ 
+
+What are repositories? What are push and pull in Git?
+A repository is a kind of storage for code which is constantly modified and obtained by team members through the GitHub version control mechanism. A ‘Pull’ means that you are pulling the latest version of the repository onto your local storage/IDE (Integrated Development Environment) such as Pycharm etc.
+
+After a Pull, you make changes to the code or add more features. Once you are done, you ‘Push’ the code onto the repository so changes are saved and additions are made. The code gets accessible to other people as well.
+
+If you are new to Github version control, it is recommended that you go through all the basics first. In this article, we assume that you already have basic knowledge and know all the ins and outs.
+
+How to fix ‘Your local changes to the following files will be overwritten by merge’?
+The resolution of this error message depends on what you want to do. You can discard your local changes and pull the ones in the repository or you can save your local changes into a stash and pull the version from the repository. It all depends on your preference.
+
+Hence, we recommend that you consult with your team members and make sure that you all are on the same page before moving forward. If you commit wrongly or push the wrong version, it could affect the entire team.
+
+Method 1: Forcing a pull to overwrite local changes
+If you don’t care about the changes done locally and want to obtain the code from the repository, you can force a pull. This will overwrite all the local changes done on your computer a duplicate copy of the version in the repository will appear.
+
+Execute the following commands in your IDE:
+
+git reset -- hard
+
+git pull
+This will instantly destroy all your local changes so make sure that you know what you are doing and don’t need your local changes.
+
+Method 2: Keeping both changes (local and from the repo)
+If you want to keep both changes (changes done locally and changes present in the repository), you can add and commit your changes. When you pull, there will obviously be a merge conflict. Here you can use the tools in your IDE (such as Difftool and mergetool) to compare the two pieces of code and determine which changes to keep and which to remove. This is the middle way; no changes will be lost until you manually remove them.
+
+git add $the_file_under_error
+
+git commit
+
+git pull
+When you get a merge conflict, pop those conflict resolving tools and check line by line.
+
+Method 3: Keeping both changes BUT not committing
+This situation happens from time to time where developers are not ready to commit because there is some partly broken code which you are debugging. Here we can stash the changes safely, pull the version from the repository, and then unstash your code.
+
+git stash save --keep-index
+or
+
+git stash
+git pull
+
+git stash pop
+If there are some conflicts after you pop the stash, you should resolve them in the usual way. You can also use the command:
+
+git stash apply
+instead of pop if you are not ready to lose the stashed code due to conflicts.
+
+If merge doesn’t seem like a viable option for you, consider doing a rebase. Rebasing is the process of moving or combining a sequence of commits to a new base commit. In the case of rebasing, change the code to:
+
+git stash
+
+git pull --rebase origin master
+
+git stash pop
+Method 4: Make changes to ‘specific’ parts of your code
+If you want to make changes to specific parts of the code and don’t want to replace everything, you can commit everything that you don’t want to overwrite and then follow method 3. You can use the following command for the changes which you want to overwrite from the version present in the repository:
+
+git checkout path/to/file/to/revert
+or
+
+git checkout HEAD^ path/to/file/to/revert
+Also, you need to make sure that the file is not staged via:
+
+git reset HEAD path/to/file/to/revert
+Then proceed with the pull command:
+
+git pull
+This will then attempt at fetching the version from the repository.
+
+
+Similar Posts
+FIX: WindowsStore.admx Error in Local Group Policy Editor
+How to Fix FATAL ERROR: Failed to Connect with Local Steam Client Process!
+Fix: Folder Merge Conflicts
+How to Split/Annotate and Merge PDFs on Chrome OS
