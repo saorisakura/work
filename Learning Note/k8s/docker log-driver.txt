@@ -1,0 +1,263 @@
+JSON File logging driver
+Estimated reading time: 3 minutes
+By default, Docker captures the standard output (and standard error) of all your containers, and writes them in files using the JSON format. The JSON format annotates each line with its origin (stdout or stderr) and its timestamp. Each log file contains information about only one container.
+
+{"log":"Log line is here\n","stream":"stdout","time":"2019-01-01T11:11:11.111111111Z"}
+Usage
+To use the json-file driver as the default logging driver, set the log-driver and log-opt keys to appropriate values in the daemon.json file, which is located in /etc/docker/ on Linux hosts or C:\ProgramData\docker\config\daemon.json on Windows Server. For more information about configuring Docker using daemon.json, see daemon.json.
+
+The following example sets the log driver to json-file and sets the max-size and max-file options.
+
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+Note: log-opt configuration options in the daemon.json configuration file must be provided as strings. Boolean and numeric values (such as the value for max-file in the example above) must therefore be enclosed in quotes (").
+
+Restart Docker for the changes to take effect for newly created containers. Existing containers do not use the new logging configuration.
+
+You can set the logging driver for a specific container by using the --log-driver flag to docker container create or docker run:
+
+$ docker run \
+      --log-driver json-file --log-opt max-size=10m \
+      alpine echo hello world
+Options
+The json-file logging driver supports the following logging options:
+
+Option	Description	Example value
+max-size	The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to -1 (unlimited).	--log-opt max-size=10m
+max-file	The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when max-size is also set. A positive integer. Defaults to 1.	--log-opt max-file=3
+labels	Applies when starting the Docker daemon. A comma-separated list of logging-related labels this daemon accepts. Used for advanced log tag options.	--log-opt labels=production_status,geo
+env	Applies when starting the Docker daemon. A comma-separated list of logging-related environment variables this daemon accepts. Used for advanced log tag options.	--log-opt env=os,customer
+env-regex	Similar to and compatible with env. A regular expression to match logging-related environment variables. Used for advanced log tag options.	--log-opt env-regex=^(os|customer).
+Examples
+This example starts an alpine container which can have a maximum of 3 log files no larger than 10 megabytes each.
+
+$ docker run -it --log-opt max-size=10m --log-opt max-file=3 alpine ash
+
+Syslog logging driver
+Estimated reading time: 5 minutes
+The syslog logging driver routes logs to a syslog server. The syslog protocol uses a raw string as the log message and supports a limited set of metadata. The syslog message must be formatted in a specific way to be valid. From a valid message, the receiver can extract the following information:
+
+priority: the logging level, such as debug, warning, error, info.
+timestamp: when the event occurred.
+hostname: where the event happened.
+facility: which subsystem logged the message, such as mail or kernel.
+process name and process ID (PID): The name and ID of the process that generated the log.
+The format is defined in RFC 5424 and Docker’s syslog driver implements the ABNF reference in the following way:
+
+                TIMESTAMP SP HOSTNAME SP APP-NAME SP PROCID SP MSGID
+                    +          +             +           |        +
+                    |          |             |           |        |
+                    |          |             |           |        |
+       +------------+          +----+        |           +----+   +---------+
+       v                            v        v                v             v
+2017-04-01T17:41:05.616647+08:00 a.vm {taskid:aa,version:} 1787791 {taskid:aa,version:}
+Usage
+To use the syslog driver as the default logging driver, set the log-driver and log-opt keys to appropriate values in the daemon.json file, which is located in /etc/docker/ on Linux hosts or C:\ProgramData\docker\config\daemon.json on Windows Server. For more about configuring Docker using daemon.json, see daemon.json.
+
+The following example sets the log driver to syslog and sets the syslog-address option. The syslog-address options supports both UDP and TCP; this example uses UDP.
+
+{
+  "log-driver": "syslog",
+  "log-opts": {
+    "syslog-address": "udp://1.2.3.4:1111"
+  }
+}
+Restart Docker for the changes to take effect.
+
+Note: log-opt configuration options in the daemon.json configuration file must be provided as strings. Numeric and boolean values (such as the value for syslog-tls-skip-verify) must therefore be enclosed in quotes (").
+
+You can set the logging driver for a specific container by using the --log-driver flag to docker container create or docker run:
+
+docker run \
+      -–log-driver syslog –-log-opt syslog-address=udp://1.2.3.4:1111 \
+      alpine echo hello world
+Options
+The following logging options are supported as options for the syslog logging driver. They can be set as defaults in the daemon.json, by adding them as key-value pairs to the log-opts JSON array. They can also be set on a given container by adding a --log-opt <key>=<value> flag for each option when starting the container.
+
+Option	Description	Example value
+syslog-address	The address of an external syslog server. The URI specifier may be [tcp|udp|tcp+tls]://host:port, unix://path, or unixgram://path. If the transport is tcp, udp, or tcp+tls, the default port is 514.	--log-opt syslog-address=tcp+tls://192.168.1.3:514, --log-opt syslog-address=unix:///tmp/syslog.sock
+syslog-facility	The syslog facility to use. Can be the number or name for any valid syslog facility. See the syslog documentation.	--log-opt syslog-facility=daemon
+syslog-tls-ca-cert	The absolute path to the trust certificates signed by the CA. Ignored if the address protocol is not tcp+tls.	--log-opt syslog-tls-ca-cert=/etc/ca-certificates/custom/ca.pem
+syslog-tls-cert	The absolute path to the TLS certificate file. Ignored if the address protocol is not tcp+tls.	--log-opt syslog-tls-cert=/etc/ca-certificates/custom/cert.pem
+syslog-tls-key	The absolute path to the TLS key file. Ignored if the address protocol is not tcp+tls.	--log-opt syslog-tls-key=/etc/ca-certificates/custom/key.pem
+syslog-tls-skip-verify	If set to true, TLS verification is skipped when connecting to the syslog daemon. Defaults to false. Ignored if the address protocol is not tcp+tls.	--log-opt syslog-tls-skip-verify=true
+tag	A string that is appended to the APP-NAME in the syslog message. By default, Docker uses the first 12 characters of the container ID to tag log messages. Refer to the log tag option documentation for customizing the log tag format.	--log-opt tag=mailer
+syslog-format	The syslog message format to use. If not specified the local UNIX syslog format is used, without a specified hostname. Specify rfc3164 for the RFC-3164 compatible format, rfc5424 for RFC-5424 compatible format, or rfc5424micro for RFC-5424 compatible format with microsecond timestamp resolution.	--log-opt syslog-format=rfc5424micro
+labels	Applies when starting the Docker daemon. A comma-separated list of logging-related labels this daemon accepts. Used for advanced log tag options.	--log-opt labels=production_status,geo
+env	Applies when starting the Docker daemon. A comma-separated list of logging-related environment variables this daemon accepts. Used for advanced log tag options.	--log-opt env=os,customer
+env-regex	Applies when starting the Docker daemon. Similar to and compatible with env. A regular expression to match logging-related environment variables. Used for advanced log tag options.
+
+Journald logging driver
+Estimated reading time: 5 minutes
+The journald logging driver sends container logs to the systemd journal. Log entries can be retrieved using the journalctl command, through use of the journal API, or using the docker logs command.
+
+In addition to the text of the log message itself, the journald log driver stores the following metadata in the journal with each message:
+
+Field	Description
+CONTAINER_ID	The container ID truncated to 12 characters.
+CONTAINER_ID_FULL	The full 64-character container ID.
+CONTAINER_NAME	The container name at the time it was started. If you use docker rename to rename a container, the new name is not reflected in the journal entries.
+CONTAINER_TAG, SYSLOG_IDENTIFIER	The container tag (log tag option documentation).
+CONTAINER_PARTIAL_MESSAGE	A field that flags log integrity. Improve logging of long log lines.
+Usage
+To use the journald driver as the default logging driver, set the log-driver and log-opt keys to appropriate values in the daemon.json file, which is located in /etc/docker/ on Linux hosts or C:\ProgramData\docker\config\daemon.json on Windows Server. For more about configuring Docker using daemon.json, see daemon.json.
+
+The following example sets the log driver to journald:
+
+{
+  "log-driver": "journald"
+}
+Restart Docker for the changes to take effect.
+
+To configure the logging driver for a specific container, use the --log-driver flag on the docker run command.
+
+$ docker run --log-driver=journald ...
+Options
+Use the --log-opt NAME=VALUE flag to specify additional journald logging driver options.
+
+Option	Required	Description
+tag	optional	Specify template to set CONTAINER_TAG and SYSLOG_IDENTIFIER value in journald logs. Refer to log tag option documentation to customize the log tag format.
+labels	optional	Comma-separated list of keys of labels, which should be included in message, if these labels are specified for the container.
+env	optional	Comma-separated list of keys of environment variables, which should be included in message, if these variables are specified for the container.
+env-regex	optional	Similar to and compatible with env. A regular expression to match logging-related environment variables. Used for advanced log tag options.
+If a collision occurs between label and env keys, the value of the env takes precedence. Each option adds additional fields to the attributes of a logging message.
+
+Below is an example of the logging options required to log to journald.
+
+$ docker run --log-driver=journald \
+    --log-opt labels=location \
+    --log-opt env=TEST \
+    --env "TEST=false" \
+    --label location=west \
+    your/application
+This configuration also directs the driver to include in the payload the label location, and the environment variable TEST. If the --env "TEST=false" or --label location=west arguments were omitted, the corresponding key would not be set in the journald log.
+
+Note regarding container names
+The value logged in the CONTAINER_NAME field is the name of the container that was set at startup. If you use docker rename to rename a container, the new name is not reflected in the journal entries. Journal entries continue to use the original name.
+
+Retrieve log messages with journalctl
+Use the journalctl command to retrieve log messages. You can apply filter expressions to limit the retrieved messages to those associated with a specific container:
+
+$ sudo journalctl CONTAINER_NAME=webserver
+You can use additional filters to further limit the messages retrieved. The -b flag only retrieves messages generated since the last system boot:
+
+$ sudo journalctl -b CONTAINER_NAME=webserver
+The -o flag specifies the format for the retried log messages. Use -o json to return the log messages in JSON format.
+
+$ sudo journalctl -o json CONTAINER_NAME=webserver
+View logs for a container with a TTY enabled
+If TTY is enabled on a container you may see [10B blob data] in the output when retrieving log messages. The reason for that is that \r is appended to the end of the line and journalctl doesn’t strip it automatically unless --all is set:
+
+$ sudo journalctl -b CONTAINER_NAME=webserver --all
+Retrieve log messages with the journal API
+This example uses the systemd Python module to retrieve container logs:
+
+import systemd.journal
+
+reader = systemd.journal.Reader()
+reader.add_match('CONTAINER_NAME=web')
+
+for msg in reader:
+    print '{CONTAINER_ID_FULL}: {MESSAGE}'.format(**msg)
+
+Fluentd logging driver
+Estimated reading time: 4 minutes
+The fluentd logging driver sends container logs to the Fluentd collector as structured log data. Then, users can use any of the various output plugins of Fluentd to write these logs to various destinations.
+
+In addition to the log message itself, the fluentd log driver sends the following metadata in the structured log message:
+
+Field	Description
+container_id	The full 64-character container ID.
+container_name	The container name at the time it was started. If you use docker rename to rename a container, the new name is not reflected in the journal entries.
+source	stdout or stderr
+log	The container log
+The docker logs command is not available for this logging driver.
+
+Usage
+Some options are supported by specifying --log-opt as many times as needed:
+
+fluentd-address: specify a socket address to connect to the Fluentd daemon, ex fluentdhost:24224 or unix:///path/to/fluentd.sock
+tag: specify a tag for fluentd message, which interprets some markup, ex {{.ID}}, {{.FullID}} or {{.Name}} docker.{{.ID}}
+To use the fluentd driver as the default logging driver, set the log-driver and log-opt keys to appropriate values in the daemon.json file, which is located in /etc/docker/ on Linux hosts or C:\ProgramData\docker\config\daemon.json on Windows Server. For more about +configuring Docker using daemon.json, see +daemon.json.
+
+The following example sets the log driver to fluentd and sets the fluentd-address option.
+
+ {
+   "log-driver": "fluentd",
+   "log-opts": {
+     "fluentd-address": "fluentdhost:24224"
+   }
+ }
+Restart Docker for the changes to take effect.
+
+Note: log-opt configuration options in the daemon.json configuration file must be provided as strings. Boolean and numeric values (such as the value for fluentd-async-connect or fluentd-max-retries) must therefore be enclosed in quotes (").
+
+To set the logging driver for a specific container, pass the --log-driver option to docker run:
+
+docker run --log-driver=fluentd ...
+Before using this logging driver, launch a Fluentd daemon. The logging driver connects to this daemon through localhost:24224 by default. Use the fluentd-address option to connect to a different address.
+
+docker run --log-driver=fluentd --log-opt fluentd-address=fluentdhost:24224
+If container cannot connect to the Fluentd daemon, the container stops immediately unless the fluentd-async-connect option is used.
+
+Options
+Users can use the --log-opt NAME=VALUE flag to specify additional Fluentd logging driver options.
+
+fluentd-address
+By default, the logging driver connects to localhost:24224. Supply the fluentd-address option to connect to a different address. tcp(default) and unix sockets are supported.
+
+docker run --log-driver=fluentd --log-opt fluentd-address=fluentdhost:24224
+docker run --log-driver=fluentd --log-opt fluentd-address=tcp://fluentdhost:24224
+docker run --log-driver=fluentd --log-opt fluentd-address=unix:///path/to/fluentd.sock
+Two of the above specify the same address, because tcp is default.
+
+tag
+By default, Docker uses the first 12 characters of the container ID to tag log messages. Refer to the log tag option documentation for customizing the log tag format.
+
+labels, env, and env-regex
+The labels and env options each take a comma-separated list of keys. If there is collision between label and env keys, the value of the env takes precedence. Both options add additional fields to the extra attributes of a logging message.
+
+The env-regex option is similar to and compatible with env. Its value is a regular expression to match logging-related environment variables. It is used for advanced log tag options.
+
+fluentd-async-connect
+Docker connects to Fluentd in the background. Messages are buffered until the connection is established. Defaults to false.
+
+fluentd-buffer-limit
+The amount of data to buffer before flushing to disk. Defaults to the amount of RAM available to the container.
+
+fluentd-retry-wait
+How long to wait between retries. Defaults to 1 second.
+
+fluentd-max-retries
+The maximum number of retries. Defaults to 10.
+
+fluentd-sub-second-precision
+Generates event logs in nanosecond resolution. Defaults to false.
+
+Fluentd daemon management with Docker
+About Fluentd itself, see the project webpage and its documents.
+
+To use this logging driver, start the fluentd daemon on a host. We recommend that you use the Fluentd docker image. This image is especially useful if you want to aggregate multiple container logs on each host then, later, transfer the logs to another Fluentd node to create an aggregate store.
+
+Test container loggers
+Write a configuration file (test.conf) to dump input logs:
+
+ <source>
+   @type forward
+ </source>
+
+ <match *>
+   @type stdout
+ </match>
+Launch Fluentd container with this configuration file:
+
+ $ docker run -it -p 24224:24224 -v /path/to/conf/test.conf:/fluentd/etc/test.conf -e FLUENTD_CONF=test.conf fluent/fluentd:latest
+Start one or more containers with the fluentd logging driver:
+
+ $ docker run --log-driver=fluentd your/application
+Fluentd, docker, logging, driver
