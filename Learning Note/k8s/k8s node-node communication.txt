@@ -1,0 +1,14 @@
+Do worker nodes communicate with each other or does that only occur between pods? Or rather, do the nodes communicate even if their pods do not?
+
+A worker node represents a collection of a few processes: kubelet, kube-proxy, and a container runtime (docker or rkt). If by communicate you are referring to sharing node state, health etc. as in a P2P system then no.
+
+Pods communicate with pods (or services) and nodes are also able to reach pod and service ip addresses (this routing is handled by kube-proxy using iptables) and overlay networking.
+
+However, in practice kubernetes relies on distributed KV store etcd for keeping system critical information. etcd may be deployed on the same nodes as the worker processes which requires node to node communication. 
+
+Say we have 2 worker nodes and that we have ssh:ed into one of the nodes, what information would be available about the other node or the master?
+
+There is no information kept about the other worker node or master node.
+You could glean some information from the kubelet config files or see connection activity to the master node (apiserver component specifically) in the kubelet logs.
+
+In general, the master node(s) run an apiserver pod which is the access point to the kubernetes cluster state (stored in etcd). Pods, kubectl, etc. use the apiserver to get information as required.
