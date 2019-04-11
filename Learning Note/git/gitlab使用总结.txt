@@ -1,3 +1,337 @@
+Bug分支
+阅读: 349105
+软件开发中，bug就像家常便饭一样。有了bug就需要修复，在Git中，由于分支是如此的强大，所以，每个bug都可以通过一个新的临时分支来修复，修复后，合并分支，然后将临时分支删除。
+
+当你接到一个修复一个代号101的bug的任务时，很自然地，你想创建一个分支issue-101来修复它，但是，等等，当前正在dev上进行的工作还没有提交：
+
+$ git status
+On branch dev
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+    new file:   hello.py
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+    modified:   readme.txt
+并不是你不想提交，而是工作只进行到一半，还没法提交，预计完成还需1天时间。但是，必须在两个小时内修复该bug，怎么办？
+
+幸好，Git还提供了一个stash功能，可以把当前工作现场“储藏”起来，等以后恢复现场后继续工作：
+
+$ git stash
+Saved working directory and index state WIP on dev: f52c633 add merge
+现在，用git status查看工作区，就是干净的（除非有没有被Git管理的文件），因此可以放心地创建分支来修复bug。
+
+首先确定要在哪个分支上修复bug，假定需要在master分支上修复，就从master创建临时分支：
+
+$ git checkout master
+Switched to branch 'master'
+Your branch is ahead of 'origin/master' by 6 commits.
+  (use "git push" to publish your local commits)
+
+$ git checkout -b issue-101
+Switched to a new branch 'issue-101'
+现在修复bug，需要把“Git is free software ...”改为“Git is a free software ...”，然后提交：
+
+$ git add readme.txt 
+$ git commit -m "fix bug 101"
+[issue-101 4c805e2] fix bug 101
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+修复完成后，切换到master分支，并完成合并，最后删除issue-101分支：
+
+$ git checkout master
+Switched to branch 'master'
+Your branch is ahead of 'origin/master' by 6 commits.
+  (use "git push" to publish your local commits)
+
+$ git merge --no-ff -m "merged bug fix 101" issue-101
+Merge made by the 'recursive' strategy.
+ readme.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+太棒了，原计划两个小时的bug修复只花了5分钟！现在，是时候接着回到dev分支干活了！
+
+$ git checkout dev
+Switched to branch 'dev'
+
+$ git status
+On branch dev
+nothing to commit, working tree clean
+工作区是干净的，刚才的工作现场存到哪去了？用git stash list命令看看：
+
+$ git stash list
+stash@{0}: WIP on dev: f52c633 add merge
+工作现场还在，Git把stash内容存在某个地方了，但是需要恢复一下，有两个办法：
+
+一是用git stash apply恢复，但是恢复后，stash内容并不删除，你需要用git stash drop来删除；
+
+另一种方式是用git stash pop，恢复的同时把stash内容也删了：
+
+$ git stash pop
+On branch dev
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+    new file:   hello.py
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+    modified:   readme.txt
+
+Dropped refs/stash@{0} (5d677e2ee266f39ea296182fb2354265b91b3b2a)
+再用git stash list查看，就看不到任何stash内容了：
+
+$ git stash list
+你可以多次stash，恢复的时候，先用git stash list查看，然后恢复指定的stash，用命令：
+
+$ git stash apply stash@{0}
+小结
+修复bug时，我们会通过创建新的bug分支进行修复，然后合并，最后删除；
+
+当手头工作没有完成时，先把工作现场git stash一下，然后去修复bug，修复后，再git stash pop，回到工作现场。
+
+创建与合并分支
+阅读: 999267
+在版本回退里，你已经知道，每次提交，Git都把它们串成一条时间线，这条时间线就是一个分支。截止到目前，只有一条时间线，在Git里，这个分支叫主分支，即master分支。HEAD严格来说不是指向提交，而是指向master，master才是指向提交的，所以，HEAD指向的就是当前分支。
+
+一开始的时候，master分支是一条线，Git用master指向最新的提交，再用HEAD指向master，就能确定当前分支，以及当前分支的提交点：
+
+git-br-initial
+
+每次提交，master分支都会向前移动一步，这样，随着你不断提交，master分支的线也越来越长：
+
+ 当我们创建新的分支，例如dev时，Git新建了一个指针叫dev，指向master相同的提交，再把HEAD指向dev，就表示当前分支在dev上：
+
+git-br-create
+
+你看，Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的指向，工作区的文件都没有任何变化！
+
+不过，从现在开始，对工作区的修改和提交就是针对dev分支了，比如新提交一次后，dev指针往前移动一步，而master指针不变：
+
+git-br-dev-fd
+
+假如我们在dev上的工作完成了，就可以把dev合并到master上。Git怎么合并呢？最简单的方法，就是直接把master指向dev的当前提交，就完成了合并：
+
+git-br-ff-merge
+
+所以Git合并分支也很快！就改改指针，工作区内容也不变！
+
+合并完分支后，甚至可以删除dev分支。删除dev分支就是把dev指针给删掉，删掉后，我们就剩下了一条master分支：
+
+git-br-rm
+
+真是太神奇了，你看得出来有些提交是通过分支完成的吗？
+
+ 下面开始实战。
+
+首先，我们创建dev分支，然后切换到dev分支：
+
+$ git checkout -b dev
+Switched to a new branch 'dev'
+git checkout命令加上-b参数表示创建并切换，相当于以下两条命令：
+
+$ git branch dev
+$ git checkout dev
+Switched to branch 'dev'
+然后，用git branch命令查看当前分支：
+
+$ git branch
+* dev
+  master
+git branch命令会列出所有分支，当前分支前面会标一个*号。
+
+然后，我们就可以在dev分支上正常提交，比如对readme.txt做个修改，加上一行：
+
+Creating a new branch is quick.
+然后提交：
+
+$ git add readme.txt 
+$ git commit -m "branch test"
+[dev b17d20e] branch test
+ 1 file changed, 1 insertion(+)
+现在，dev分支的工作完成，我们就可以切换回master分支：
+
+$ git checkout master
+Switched to branch 'master'
+切换回master分支后，再查看一个readme.txt文件，刚才添加的内容不见了！因为那个提交是在dev分支上，而master分支此刻的提交点并没有变：
+
+git-br-on-master
+
+现在，我们把dev分支的工作成果合并到master分支上：
+
+$ git merge dev
+Updating d46f35e..b17d20e
+Fast-forward
+ readme.txt | 1 +
+ 1 file changed, 1 insertion(+)
+git merge命令用于合并指定分支到当前分支。合并后，再查看readme.txt的内容，就可以看到，和dev分支的最新提交是完全一样的。
+
+注意到上面的Fast-forward信息，Git告诉我们，这次合并是“快进模式”，也就是直接把master指向dev的当前提交，所以合并速度非常快。
+
+当然，也不是每次合并都能Fast-forward，我们后面会讲其他方式的合并。
+
+合并完成后，就可以放心地删除dev分支了：
+
+$ git branch -d dev
+Deleted branch dev (was b17d20e).
+删除后，查看branch，就只剩下master分支了：
+
+$ git branch
+* master
+因为创建、合并和删除分支非常快，所以Git鼓励你使用分支完成某个任务，合并后再删掉分支，这和直接在master分支上工作效果是一样的，但过程更安全。
+
+小结
+Git鼓励大量使用分支：
+
+查看分支：git branch
+
+创建分支：git branch <name>
+
+切换分支：git checkout <name>
+
+创建+切换分支：git checkout -b <name>
+
+合并某分支到当前分支：git merge <name>
+
+删除分支：git branch -d <name>
+
+
+撤销修改
+阅读: 684372
+自然，你是不会犯错的。不过现在是凌晨两点，你正在赶一份工作报告，你在readme.txt中添加了一行：
+
+$ cat readme.txt
+Git is a distributed version control system.
+Git is free software distributed under the GPL.
+Git has a mutable index called stage.
+Git tracks changes of files.
+My stupid boss still prefers SVN.
+在你准备提交前，一杯咖啡起了作用，你猛然发现了stupid boss可能会让你丢掉这个月的奖金！
+
+既然错误发现得很及时，就可以很容易地纠正它。你可以删掉最后一行，手动把文件恢复到上一个版本的状态。如果用git status查看一下：
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+    modified:   readme.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+你可以发现，Git会告诉你，git checkout -- file可以丢弃工作区的修改：
+
+$ git checkout -- readme.txt
+命令git checkout -- readme.txt意思就是，把readme.txt文件在工作区的修改全部撤销，这里有两种情况：
+
+一种是readme.txt自修改后还没有被放到暂存区，现在，撤销修改就回到和版本库一模一样的状态；
+
+一种是readme.txt已经添加到暂存区后，又作了修改，现在，撤销修改就回到添加到暂存区后的状态。
+
+总之，就是让这个文件回到最近一次git commit或git add时的状态。
+
+现在，看看readme.txt的文件内容：
+
+$ cat readme.txt
+Git is a distributed version control system.
+Git is free software distributed under the GPL.
+Git has a mutable index called stage.
+Git tracks changes of files.
+文件内容果然复原了。
+
+git checkout -- file命令中的--很重要，没有--，就变成了“切换到另一个分支”的命令，我们在后面的分支管理中会再次遇到git checkout命令。
+
+现在假定是凌晨3点，你不但写了一些胡话，还git add到暂存区了：
+
+$ cat readme.txt
+Git is a distributed version control system.
+Git is free software distributed under the GPL.
+Git has a mutable index called stage.
+Git tracks changes of files.
+My stupid boss still prefers SVN.
+
+$ git add readme.txt
+庆幸的是，在commit之前，你发现了这个问题。用git status查看一下，修改只是添加到了暂存区，还没有提交：
+
+$ git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+    modified:   readme.txt
+Git同样告诉我们，用命令git reset HEAD <file>可以把暂存区的修改撤销掉（unstage），重新放回工作区：
+
+$ git reset HEAD readme.txt
+Unstaged changes after reset:
+M    readme.txt
+git reset命令既可以回退版本，也可以把暂存区的修改回退到工作区。当我们用HEAD时，表示最新的版本。
+
+再用git status查看一下，现在暂存区是干净的，工作区有修改：
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+    modified:   readme.txt
+还记得如何丢弃工作区的修改吗？
+
+$ git checkout -- readme.txt
+
+$ git status
+On branch master
+nothing to commit, working tree clean
+
+删除文件
+阅读: 558478
+在Git中，删除也是一个修改操作，我们实战一下，先添加一个新文件test.txt到Git并且提交：
+
+$ git add test.txt
+
+$ git commit -m "add test.txt"
+[master b84166e] add test.txt
+ 1 file changed, 1 insertion(+)
+ create mode 100644 test.txt
+一般情况下，你通常直接在文件管理器中把没用的文件删了，或者用rm命令删了：
+
+$ rm test.txt
+这个时候，Git知道你删除了文件，因此，工作区和版本库就不一致了，git status命令会立刻告诉你哪些文件被删除了：
+
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+    deleted:    test.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+现在你有两个选择，一是确实要从版本库中删除该文件，那就用命令git rm删掉，并且git commit：
+
+$ git rm test.txt
+rm 'test.txt'
+
+$ git commit -m "remove test.txt"
+[master d46f35e] remove test.txt
+ 1 file changed, 1 deletion(-)
+ delete mode 100644 test.txt
+现在，文件就从版本库中被删除了。
+
+小提示：先手动删除文件，然后使用git rm <file>和git add<file>效果是一样的。
+另一种情况是删错了，因为版本库里还有呢，所以可以很轻松地把误删的文件恢复到最新版本：
+
+$ git checkout -- test.txt
+git checkout其实是用版本库里的版本替换工作区的版本，无论工作区是修改还是删除，都可以“一键还原”。
+
+小结
+命令git rm用于删除一个文件。如果一个文件已经被提交到版本库，那么你永远不用担心误删，但是要小心，你只能恢复文件到最新版本，你会丢失最近一次提交后你修改的内容
+
+
+
 使用git clone命令克隆gitlab上面的项目的时候， 
 出现了remote: HTTP Basic: Access denied fatal: Authentication failed for类似字眼的错误 
 git clone http://账号:密码@git.ops.test.com.cn/root/puppet.git
