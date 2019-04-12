@@ -1,0 +1,1579 @@
+K8S 6.cn
+
+系统配置
+$ echo "* soft nofile 655360" >> /etc/security/limits.conf
+$ echo "* hard nofile 655360" >> /etc/security/limits.conf
+$ echo "* soft nproc 655360" >> /etc/security/limits.conf
+$ echo "* hard nproc 655360" >> /etc/security/limits.conf
+$ echo "* soft memlock unlimited" >> /etc/security/limits.conf
+$ echo "* hard memlock unlimited" >> /etc/security/limits.conf
+$ echo "DefaultLimitNOFILE=1024000" >> /etc/systemd/system.conf
+$ echo "DefaultLimitNPROC=1024000" >> /etc/systemd/system.conf
+
+# cat /etc/yum.repos.d/kubernetes.repo 
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+
+组件部署
+
+kube-apiserver
+集群管理的api入口
+资源配额控制的入口
+提供完善的集群安全机制
+
+kube-controller-maanager
+集群内部的管理控制中心，是一个对象控制系统。负责以下对象的管理：
+node
+pod
+endpoint
+namespace
+service accout
+resource quota
+包含了以下controller：
+replication controller
+node controller
+resourcequota controller
+namespace controller
+serviceaccount controller
+token controller
+service controller
+endpoint controller
+
+kube-scheduler
+负责pod调度的重要组件。起着承上启下的作用， 从上游接收controller manager 创建的pod， 为起安排node落脚， 然后交给目标node上的kubelet进程， 由其负责pod的“下半生”的生命周期管理。
+默认调度流程分两步：
+预选（predicates）： 遍历所有node， 先根据预选策略初步筛选出符合条件的node
+优选（priority）： 从预选的node中挑出最优的选择
+调度流程是通过插件的方式加载调度算法提供者
+
+kube-proxy(iptables / ipvs)
+为pod、service和ingress设置链接规则，为网络设置过滤规则（calico networkpolicy）
+
+kubelet
+负责将pod启动，通过CRI和多种容器通信，如使用dockershim操作docker
+
+
+修改kubelet启动参数
+]# cat /usr/lib/systemd/system/kubelet.service
+kubelet.service    kubelet.service.d/ 
+[root@node1 ~]# cat /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf 
+# Note: This dropin only works with kubeadm and kubelet v1.11+
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/sysconfig/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+[root@node1 ~]# cat /etc/sysconfig/kubelet 
+KUBELET_EXTRA_ARGS=
+[root@node1 ~]# cat /var/lib/kubelet/kubeadm-flags.env
+KUBELET_KUBEADM_ARGS=--cgroup-driver=cgroupfs --network-plugin=cni --pod-infra-container-image=k8s.gcr.io/pause:3.1
+[root@node1 ~]# cat /usr/lib/systemd/system/kubelet.service
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/
+
+[Service]
+ExecStart=/usr/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+master-node communication
+Cluster -> Master
+所有从集群到 master 的通信路径都终止于 apiserver（其它 master 组件没有被设计为可暴露远程服务）。在一个典型的部署中，apiserver 被配置为在一个安全的 HTTPS 端口（443）上监听远程连接并启用一种或多种形式的客户端身份认证机制。一种或多种客户端身份认证机制应该被启用，特别是在允许使用 匿名请求 或 service account tokens 的时候。
+应该使用集群的公共根证书开通节点，如此它们就能够基于有效的客户端凭据安全的连接 apiserver。例如：在一个默认的 GCE 部署中，客户端凭据以客户端证书的形式提供给 kubelet。请查看 kubelet TLS bootstrapping 获取如何自动提供 kubelet 客户端证书。
+想要连接到 apiserver 的 Pods 可以使用一个 service account 安全的进行连接。这种情况下，当 Pods 被实例化时 Kubernetes 将自动的把公共根证书和一个有效的不记名令牌注入到 pod 里。kubernetes service （所有 namespaces 中）都配置了一个虚拟 IP 地址，用于转发（通过 kube-proxy）请求到 apiserver 的 HTTPS endpoint。
+Master 组件通过非安全（没有加密或认证）端口和集群的 apiserver 通信。这个端口通常只在 master 节点的 localhost 接口暴露，这样，所有在相同机器上运行的 master 组件就能和集群的 apiserver 通信。一段时间以后，master 组件将变为使用带身份认证和权限验证的安全端口（查看#13598）。
+这样的结果使得从集群（在节点上运行的 nodes 和 pods）到 master 的缺省连接操作模式默认被保护，能够在不可信或公网中运行
+Master -> Cluster
+从 master（apiserver）到集群有两种主要的通信路径。第一种是从 apiserver 到集群中每个节点上运行的 kubelet 进程。第二种是从 apiserver 通过它的代理功能到任何 node、pod 或者 service。
+apiserver -> kubelet
+从 apiserver 到 kubelet 的连接用于获取 pods 日志、连接（通过 kubectl）运行中的 pods，以及使用 kubelet 的端口转发功能。这些连接终止于 kubelet 的 HTTPS endpoint。
+默认的，apiserver 不会验证 kubelet 的服务证书，这会导致连接遭到中间人攻击，因而在不可信或公共网络上是不安全的。
+为了对这个连接进行认证，请使用 --kubelet-certificate-authority 标记给 apiserver 提供一个根证书捆绑，用于 kubelet 的服务证书。
+如果这样不可能，又要求避免在不可信的或公共的网络上进行连接，请在 apiserver 和 kubelet 之间使用 SSH 隧道。
+最后，应该启用Kubelet 用户认证和/或权限认证来保护 kubelet API。
+apiserver -> nodes, pods, and services
+从 apiserver 到 node、pod或者service 的连接默认为纯 HTTP 方式，因此既没有认证，也没有加密。他们能够通过给API URL 中的 node、pod 或 service 名称添加前缀 https: 来运行在安全的 HTTPS 连接上。但他们即不会认证 HTTPS endpoint 提供的证书，也不会提供客户端证书。这样虽然连接是加密的，但它不会提供任何完整性保证。这些连接目前还不能安全的在不可信的或公共的网络上运行。
+SSH 隧道
+master worker认证(TLS Bootstrapping)
+#TLS直接使用二进制源码包安装
+
+wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+chmod +x cfssl_linux-amd64
+mv cfssl_linux-amd64 /usr/local/bin/cfssl
+
+wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+chmod +x cfssljson_linux-amd64
+mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+
+wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+chmod +x cfssl-certinfo_linux-amd64
+mv cfssl-certinfo_linux-amd64 /usr/local/bin/cfssl-certinfo
+
+export PATH=/usr/local/bin:$PATH
+
+使用 Token 时整个启动引导过程:
+在集群内创建特定的 Bootstrap Token Secret，该 Secret 将替代以前的 token.csv 内置用户声明文件
+在集群内创建首次 TLS Bootstrap 申请证书的 ClusterRole、后续 renew Kubelet client/server 的 ClusterRole，以及其相关对应的 ClusterRoleBinding；并绑定到对应的组或用户
+调整 Controller Manager 配置，以使其能自动签署相关证书和自动清理过期的 TLS Bootstrapping Token
+生成特定的包含 TLS Bootstrapping Token 的 bootstrap.kubeconfig 以供 kubelet 启动时使用
+调整 Kubelet 配置，使其首次启动加载 bootstrap.kubeconfig 并使用其中的 TLS Bootstrapping Token 完成首次证书申请
+证书被 Controller Manager 签署，成功下发，Kubelet 自动重载完成引导流程
+后续 Kubelet 自动 renew 相关证书
+可选的: 集群搭建成功后立即清除 Bootstrap Token Secret，或等待 Controller Manager 待其过期后删除，以防止被恶意利用
+
+Kubelet启动过程
+查找kubeconfig 文件，并从中获取获取kube-apiserver的地址和证书，并使用此地址和证书和kube-apiserver通信
+如果没有找到kubeconfig，寻找bootstrap-kubeconfig 从中获取API server的地址和受限制的token，然后发起初始化过程
+kubelet通过上述的token认证，然后发起CSR证书签署认证请求
+人工通过kubectl certificate approve或者Kubernetes API或者自动由controller-manager批准该CSR，master节点为申请CSR的kubelet生成证书然后分发给kubelet
+kubelet获取到证书之后将key和签名的证书写入kubeconfig文件中
+kubelet开始执行任务，可配置自动更新即将过期的证书
+
+kube-apiserver 配置
+识别CA签发客户端证书
+将以tls启动的kubelet归属到system:bootstrappers组
+授权kubelet可以发起CSR，绑定system:bootstrappers组到system:node-bootstrapper这个cluster role(有发起CSR的权限)
+
+kube-controller-manager 配置
+kube-apiserver验证上述请求之后有kube-controller-manager负责实际的证书签发，启动时配置必要的参数
+批准CSR请求，在开启RBAC的情况下，需要将system:bootstrappers组和system:certificates.k8s.io:certificatesigningrequests:nodeclient系统自带的clusterrole绑定，并且将system:nodes组和system:certificates.k8s.io:certificatesigningrequests:selfnodeclient绑定
+
+自动更新证书过程 to be continued
+
+控制器模型
+Deployment   无状态应用             
+      控制器定义
+apiVersion: apps/v1
+kind: Deployment                              控制器类型
+metadata:
+  name: nginx-deployment                控制器名称
+spec:
+  selector:
+    matchLabels:                                期望被控对象标签
+      app: nginx
+  replicas: 2                                       控制器期望状态
+------------------------------------------------------------------------
+  template:                                         被控对象
+    metadata:                                      被控对象标签
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+这个 Deployment 定义的编排功能：确保携带了 app=nginx 标签的 Pod 的个数，永远等于 spec.replicas 指定的个数，即 2 个。
+这就意味着，如果在这个集群中，携带 app=nginx 标签的 Pod 的个数大于 2 的时候，就会有旧的 Pod 被删除；反之，就会有新的 Pod 被创建。由 kube-controller-manager 的组件
+]# kubectl get deploy -o wide
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS   IMAGES         SELECTOR
+my-nginx    2/2     2            2           175m   my-nginx     nginx          run=my-nginx
+redis-app   2/2     2            2           9d     redis-app    redis:alpine   name=redis-app
+四个状态字段，它们的含义如下所示。
+DESIRED：用户期望的 Pod 副本个数（spec.replicas 的值）；
+CURRENT：当前处于 Running 状态的 Pod 的个数；
+UP-TO-DATE：当前处于最新版本的 Pod 的个数，所谓最新版本指的是 Pod 的 Spec 部分与 Deployment 里 Pod 模板里定义的完全一致；
+AVAILABLE：当前已经可用的 Pod 的个数，即：既是 Running 状态，又是最新版本，并且已经处于 Ready（健康检查正确）状态的 Pod 的个数。
+滚动更新 kubectl scale -- replicas / kubectl set image
+查看更新动态 kubectl rollout status
+动态回滚 kubectl rollout undo
+
+DaemonSet Daemon业务
+DaemonSet 的主要作用，是让你在 Kubernetes 集群里，运行一个 Daemon Pod。 所以，这类 Pod 有如下三个特征：
+这个 Pod 运行在 Kubernetes 集群里的每一个节点（Node）上；
+每个节点上只有一个这样的 Pod 实例；
+当有新的节点加入 Kubernetes 集群后，该 Pod 会自动地在新节点上被创建出来；而当旧节点被删除后，它上面的 Pod 也相应地会被回收掉。
+
+]# kubectl get ds -o wide -n kube-system
+NAME                      DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                     AGE   CONTAINERS     IMAGES                                                       SELECTOR
+kube-flannel-ds-amd64     3         3         3       3            3           beta.kubernetes.io/arch=amd64     12d   kube-flannel   quay.io/coreos/flannel:v0.11.0-amd64                         app=flannel,tier=node
+kube-flannel-ds-arm       0         0         0       0            0           beta.kubernetes.io/arch=arm       12d   kube-flannel   quay.io/coreos/flannel:v0.11.0-arm                           app=flannel,tier=node
+kube-flannel-ds-arm64     0         0         0       0            0           beta.kubernetes.io/arch=arm64     12d   kube-flannel   quay.io/coreos/flannel:v0.11.0-arm64                         app=flannel,tier=node
+kube-flannel-ds-ppc64le   0         0         0       0            0           beta.kubernetes.io/arch=ppc64le   12d   kube-flannel   quay.io/coreos/flannel:v0.11.0-ppc64le                       app=flannel,tier=node
+kube-flannel-ds-s390x     0         0         0       0            0           beta.kubernetes.io/arch=s390x     12d   kube-flannel   quay.io/coreos/flannel:v0.11.0-s390x                         app=flannel,tier=node
+kube-proxy                3         3         3       3            3           <none>                            12d   kube-proxy     registry.aliyuncs.com/google_containers/kube-proxy:v1.13.4   k8s-app=kube-proxy
+
+]# kubectl get ds kube-proxy -n kube-system -o yaml
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  creationTimestamp: "2019-03-28T03:22:08Z"
+  generation: 1
+  labels:
+    k8s-app: kube-proxy
+  name: kube-proxy
+  namespace: kube-system
+  resourceVersion: "467507"
+  selfLink: /apis/extensions/v1beta1/namespaces/kube-system/daemonsets/kube-proxy
+  uid: ab01a862-5108-11e9-8190-5254005c6f5b
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      containers:
+      - command:
+        - /usr/local/bin/kube-proxy
+        - --config=/var/lib/kube-proxy/config.conf
+        - --hostname-override=$(NODE_NAME)
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: k8s.gcr.io/kube-proxy:v1.14.0
+        imagePullPolicy: IfNotPresent
+        name: kube-proxy
+        resources: {}
+        securityContext:
+          privileged: true
+          procMount: Default
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/kube-proxy
+          name: kube-proxy
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: kube-proxy
+      serviceAccountName: kube-proxy
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: kube-proxy
+        name: kube-proxy
+      - hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+        name: xtables-lock
+      - hostPath:
+          path: /lib/modules
+          type: ""
+        name: lib-modules
+  templateGeneration: 1
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+status:
+  currentNumberScheduled: 3
+  desiredNumberScheduled: 3
+  numberAvailable: 3
+  numberMisscheduled: 0
+  numberReady: 3
+  observedGeneration: 1
+  updatedNumberScheduled: 3
+
+StatefulSet 有状态应用
+
+StatefulSet 的核心功能，就是通过某种方式记录这些状态，然后在 Pod 被重新创建时，能够为新 Pod 恢复这些状态，statefulset使用headless service
+
+headless service 
+headless Service 不需要分配一个 VIP，而是可以直接以 DNS 记录的方式解析出被代理 Pod 的 IP 地址，区别于VIP方式访问service
+第一种方式，是以 Service 的 VIP（Virtual IP，即：虚拟 IP）方式。比如：当访问 10.0.23.1 这个 Service 的 IP 地址时，10.0.23.1 其实就是一个 VIP，它会把请求转发到该 Service 所代理的某一个 Pod 上。
+第二种方式，就是以 Service 的 DNS 方式。比如：这时候，只要我访问“my-svc.my-namespace.svc.cluster.local”这条 DNS 记录，就可以访问到名叫 my-svc 的 Service 所代理的某一个 Pod。
+
+而在第二种 Service DNS 的方式下，具体还可以分为两种处理方法：
+第一种处理方法，是 Normal Service。这种情况下，你访问“my-svc.my-namespace.svc.cluster.local”解析到的，正是 my-svc 这个 Service 的 VIP，后面的流程就跟 VIP 方式一致了。
+而第二种处理方法，正是 Headless Service。这种情况下，你访问“my-svc.my-namespace.svc.cluster.local”解析到的，直接就是 my-svc 代理的某一个 Pod 的 IP 地址
+
+
+保存拓扑状态
+
+svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+nginx_sts.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web
+
+$ kubectl create -f svc.yaml
+$ kubectl get service nginx
+NAME      TYPE         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+nginx     ClusterIP    None         <none>        80/TCP    10s
+
+$ kubectl create -f nginx_sts.yaml
+$ kubectl get statefulset web
+NAME      DESIRED   CURRENT   AGE
+web       2         1         19s
+
+$ kubectl get pods -w -l app=nginx
+NAME      READY     STATUS    RESTARTS   AGE
+web-0     0/1       Pending   0          0s
+web-0     0/1       Pending   0         0s
+web-0     0/1       ContainerCreating   0         0s
+web-0     1/1       Running   0         19s
+web-1     0/1       Pending   0         0s
+web-1     0/1       Pending   0         0s
+web-1     0/1       ContainerCreating   0         0s
+web-1     1/1       Running   0         20s
+
+kubectl exec redis-app-68dfc48854-7hjh2 -it -- /bin/sh
+/data # nslookup web-0.nginx
+nslookup: can't resolve '(null)': Name does not resolve
+
+Name:      web-0.nginx
+Address 1: 172.22.255.194 web-0.nginx.default.svc.cluster.local
+/data # nslookup web-1.nginx
+nslookup: can't resolve '(null)': Name does not resolve
+
+Name:      web-1.nginx
+Address 1: 172.22.104.7 web-1.nginx.default.svc.cluster.local
+
+通过上面这个 Pod 的创建过程，我们不难看到，StatefulSet 给它所管理的所有 Pod 的名字，进行了编号，编号规则是：-。
+而且这些编号都是从 0 开始累加，与 StatefulSet 的每个 Pod 实例一一对应，绝不重复。
+更重要的是，这些 Pod 的创建，也是严格按照编号顺序进行的。比如，在 web-0 进入到 Running 状态、并且细分状态（Conditions）成为 Ready 之前，web-1 会一直处于 Pending 状态。
+备注：Ready 状态再一次提醒了我们，为 Pod 设置 livenessProbe 和 readinessProbe 的重要性。
+当这两个 Pod 都进入了 Running 状态之后，你就可以查看到它们各自唯一的“网络身份”了。
+$ kubectl exec web-0 -- sh -c 'hostname'
+web-0
+$ kubectl exec web-1 -- sh -c 'hostname'
+web-1
+
+$ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh
+$ nslookup web-0.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      web-0.nginx
+Address 1: 10.244.1.7
+
+$ nslookup web-1.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      web-1.nginx
+Address 1: 10.244.2.7
+
+$ kubectl delete pod -l app=nginx
+pod "web-0" deleted
+pod "web-1" deleted
+
+$ kubectl get pod -w -l app=nginx
+NAME      READY     STATUS              RESTARTS   AGE
+web-0     0/1       ContainerCreating   0          0s
+NAME      READY     STATUS    RESTARTS   AGE
+web-0     1/1       Running   0          2s
+web-1     0/1       Pending   0         0s
+web-1     0/1       ContainerCreating   0         0s
+web-1     1/1       Running   0         32s
+
+可以看到，当我们把这两个 Pod 删除之后，Kubernetes 会按照原先编号的顺序，创建出了两个新的 Pod。并且，Kubernetes 依然为它们分配了与原来相同的“网络身份”：web-0.nginx 和 web-1.nginx。
+通过这种严格的对应规则，StatefulSet 就保证了 Pod 网络标识的稳定性。
+比如，如果 web-0 是一个需要先启动的主节点，web-1 是一个后启动的从节点，那么只要这个 StatefulSet 不被删除，你访问 web-0.nginx 时始终都会落在主节点上，访问 web-1.nginx 时，则始终都会落在从节点上，这个关系绝对不会发生任何变化。拓扑状态按照“名字-编号”的方式固定下来
+
+保存存储状态
+]# cat nginx_sts_pvc.yaml 
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+
+# kubectl create -f nginx_sts_pvc.yaml
+# kubectl get pvc -l app=nginx
+NAME        STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
+www-web-0   Bound     pvc-15c268c7-b507-11e6-932f-42010a800002   1Gi        RWO           48s
+www-web-1   Bound     pvc-15c79307-b507-11e6-932f-42010a800002   1Gi        RWO           48s
+
+StatefulSet 额外添加了一个 volumeClaimTemplates 字段。从名字就可以看出来，它跟 Deployment 里 Pod 模板（PodTemplate）的作用类似。也就是说，凡是被这个 StatefulSet 管理的 Pod，都会声明一个对应的 PVC；而这个 PVC 的定义，就来自于 volumeClaimTemplates 这个模板字段。更重要的是，这个 PVC 的名字，会被分配一个与这个 Pod 完全一致的编号。
+这个自动创建的 PVC，与 PV 绑定成功后，就会进入 Bound 状态，这就意味着这个 Pod 可以挂载并使用这个 PV 了。
+
+# for i in 0 1; do kubectl exec web-$i -- sh -c 'echo hello $(hostname) > /usr/share/nginx/html/index.html'; done
+
+# for i in 0 1; do kubectl exec -it web-$i -- curl localhost; done
+hello web-0
+hello web-1
+
+$ kubectl delete pod -l app=nginx
+pod "web-0" deleted
+pod "web-1" deleted
+
+# 在被重新创建出来的 Pod 容器里访问 http://localhost
+$ kubectl exec -it web-0 -- curl localhost
+hello web-0
+
+就会发现，这个请求依然会返回：hello web-0。也就是说，原先与名叫 web-0 的 Pod 绑定的 PV，在这个 Pod 被重新创建之后，依然同新的名叫 web-0 的 Pod 绑定在了一起。对于 Pod web-1 来说，也是完全一样的情况。
+
+首先，StatefulSet 的控制器直接管理的是 Pod。这是因为，StatefulSet 里的不同 Pod 实例，不再像 ReplicaSet 中那样都是完全一样的，而是有了细微区别的。比如，每个 Pod 的 hostname、名字等都是不同的、携带了编号的。而 StatefulSet 区分这些实例的方式，就是通过在 Pod 的名字里加上事先约定好的编号。
+其次，Kubernetes 通过 Headless Service，为这些有编号的 Pod，在 DNS 服务器中生成带有同样编号的 DNS 记录。只要 StatefulSet 能够保证这些 Pod 名字里的编号不变，那么 Service 里类似于 web-0.nginx.default.svc.cluster.local 这样的 DNS 记录也就不会变，而这条记录解析出来的 Pod 的 IP 地址，则会随着后端 Pod 的删除和再创建而自动更新。这当然是 Service 机制本身的能力，不需要 StatefulSet 操心。
+最后，StatefulSet 还为每一个 Pod 分配并创建一个同样编号的 PVC。这样，Kubernetes 就可以通过 Persistent Volume 机制为这个 PVC 绑定上对应的 PV，从而保证了每一个 Pod 都拥有一个独立的 Volume。
+在这种情况下，即使 Pod 被删除，它所对应的 PVC 和 PV 依然会保留下来。所以当这个 Pod 被重新创建出来之后，Kubernetes 会为它找到同样编号的 PVC，挂载这个 PVC 对应的 Volume，从而获取到以前保存在 Volume 里的数据。
+这么一看，原本非常复杂的 StatefulSet，是不是也很容易理解了呢？
+
+Job/CronJob 离线业务、定时任务
+
+此类业务执行完成之后直接退出，可用于统计或者轮询业务，其API对象定义如下
+job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    spec:
+      containers:
+      - name: pi
+        image: resouer/ubuntu-bc 
+        command: ["sh", "-c", "echo 'scale=10000; 4*a(1)' | bc -l "]
+      restartPolicy: Never
+  backoffLimit: 4
+
+restartPolicy为Never时，离线业务执行失败后，Job controller会不断尝试创建心得Pod
+restartPolicy为OnFailure时，Job Controller会不断重启Pod里得容器，而不会创建新的Pod
+上述Job相当于执行echo "scale=10000; 4*a(1)" | bc -l 
+kubectl apply -f job.yaml
+# kubectl get pods
+NAME                                READY     STATUS    RESTARTS   AGE
+pi-rq5rl                            1/1       Running   0          10s
+
+# kubectl get pods
+NAME                                READY     STATUS      RESTARTS   AGE
+pi-rq5rl                            0/1       Completed   0          4m
+
+$ kubectl logs pi-rq5rl
+3.141592653589793238462643383279...
+
+并行执行多个Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  parallelism: 2  # 任意时间最多启动多少个Pod同时运行
+  completions: 4  # Job的最小完成Pod数目
+  template:
+    spec:
+      containers:
+      - name: pi
+        image: resouer/ubuntu-bc
+        command: ["sh", "-c", "echo 'scale=5000; 4*a(1)' | bc -l "]
+      restartPolicy: Never
+  backoffLimit: 4
+
+# kubectl get job
+NAME      DESIRED   SUCCESSFUL   AGE
+pi        4         0            3s
+
+# kubectl get pods
+NAME       READY     STATUS    RESTARTS   AGE
+pi-5mt88   1/1       Running   0          6s
+pi-gmcq5   1/1       Running   0          6s
+
+# kubectl get pods
+NAME       READY     STATUS    RESTARTS   AGE
+pi-gmcq5   0/1       Completed   0         40s
+pi-84ww8   0/1       Pending   0         0s
+pi-5mt88   0/1       Completed   0         41s
+pi-62rbt   0/1       Pending   0         0s
+
+# kubectl get pods
+NAME       READY     STATUS    RESTARTS   AGE
+pi-gmcq5   0/1       Completed   0         40s
+pi-84ww8   0/1       ContainerCreating   0         0s
+pi-5mt88   0/1       Completed   0         41s
+pi-62rbt   0/1       ContainerCreating   0         0s
+
+# kubectl get pods 
+NAME       READY     STATUS      RESTARTS   AGE
+pi-5mt88   0/1       Completed   0          5m
+pi-62rbt   0/1       Completed   0          4m
+pi-84ww8   0/1       Completed   0          4m
+pi-gmcq5   0/1       Completed   0          5m
+
+# kubectl get job
+NAME      DESIRED   SUCCESSFUL   AGE
+pi        4         4            5m
+
+cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure
+spec.concurrencyPolicy
+控制间隔的Job执行
+
+
+Helm包管理 https://github.com/helm/helm/releases
+tar -tvf helm-v2.13.1-linux-amd64.tar 
+drwxr-xr-x root/root         0 2019-03-22 02:45 linux-amd64/
+-rw-r--r-- root/root     11343 2019-03-22 02:45 linux-amd64/LICENSE
+-rwxr-xr-x root/root  36886016 2019-03-22 02:45 linux-amd64/tiller
+-rwxr-xr-x root/root  37161248 2019-03-22 02:44 linux-amd64/helm
+-rw-r--r-- root/root      3204 2019-03-22 02:45 linux-amd64/README.md
+
+helm init --tiller-image registry.aliyuncs.com/google_containers/tiller:v2.13.1 
+Creating /root/.helm/repository/repositories.yaml 
+Adding stable repo with URL: https://kubernetes-charts.storage.googleapis.com 
+Adding local repo with URL: http://127.0.0.1:8879/charts 
+$HELM_HOME has been configured at /root/.helm.
+
+Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster.
+
+Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.
+To prevent this, run `helm init` with the --tiller-tls-verify flag.
+For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation
+Happy Helming!
+helm init --dry-run --debug 查看部署配置
+
+helm search redis
+NAME                                    CHART VERSION   APP VERSION     DESCRIPTION                                                 
+stable/prometheus-redis-exporter        1.0.2           0.28.0          Prometheus exporter for Redis metrics                       
+stable/redis                            6.4.3           4.0.14          Open source, advanced key-value store. It is often referr...
+stable/redis-ha                         3.3.3           5.0.3           Highly available Kubernetes implementation of Redis         
+stable/sensu                            0.2.3           0.28            Sensu monitoring framework backed by the Redis transport
+
+helm list
+Error: configmaps is forbidden: User "system:serviceaccount:kube-system:default" cannot list resource "configmaps" in API group "" in the namespace "kube-system"
+helm-rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tiller
+    namespace: kube-system
+
+helm init --service-account tiller --upgrade -i registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:v2.13.1 --stable-repo-url https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
+
+docker search tiller:v2.13.1 --no-trunc
+NAME                                          DESCRIPTION                                         STARS               OFFICIAL            AUTOMATED
+hekai/gcr.io_kubernetes-helm_tiller_v2.13.1   FROM gcr.io/kubernetes-helm/tiller:v2.13.1          0                                       
+walwong/tiller-2.13                           gcr.io/kubernetes-helm/tiller:v2.13.1               0                                       
+gengyanping/tiller                            build  from gcr.io/kubernetes-helm/tiller:v2.13.1   0                                       
+zhangwangjin/tiller-v2.13.1                   tiller:v2.13.1                                      0                                       
+[root@k8s-node-1 ~]# docker pull hekai/gcr.io_kubernetes-helm_tiller_v2.13.1
+Using default tag: latest
+latest: Pulling from hekai/gcr.io_kubernetes-helm_tiller_v2.13.1
+5d20c808ce19: Pull complete 
+43339c468bb6: Pull complete 
+d6d696e230df: Pull complete 
+9cf2c942cf64: Pull complete 
+Digest: sha256:d52b34a9f9aeec1cf74155ca51fcbb5d872a705914565c782be4531790a4ee0e
+Status: Downloaded newer image for hekai/gcr.io_kubernetes-helm_tiller_v2.13.1:latest
+[root@k8s-node-1 ~]# docker tag hekai/gcr.io_kubernetes-helm_tiller_v2.13.1 gcr.io/kubernetes-helm/tiller:v2.13.1
+
+pod资源调度
+predicate
+
+
+priority
+
+
+select
+
+
+pod网络通信原理
+flannel vxlan
+
+实例pod 2个
+redis-app-6594cf5f6f-7lsmr   1/1     Running     0          9d    172.16.2.125   k8s-node-2   <none>           <none>
+redis-app-6594cf5f6f-7xjnc   1/1     Running     0          9d    172.16.1.9     k8s-node-1   <none>           <none>
+pod 2
+pod 2 容器里的进程发起的 IP 包，其源地址就是 172.16.2.125，目的地址就是 172.16.1.9。由于目的地址 172.16.1.9 并不在 k8s-node-2 的 cni0 网桥的网段里，所以这个 IP 包会被交给默认路由规则，通过容器的网关进入 cni0 网桥（如果是同一台宿主机上的容器间通信，走的是直连规则），从而出现在宿主机上。
+[root@k8s-master-1 ~]# kubectl exec -it redis-app-6594cf5f6f-7lsmr /bin/sh
+/data # ip a
+1: lo: ...
+3: eth0@if386: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1450 qdisc noqueue state UP 
+    link/ether 0a:58:ac:10:02:7d brd ff:ff:ff:ff:ff:ff
+    inet 172.16.2.125/24 scope global eth0
+       valid_lft forever preferred_lft forever
+"""
+k8s-node-2 host ip a
+386: veth56d9501e@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master cni0 state UP group default 
+    link/ether 96:58:34:05:2e:a8 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::9458:34ff:fe05:2ea8/64 scope link 
+       valid_lft forever preferred_lft forever
+k8s-node-2 host ip r
+172.16.0.0      172.16.0.0      255.255.255.0   UG    0      0        0 flannel.1  -- 去往kube-master
+172.16.1.0      172.16.1.0      255.255.255.0   UG    0      0        0 flannel.1  -- 去往kube-node-1
+172.16.2.0      0.0.0.0         255.255.255.0   U     0      0        0 cni0       -- 去往本机
+"""
+/data # route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.16.2.1      0.0.0.0         UG    0      0        0 eth0
+10.244.0.0      172.16.2.1      255.255.0.0     UG    0      0        0 eth0
+172.16.2.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
+/data # exit
+pod 1
+[root@k8s-master-1 ~]# kubectl exec -it redis-app-6594cf5f6f-7xjnc /bin/sh
+/data # ip a
+1: lo: ...
+3: eth0@if20: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1450 qdisc noqueue state UP 
+    link/ether 0a:58:ac:10:01:09 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.1.9/24 scope global eth0
+       valid_lft forever preferred_lft forever
+"""
+k8s-node-1 host ip a
+20: veth6f601cd0@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master cni0 state UP group default 
+    link/ether 62:5a:a4:53:26:ff brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::605a:a4ff:fe53:26ff/64 scope link 
+       valid_lft forever preferred_lft forever
+k8s-node-1 host ip r
+172.16.0.0      172.16.0.0      255.255.255.0   UG    0      0        0 flannel.1  -- 去往kube-master
+172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 cni0       -- 去往本机
+172.16.2.0      172.16.2.0      255.255.255.0   UG    0      0        0 flannel.1  -- 去往kube-node-2
+"""
+/data # route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.16.1.1      0.0.0.0         UG    0      0        0 eth0
+10.244.0.0      172.16.1.1      255.255.0.0     UG    0      0        0 eth0
+172.16.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
+"""
+10: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+    link/ether 0a:58:ac:10:01:01 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.1.1/24 scope global cni0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c441:abff:feae:ff0/64 scope link 
+"""
+/data # exit
+VTEP 设备的作用，其实跟前面的 flanneld 进程非常相似。只不过，它进行封装和解封装的对象，是二层数据帧（Ethernet frame）；而且这个工作的执行流程，全部是在内核里完成的（因为 VXLAN 本身就是 Linux 内核中的一个模块）
+目的 VTEP 设备”的 MAC 地址是什么
+ip neigh show dev flannel.1
+172.16.0.0 lladdr ce:ba:f9:2b:37:44 PERMANENT
+172.16.1.0 lladdr 16:a7:2a:a2:8c:df PERMANENT
+172.16.2.0 lladdr da:eb:74:18:b8:26 PERMANENT
+
+Linux 内核会把这个数据帧封装进一个 UDP 包里发出去
+bridge fdb show flannel.1 -- 二层网桥转发
+ce:ba:f9:2b:37:44 dev flannel.1 dst 192.168.110.72 self permanent
+16:a7:2a:a2:8c:df dev flannel.1 dst 192.168.110.73 self permanent
+da:eb:74:18:b8:26 dev flannel.1 dst 192.168.110.74 self permanent
+
+接下来的流程，就是一个正常的、宿主机网络上的封包工作  UDP
+flannel host-gw
+
+Calico
+]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 52:54:00:5c:6f:5b brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.89/24 brd 192.168.122.255 scope global dynamic eth0
+       valid_lft 3390sec preferred_lft 3390sec
+    inet6 fe80::ea80:95e5:744e:563/64 scope link 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::dca4:efa6:7ed5:e288/64 scope link tentative dadfailed 
+       valid_lft forever preferred_lft forever
+3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN 
+    link/ether 02:42:3a:75:93:0b brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+4: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN qlen 1
+    link/ipip 0.0.0.0 brd 0.0.0.0
+    inet 172.22.166.128/32 brd 172.22.166.128 scope global tunl0
+       valid_lft forever preferred_lft forever
+查看本地路由
+[root@node1 ~]# ip r
+default via 192.168.122.1 dev eth0  proto static  metric 100 
+172.17.0.0/16 dev docker0  proto kernel  scope link  src 172.17.0.1 
+172.22.104.0/26 via 192.168.122.164 dev tunl0  proto bird onlink 
+blackhole 172.22.166.128/26  proto bird 
+192.168.122.0/24 dev eth0  proto kernel  scope link  src 192.168.122.89  metric 100 
+查看本地arp缓存
+[root@node1 ~]# ip neigh
+192.168.122.164 dev eth0 lladdr 52:54:00:9f:ac:91 REACHABLE
+192.168.122.1 dev eth0 lladdr 52:54:00:c9:ad:b6 REACHABLE
+
+]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 52:54:00:9f:ac:91 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.164/24 brd 192.168.122.255 scope global dynamic eth0
+       valid_lft 3486sec preferred_lft 3486sec
+    inet6 fe80::dca4:efa6:7ed5:e288/64 scope link 
+       valid_lft forever preferred_lft forever
+3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN 
+    link/ether 02:42:75:1c:21:5c brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+4: cali2e467e8fe16@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+5: cali935f88f8e6e@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+6: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN qlen 1
+    link/ipip 0.0.0.0 brd 0.0.0.0
+    inet 172.22.104.0/32 brd 172.22.104.0 scope global tunl0
+       valid_lft forever preferred_lft forever
+7: cali8149525f57a@if4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+8: calie0a88ea3b57@if4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 3
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+9: calie1cae044ee7@if4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1440 qdisc noqueue state UP 
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@node2 ~]# ip r
+default via 192.168.122.1 dev eth0  proto static  metric 100 
+172.17.0.0/16 dev docker0  proto kernel  scope link  src 172.17.0.1 
+blackhole 172.22.104.0/26  proto bird 
+172.22.104.1 dev cali2e467e8fe16  scope link 
+172.22.104.2 dev cali935f88f8e6e  scope link 
+172.22.104.3 dev cali8149525f57a  scope link 
+172.22.104.4 dev calie0a88ea3b57  scope link 
+172.22.104.5 dev calie1cae044ee7  scope link 
+172.22.166.128/26 via 192.168.122.89 dev tunl0  proto bird onlink 
+192.168.122.0/24 dev eth0  proto kernel  scope link  src 192.168.122.164  metric 100 
+[root@node2 ~]# ip neigh
+172.22.104.3 dev cali8149525f57a lladdr fe:85:92:3f:53:62 PERMANENT
+172.22.104.2 dev cali935f88f8e6e lladdr 0a:b9:f1:e9:e4:1b PERMANENT
+172.22.104.1 dev cali2e467e8fe16 lladdr 16:f7:d0:0a:c2:20 PERMANENT
+192.168.122.1 dev eth0 lladdr 52:54:00:c9:ad:b6 REACHABLE
+172.22.104.5 dev calie1cae044ee7 lladdr b2:95:d9:df:17:7e PERMANENT
+192.168.122.89 dev eth0 lladdr 52:54:00:5c:6f:5b REACHABLE
+172.22.104.4 dev calie0a88ea3b57 lladdr 8a:b6:cd:6c:e7:70 PERMANENT
+
+]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 52:54:00:8e:51:0b brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.84/24 brd 192.168.122.255 scope global dynamic eth0
+       valid_lft 3156sec preferred_lft 3156sec
+    inet6 fe80::e6c1:3a63:5803:8e6b/64 scope link 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::ea80:95e5:744e:563/64 scope link tentative dadfailed 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::dca4:efa6:7ed5:e288/64 scope link tentative dadfailed 
+       valid_lft forever preferred_lft forever
+3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN 
+    link/ether 02:42:db:e9:6f:0c brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+4: tunl0@NONE: <NOARP,UP,LOWER_UP> mtu 1440 qdisc noqueue state UNKNOWN qlen 1
+    link/ipip 0.0.0.0 brd 0.0.0.0
+    inet 172.22.255.128/32 brd 172.22.255.128 scope global tunl0
+       valid_lft forever preferred_lft forever
+[root@nodes3 ~]# ip r
+default via 192.168.122.1 dev eth0  proto static  metric 100 
+172.17.0.0/16 dev docker0  proto kernel  scope link  src 172.17.0.1 
+172.22.104.0/26 via 192.168.122.164 dev tunl0  proto bird onlink 
+172.22.166.128/26 via 192.168.122.89 dev tunl0  proto bird onlink 
+blackhole 172.22.255.128/26  proto bird 
+192.168.122.0/24 dev eth0  proto kernel  scope link  src 192.168.122.84  metric 100 
+[root@nodes3 ~]# ip neigh
+192.168.122.89 dev eth0 lladdr 52:54:00:5c:6f:5b REACHABLE
+192.168.122.164 dev eth0 lladdr 52:54:00:9f:ac:91 REACHABLE
+192.168.122.1 dev eth0 lladdr 52:54:00:c9:ad:b6 REACHABLE
+
+
+]# kubectl get pods -o wide
+NAME                         READY   STATUS    RESTARTS   AGE     IP             NODE    NOMINATED NODE   READINESS GATES
+redis-app-68dfc48854-7hjh2   1/1     Running   0          3m13s   172.22.104.5   node2   <none>           <none>
+redis-app-68dfc48854-ptl5x   1/1     Running   0          3m13s   172.22.104.4   node2   <none>           <none>
+]# kubectl exec redis-app-68dfc48854-7hjh2 -it -- /bin/sh
+/data # ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: tunl0@NONE: <NOARP> mtu 1480 qdisc noop state DOWN qlen 1
+    link/ipip 0.0.0.0 brd 0.0.0.0
+4: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1440 qdisc noqueue state UP 
+    link/ether b2:95:d9:df:17:7e brd ff:ff:ff:ff:ff:ff
+    inet 172.22.104.5/32 scope global eth0
+       valid_lft forever preferred_lft forever
+/data # ip r
+default via 169.254.1.1 dev eth0 
+169.254.1.1 dev eth0 scope link 
+通过能相应的arp，进入宿主机node2上的9号veth
+
+ExternalName
+暴露外部服务给内部pod
+
+Service of pod
+Headless Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+
+DNS 记录格式
+<pod-name>.<svc-name>.<namespace>.svc.cluster.local
+
+
+clusterIP(default)
+Service 是由 kube-proxy 组件，加上 iptables
+[root@k8s-master-1 ~/k8s_liyang]# cat redis-deploy.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-app
+spec:
+  selector:
+    matchLabels:
+      name: redis-app
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        name: redis-app
+    spec:
+      containers:
+      - name: redis-app
+        image: redis:alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+[root@k8s-master-1 ~/k8s_liyang]# cat redis-svc.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: redis-service
+  name: redis-service
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    name: redis-app
+使用了 selector 字段来声明这个 Service 只代理携带了 name=redis-app 标签的 Pod。并且，这个 Service 的 6379 端口，代理的是 Pod 的 6379 端口。
+]# kubectl get svc -o wide
+NAME            TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+redis-service   ClusterIP   10.98.34.38   <none>        6379/TCP   9d    name=redis-app
+
+]# kubectl get ep -o wide
+NAME            ENDPOINTS                           AGE
+redis-service   172.16.1.9:6379,172.16.2.125:6379   9d
+
+nslookup redis-service.default.svc.cluster.local
+
+nslookup: can't resolve '(null)': Name does not resolve
+Name:      redis-service.default.svc.cluster.local
+Address 1: 10.105.237.192 redis-service.default.svc.cluster.local
+
+-A KUBE-SERVICES -d 10.98.34.38/32 -p tcp -m comment --comment "default/redis-service: cluster IP" -m tcp --dport 6379 -j KUBE-SVC-SJZASFOEIJXSOKIQ
+
+-A KUBE-SVC-SJZASFOEIJXSOKIQ -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-GXMODASXAFJHFMW6
+-A KUBE-SVC-SJZASFOEIJXSOKIQ -j KUBE-SEP-5BMQ4576QXGR6XGB
+
+-A KUBE-SEP-GXMODASXAFJHFMW6 -s 172.16.1.9/32 -j KUBE-MARK-MASQ
+(-A KUBE-MARK-MASQ -j MARK --set-xmark 0x4000/0x4000) -- mark
+-A KUBE-SEP-GXMODASXAFJHFMW6 -p tcp -m tcp -j DNAT --to-destination 172.16.1.9:6379
+
+-A KUBE-SEP-5BMQ4576QXGR6XGB -s 172.16.2.125/32 -j KUBE-MARK-MASQ
+-A KUBE-SEP-5BMQ4576QXGR6XGB -p tcp -m tcp -j DNAT --to-destination 172.16.2.125:6379
+在 DNAT 规则之前，iptables 对流入的 IP 包还设置了一个“标志”（–set-xmark）DNAT 规则的作用，就是在 PREROUTING 检查点之前，也就是在路由之前，将流入 IP 包的目的地址和端口，改成–to-destination 所指定的新的目的地址和端口。可以看到，这个目的地址和端口，正是被代理 Pod 的 IP 地址和端口。
+这样，访问 Service VIP 的 IP 包经过上述 iptables 处理之后，就已经变成了访问具体某一个后端 Pod 的 IP 包了。不难理解，这些 Endpoints 对应的 iptables 规则，正是 kube-proxy 通过监听 Pod 的变化事件，在宿主机上生成并维护的
+cat /etc/resolv.conf 
+nameserver 10.96.0.10
+search default.svc.cluster.local svc.cluster.local cluster.local
+options ndots:5
+
+# kubectl get svc -o wide
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                           AGE   SELECTOR
+kubernetes      ClusterIP   10.96.0.1        <none>        443/TCP                           22d   <none>
+my-nginx        NodePort    10.102.130.137   <none>        30080:30080/TCP,30443:30443/TCP   9d    run=my-nginx
+redis-service   ClusterIP   10.98.34.38      <none>        6379/TCP                          19d   name=redis-app
+
+# nslookup redis-service.default.svc.cluster.local
+nslookup: can't resolve '(null)': Name does not resolve
+
+Name:      redis-service.default.svc.cluster.local
+Address 1: 10.98.34.38 redis-service.default.svc.cluster.local
+
+
+# kubectl exec -it redis-app-6594cf5f6f-7lsmr -- /bin/sh
+/data # nc -v -w 2 -z my-nginx.default.svc.cluster.local
+nc: my-nginx.default.svc.cluster.local (10.102.130.137:0): Operation timed out
+/data # nc -v -w 2 -z my-nginx.default.svc.cluster.local:30080
+my-nginx.default.svc.cluster.local:30080 (10.102.130.137:30080) open
+/data # wget my-nginx.default.svc.cluster.local:30080
+Connecting to my-nginx.default.svc.cluster.local:30080 (10.102.130.137:30080)
+index.html           100% |********************************|   612  0:00:00 ETA
+/data # cat index.html 
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+nodePort
+如何从外部（Kubernetes 集群之外），访问到 Kubernetes 里创建的 Service？这里最常用的一种方式就是：NodePort
+
+[root@k8s-master-1 ~/k8s_liyang]# kubectl get pods -o wide
+NAME                         READY   STATUS      RESTARTS   AGE    IP             NODE         NOMINATED NODE   READINESS GATES
+my-nginx-6869f6f498-2m2l4    1/1     Running     0          131m   172.16.1.10    k8s-node-1   <none>           <none>
+my-nginx-6869f6f498-8smxg    1/1     Running     0          131m   172.16.2.128   k8s-node-2   <none>           <none>
+
+[root@k8s-master-1 ~/k8s_liyang]# kubectl get svc -o wide
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                           AGE    SELECTOR
+my-nginx        NodePort    10.102.130.137   <none>        30080:30080/TCP,30443:30443/TCP   124m   run=my-nginx
+
+[root@k8s-master-1 ~/k8s_liyang]# kubectl get ep -o wide
+NAME            ENDPOINTS                                                      AGE
+my-nginx        172.16.1.10:80,172.16.2.128:80,172.16.1.10:30443 + 1 more...   125m
+
+
+-A KUBE-MARK-MASQ -j MARK --set-xmark 0x4000/0x4000
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/my-nginx:https" -m tcp --dport 30443 -j KUBE-MARK-MASQ
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/my-nginx:https" -m tcp --dport 30443 -j KUBE-SVC-WJQIRF6WKN5OOCTI
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/my-nginx:http" -m tcp --dport 30080 -j KUBE-MARK-MASQ
+-A KUBE-NODEPORTS -p tcp -m comment --comment "default/my-nginx:http" -m tcp --dport 30080 -j KUBE-SVC-SV7AMNAGZFKZEMQ4
+-A KUBE-POSTROUTING -m comment --comment "kubernetes service traffic requiring SNAT" -m mark --mark 0x4000/0x4000 -j MASQUERADE
+*******SNAT******
+
+-A KUBE-SVC-WJQIRF6WKN5OOCTI -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-ZZAAWX5I522XFSK2
+-A KUBE-SVC-WJQIRF6WKN5OOCTI -j KUBE-SEP-K265Q3L3PVFWMT6U
+-A KUBE-SVC-SV7AMNAGZFKZEMQ4 -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-NLMPWYK5IZYRAGXB
+-A KUBE-SVC-SV7AMNAGZFKZEMQ4 -j KUBE-SEP-AMB55VALIMUVVU5A
+
+-A KUBE-SEP-ZZAAWX5I522XFSK2 -s 172.16.1.10/32 -j KUBE-MARK-MASQ
+-A KUBE-SEP-ZZAAWX5I522XFSK2 -p tcp -m tcp -j DNAT --to-destination 172.16.1.10:30443
+-A KUBE-SEP-K265Q3L3PVFWMT6U -s 172.16.2.128/32 -j KUBE-MARK-MASQ
+-A KUBE-SEP-K265Q3L3PVFWMT6U -p tcp -m tcp -j DNAT --to-destination 172.16.2.128:30443
+
+-A KUBE-SEP-NLMPWYK5IZYRAGXB -s 172.16.1.10/32 -j KUBE-MARK-MASQ
+-A KUBE-SEP-NLMPWYK5IZYRAGXB -p tcp -m tcp -j DNAT --to-destination 172.16.1.10:80
+-A KUBE-SEP-AMB55VALIMUVVU5A -s 172.16.2.128/32 -j KUBE-MARK-MASQ
+-A KUBE-SEP-AMB55VALIMUVVU5A -p tcp -m tcp -j DNAT --to-destination 172.16.2.128:80
+
+service ingress
+代理不同后端 Service 而设置的负载均衡服务，就是 Kubernetes 里的 Ingress 服务。
+Ingress 的功能其实很容易理解：所谓 Ingress，就是 Service 的“Service”。
+举个例子，假如现在有这样一个站点：https://cafe.example.com。其中，https://cafe.example.com/coffee，对应的是“咖啡点餐系统”。而，https://cafe.example.com/tea，对应的则是“茶水点餐系统”。这两个系统，分别由名叫 coffee 和 tea 这样两个 Deployment 来提供服务。
+那么现在，我如何能使用 Kubernetes 的 Ingress 来创建一个统一的负载均衡器，从而实现当用户访问不同的域名时，能够访问到不同的 Deployment 呢？
+cafe.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: coffee
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: coffee
+  template:
+    metadata:
+      labels:
+        app: coffee
+    spec:
+      containers:
+      - name: coffee
+        image: nginxdemos/hello:plain-text
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coffee-svc
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: coffee
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tea
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tea 
+  template:
+    metadata:
+      labels:
+        app: tea 
+    spec:
+      containers:
+      - name: tea 
+        image: nginxdemos/hello:plain-text
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tea-svc
+  labels:
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: tea
+
+cafe-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cafe-secret
+type: Opaque
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURMakNDQWhZQ0NRREFPRjl0THNhWFdqQU5CZ2txaGtpRzl3MEJBUXNGQURCYU1Rc3dDUVlEVlFRR0V3SlYKVXpFTE1Ba0dBMVVFQ0F3Q1EwRXhJVEFmQmdOVkJBb01HRWx1ZEdWeWJtVjBJRmRwWkdkcGRITWdVSFI1SUV4MApaREViTUJrR0ExVUVBd3dTWTJGbVpTNWxlR0Z0Y0d4bExtTnZiU0FnTUI0WERURTRNRGt4TWpFMk1UVXpOVm9YCkRUSXpNRGt4TVRFMk1UVXpOVm93V0RFTE1Ba0dBMVVFQmhNQ1ZWTXhDekFKQmdOVkJBZ01Ba05CTVNFd0h3WUQKVlFRS0RCaEpiblJsY201bGRDQlhhV1JuYVhSeklGQjBlU0JNZEdReEdUQVhCZ05WQkFNTUVHTmhabVV1WlhoaApiWEJzWlM1amIyMHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFDcDZLbjdzeTgxCnAwanVKL2N5ayt2Q0FtbHNmanRGTTJtdVpOSzBLdGVjcUcyZmpXUWI1NXhRMVlGQTJYT1N3SEFZdlNkd0kyaloKcnVXOHFYWENMMnJiNENaQ0Z4d3BWRUNyY3hkam0zdGVWaVJYVnNZSW1tSkhQUFN5UWdwaW9iczl4N0RsTGM2SQpCQTBaalVPeWwwUHFHOVNKZXhNVjczV0lJYTVyRFZTRjJyNGtTa2JBajREY2o3TFhlRmxWWEgySTVYd1hDcHRDCm42N0pDZzQyZitrOHdnemNSVnA4WFprWldaVmp3cTlSVUtEWG1GQjJZeU4xWEVXZFowZXdSdUtZVUpsc202OTIKc2tPcktRajB2a29QbjQxRUUvK1RhVkVwcUxUUm9VWTNyemc3RGtkemZkQml6Rk8yZHNQTkZ4MkNXMGpYa05MdgpLbzI1Q1pyT2hYQUhBZ01CQUFFd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFLSEZDY3lPalp2b0hzd1VCTWRMClJkSEliMzgzcFdGeW5acS9MdVVvdnNWQTU4QjBDZzdCRWZ5NXZXVlZycTVSSWt2NGxaODFOMjl4MjFkMUpINnIKalNuUXgrRFhDTy9USkVWNWxTQ1VwSUd6RVVZYVVQZ1J5anNNL05VZENKOHVIVmhaSitTNkZBK0NuT0Q5cm4yaQpaQmVQQ0k1ckh3RVh3bm5sOHl3aWozdnZRNXpISXV5QmdsV3IvUXl1aTlmalBwd1dVdlVtNG52NVNNRzl6Q1Y3ClBwdXd2dWF0cWpPMTIwOEJqZkUvY1pISWc4SHc5bXZXOXg5QytJUU1JTURFN2IvZzZPY0s3TEdUTHdsRnh2QTgKN1dqRWVxdW5heUlwaE1oS1JYVmYxTjM0OWVOOThFejM4Zk9USFRQYmRKakZBL1BjQytHeW1lK2lHdDVPUWRGaAp5UkU9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBcWVpcCs3TXZOYWRJN2lmM01wUHJ3Z0pwYkg0N1JUTnBybVRTdENyWG5LaHRuNDFrCkcrZWNVTldCUU5semtzQndHTDBuY0NObzJhN2x2S2wxd2k5cTIrQW1RaGNjS1ZSQXEzTVhZNXQ3WGxZa1YxYkcKQ0pwaVJ6ejBza0lLWXFHN1BjZXc1UzNPaUFRTkdZMURzcGRENmh2VWlYc1RGZTkxaUNHdWF3MVVoZHErSkVwRwp3SStBM0kreTEzaFpWVng5aU9WOEZ3cWJRcCt1eVFvT05uL3BQTUlNM0VWYWZGMlpHVm1WWThLdlVWQ2cxNWhRCmRtTWpkVnhGbldkSHNFYmltRkNaYkp1dmRySkRxeWtJOUw1S0Q1K05SQlAvazJsUkthaTAwYUZHTjY4NE93NUgKYzMzUVlzeFR0bmJEelJjZGdsdEkxNURTN3lxTnVRbWF6b1Z3QndJREFRQUJBb0lCQVFDUFNkU1luUXRTUHlxbApGZlZGcFRPc29PWVJoZjhzSStpYkZ4SU91UmF1V2VoaEp4ZG01Uk9ScEF6bUNMeUw1VmhqdEptZTIyM2dMcncyCk45OUVqVUtiL1ZPbVp1RHNCYzZvQ0Y2UU5SNThkejhjbk9SVGV3Y290c0pSMXBuMWhobG5SNUhxSkpCSmFzazEKWkVuVVFmY1hackw5NGxvOUpIM0UrVXFqbzFGRnM4eHhFOHdvUEJxalpzVjdwUlVaZ0MzTGh4bndMU0V4eUZvNApjeGI5U09HNU9tQUpvelN0Rm9RMkdKT2VzOHJKNXFmZHZ5dGdnOXhiTGFRTC94MGtwUTYyQm9GTUJEZHFPZVBXCktmUDV6WjYvMDcvdnBqNDh5QTFRMzJQem9idWJzQkxkM0tjbjMyamZtMUU3cHJ0V2wrSmVPRmlPem5CUUZKYk4KNHFQVlJ6NWhBb0dCQU50V3l4aE5DU0x1NFArWGdLeWNrbGpKNkY1NjY4Zk5qNUN6Z0ZScUowOXpuMFRsc05ybwpGVExaY3hEcW5SM0hQWU00MkpFUmgySi9xREZaeW5SUW8zY2czb2VpdlVkQlZHWTgrRkkxVzBxZHViL0w5K3l1CmVkT1pUUTVYbUdHcDZyNmpleHltY0ppbS9Pc0IzWm5ZT3BPcmxEN1NQbUJ2ek5MazRNRjZneGJYQW9HQkFNWk8KMHA2SGJCbWNQMHRqRlhmY0tFNzdJbUxtMHNBRzR1SG9VeDBlUGovMnFyblRuT0JCTkU0TXZnRHVUSnp5K2NhVQprOFJxbWRIQ2JIelRlNmZ6WXEvOWl0OHNaNzdLVk4xcWtiSWN1YytSVHhBOW5OaDFUanNSbmU3NFowajFGQ0xrCmhIY3FIMHJpN1BZU0tIVEU4RnZGQ3haWWRidUI4NENtWmlodnhicFJBb0dBSWJqcWFNWVBUWXVrbENkYTVTNzkKWVNGSjFKelplMUtqYS8vdER3MXpGY2dWQ0thMzFqQXdjaXowZi9sU1JxM0hTMUdHR21lemhQVlRpcUxmZVpxYwpSMGlLYmhnYk9jVlZrSkozSzB5QXlLd1BUdW14S0haNnpJbVpTMGMwYW0rUlk5WUdxNVQ3WXJ6cHpjZnZwaU9VCmZmZTNSeUZUN2NmQ21mb09oREN0enVrQ2dZQjMwb0xDMVJMRk9ycW40M3ZDUzUxemM1em9ZNDR1QnpzcHd3WU4KVHd2UC9FeFdNZjNWSnJEakJDSCtULzZzeXNlUGJKRUltbHpNK0l3eXRGcEFOZmlJWEV0LzQ4WGY2ME54OGdXTQp1SHl4Wlp4L05LdER3MFY4dlgxUE9ucTJBNWVpS2ErOGpSQVJZS0pMWU5kZkR1d29seHZHNmJaaGtQaS80RXRUCjNZMThzUUtCZ0h0S2JrKzdsTkpWZXN3WEU1Y1VHNkVEVXNEZS8yVWE3ZlhwN0ZjanFCRW9hcDFMU3crNlRYcDAKWmdybUtFOEFSek00NytFSkhVdmlpcS9udXBFMTVnMGtKVzNzeWhwVTl6WkxPN2x0QjBLSWtPOVpSY21Vam84UQpjcExsSE1BcWJMSjhXWUdKQ2toaVd4eWFsNmhZVHlXWTRjVmtDMHh0VGwvaFVFOUllTktvCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+
+cafe-ingress.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: cafe-ingress
+spec:
+  tls:
+  - hosts:
+    - cafe.example.com
+    secretName: cafe-secret
+  rules:
+  - host: cafe.example.com
+    http:
+      paths:
+      - path: /tea
+        backend:
+          serviceName: tea-svc
+          servicePort: 80
+      - path: /coffee
+        backend:
+          serviceName: coffee-svc
+          servicePort: 80
+
+host 字段定义的值，就是这个 Ingress 的入口。这也就意味着，当用户访问 cafe.example.com 的时候，实际上访问到的是这个 Ingress 对象。这样，Kubernetes 就能使用 IngressRule 来对你的请求进行下一步转发。
+而接下来 IngressRule 规则的定义，则依赖于 path 字段。你可以简单地理解为，这里的每一个 path 都对应一个后端 Service。所以在我们的例子里，我定义了两个 path，它们分别对应 coffee 和 tea 这两个 Deployment 的 Service（即：coffee-svc 和 tea-svc）。
+通过上面的讲解，不难看到，所谓 Ingress 对象，其实就是 Kubernetes 项目对“反向代理”的一种抽象。
+一个 Ingress 对象的主要内容，实际上就是一个“反向代理”服务（比如：Nginx）的配置文件的描述。而这个代理服务对应的转发规则，就是 IngressRule。
+这就是为什么在每条 IngressRule 里，需要有一个 host 字段来作为这条 IngressRule 的入口，然后还需要有一系列 path 字段来声明具体的转发策略。这其实跟 Nginx、HAproxy 等项目的配置文件的写法是一致的。
+而有了 Ingress 这样一个统一的抽象，Kubernetes 的用户就无需关心 Ingress 的具体细节了。
+
+最常用的 Nginx Ingress Controller 为例，在我们前面用 kubeadm 部署的 Bare-metal 环境中，实践一下 Ingress 机制的使用过程
+
+部署控制器
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+docker pull registry.aliyuncs.com/google_containers/nginx-ingress-controller:0.23.0
+docker tag registry.aliyuncs.com/google_containers/nginx-ingress-controller:0.23.0 quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.23.0
+让用户能够用到这个 Nginx，我们就需要创建一个 Service 来把 Nginx Ingress Controller 管理的 Nginx 服务暴露出去
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/baremetal/service-nodeport.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+这个 Service 的唯一工作，就是将所有携带 ingress-nginx 标签的 Pod 的 80 和 433 端口暴露出去
+
+存储
+pv “持久化 Volume”，指的就是这个宿主机上的目录，具备“持久性”
+[root@node1 ~]# cat nfs_pv.yaml 
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv-01
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    path: /home/k8s_disk_ext
+    server: 192.168.122.1
+pvc 描述的，则是 Pod 所希望使用的持久化存储的属性
+[root@node1 ~]# cat nfs_pvc.yaml 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc-01
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+通过storage大小进行匹配
+]# kubectl get pv
+NAME        CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                STORAGECLASS   REASON   AGE
+nfs-pv-01   1Gi        RWO            Recycle          Bound    default/nfs-pvc-01                           9s
+
+]# kubectl get pvc
+NAME         STATUS   VOLUME      CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+nfs-pvc-01   Bound    nfs-pv-01   1Gi        RWO                           19s
+
+StorageClass: 动态绑定Dynamic Provisioning
+创建 PV 的模板
+需要创建的pv的属性，如类型、容量
+创建上述pv所需要的存储插件，如NFS、Ceph、GlusterFS
+
+pv\pvc可以指定storageClass来进行指定匹配
+
+或者pvc 通过pvc.spec.volumeName指定pv
+
+镜像仓库Harbor
+
+备注Memo:
+
+]# cat nginx-deploy.yaml nginx-svc.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  selector:
+    matchLabels:
+      run: my-nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: nginx
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx
+  labels:
+    run: my-nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 30080
+    nodePort: 30080
+    targetPort: 80
+    protocol: TCP
+    name: http
+  - port: 30443
+    nodePort: 30443
+    protocol: TCP
+    name: https
+  selector:
+    run: my-nginx
+
+kubectl get svc redis-service -o yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"name":"redis-service"},"name":"redis-service","namespace":"default"},"spec":{"ports":[{"port":6379,"targetPort":6379}],"selector":{"name":"redis-app"}}}
+  creationTimestamp: "2019-03-07T08:05:29Z"
+  labels:
+    name: redis-service
+  name: redis-service
+  namespace: default
+  resourceVersion: "360135"
+  selfLink: /api/v1/namespaces/default/services/redis-service
+  uid: c62d9a3a-40af-11e9-bd5e-002590c9c44c
+spec:
+  clusterIP: 10.98.34.38
+  ports:
+  - port: 6379
+    protocol: TCP
+    targetPort: 6379
+  selector:
+    name: redis-app
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+]# kubectl get deploy redis-app -o yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"redis-app","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"name":"redis-app"}},"template":{"metadata":{"labels":{"name":"redis-app"}},"spec":{"containers":[{"image":"redis:alpine","imagePullPolicy":"IfNotPresent","name":"redis-app","ports":[{"containerPort":6379}]}]}}}}
+  creationTimestamp: "2019-03-07T07:20:06Z"
+  generation: 2
+  name: redis-app
+  namespace: default
+  resourceVersion: "359084"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/redis-app
+  uid: 6eab4216-40a9-11e9-bd5e-002590c9c44c
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      name: redis-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: redis-app
+    spec:
+      containers:
+      - image: redis:alpine
+        imagePullPolicy: IfNotPresent
+        name: redis-app
+        ports:
+        - containerPort: 6379
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 2
+  conditions:
+  - lastTransitionTime: "2019-03-07T07:20:07Z"
+    lastUpdateTime: "2019-03-07T07:20:07Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2019-03-07T07:20:06Z"
+    lastUpdateTime: "2019-03-07T07:53:04Z"
+    message: ReplicaSet "redis-app-6594cf5f6f" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 2
+  readyReplicas: 2
+  replicas: 2
+  updatedReplicas: 2
+]# kubectl get ep redis-service -o yaml
+apiVersion: v1
+kind: Endpoints
+metadata:
+  creationTimestamp: "2019-03-07T08:05:29Z"
+  labels:
+    name: redis-service
+  name: redis-service
+  namespace: default
+  resourceVersion: "360136"
+  selfLink: /api/v1/namespaces/default/endpoints/redis-service
+  uid: c62edb01-40af-11e9-bd5e-002590c9c44c
+subsets:
+- addresses:
+  - ip: 172.16.1.9
+    nodeName: k8s-node-1
+    targetRef:
+      kind: Pod
+      name: redis-app-6594cf5f6f-7xjnc
+      namespace: default
+      resourceVersion: "359075"
+      uid: 08e57ad4-40ae-11e9-bd5e-002590c9c44c
+  - ip: 172.16.2.125
+    nodeName: k8s-node-2
+    targetRef:
+      kind: Pod
+      name: redis-app-6594cf5f6f-7lsmr
+      namespace: default
+      resourceVersion: "359049"
+      uid: 083043ab-40ae-11e9-bd5e-002590c9c44c
+  ports:
+  - port: 6379
+    protocol: TCP
+
+]# kubectl get ep -o wide
+NAME            ENDPOINTS                                                      AGE
+kubernetes      192.168.110.72:6443                                            12d
+my-nginx        172.16.1.10:80,172.16.2.128:80,172.16.1.10:30443 + 1 more...   24s
+redis-service   172.16.1.9:6379,172.16.2.125:6379 
+]# kubectl get ep -o yaml
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Endpoints
+  metadata:
+    creationTimestamp: "2019-03-04T09:49:51Z"
+    name: kubernetes
+    namespace: default
+    resourceVersion: "8"
+    selfLink: /api/v1/namespaces/default/endpoints/kubernetes
+    uid: db60b11f-3e62-11e9-ae95-002590c9c44c
+  subsets:
+  - addresses:
+    - ip: 192.168.110.72
+    ports:
+    - name: https
+      port: 6443
+      protocol: TCP
+- apiVersion: v1
+  kind: Endpoints
+  metadata:
+    creationTimestamp: "2019-03-17T02:49:34Z"
+    labels:
+      run: my-nginx
+    name: my-nginx
+    namespace: default
+    resourceVersion: "1543702"
+    selfLink: /api/v1/namespaces/default/endpoints/my-nginx
+    uid: 4bc8d609-485f-11e9-bd5e-002590c9c44c
+  subsets:
+  - addresses:
+    - ip: 172.16.1.10
+      nodeName: k8s-node-1
+      targetRef:
+        kind: Pod
+        name: my-nginx-6869f6f498-2m2l4
+        namespace: default
+        resourceVersion: "1543177"
+        uid: 70951e84-485e-11e9-bd5e-002590c9c44c
+    - ip: 172.16.2.128
+      nodeName: k8s-node-2
+      targetRef:
+        kind: Pod
+        name: my-nginx-6869f6f498-8smxg
+        namespace: default
+        resourceVersion: "1543174"
+        uid: 7094a7d4-485e-11e9-bd5e-002590c9c44c
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+    - name: https
+      port: 30443
+      protocol: TCP
+- apiVersion: v1
+  kind: Endpoints
+  metadata:
+    creationTimestamp: "2019-03-07T08:05:29Z"
+    labels:
+      name: redis-service
+    name: redis-service
+    namespace: default
+    resourceVersion: "360136"
+    selfLink: /api/v1/namespaces/default/endpoints/redis-service
+    uid: c62edb01-40af-11e9-bd5e-002590c9c44c
+  subsets:
+  - addresses:
+    - ip: 172.16.1.9
+      nodeName: k8s-node-1
+      targetRef:
+        kind: Pod
+        name: redis-app-6594cf5f6f-7xjnc
+        namespace: default
+        resourceVersion: "359075"
+        uid: 08e57ad4-40ae-11e9-bd5e-002590c9c44c
+    - ip: 172.16.2.125
+      nodeName: k8s-node-2
+      targetRef:
+        kind: Pod
+        name: redis-app-6594cf5f6f-7lsmr
+        namespace: default
+        resourceVersion: "359049"
+        uid: 083043ab-40ae-11e9-bd5e-002590c9c44c
+    ports:
+    - port: 6379
+      protocol: TCP
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
+
+]# cat test_job.yaml 
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job1
+spec:
+  template:
+    metadata:
+      name: job1
+    spec:
+      containers:
+      - name: job1
+        image: busybox
+        command: ["ip", "r"]
+      nodeName: k8s-node-1
+      restartPolicy: Never
