@@ -1,0 +1,177 @@
+委托模式
+分类 编程技术
+委托模式是软件设计模式中的一项基本技巧。在委托模式中，有两个对象参与处理同一个请求，接受请求的对象将请求委托给另一个对象来处理。委托模式是一项基本技巧，许多其他的模式，如状态模式、策略模式、访问者模式本质上是在更特殊的场合采用了委托模式。委托模式使得我们可以用聚合来替代继承，它还使我们可以模拟mixin。
+
+简单的Java例子
+在这个例子里，类模拟打印机Printer拥有针式打印机RealPrinter的实例，Printer拥有的方法print()将处理转交给RealPrinter的方法print()。
+
+ class RealPrinter { // the "delegate"
+     void print() { 
+       System.out.print("something"); 
+     }
+ }
+ 
+ class Printer { // the "delegator"
+     RealPrinter p = new RealPrinter(); // create the delegate 
+     void print() { 
+       p.print(); // delegation
+     } 
+ }
+ 
+ public class Main {
+     // to the outside world it looks like Printer actually prints.
+     public static void main(String[] args) {
+         Printer printer = new Printer();
+         printer.print();
+     }
+ }
+复杂的Java例子
+通过使用接口，委托可以做到类型安全并且更加灵活。在这个例子里，类别C可以委托类别A或类别B，类别C拥有方法使自己可以在类别A或类别B间选择。因为类别A或类别B必须实现接口I规定的方法，所以在这里委托是类型安全的。这个例子显示出委托的缺点是需要更多的代码。
+
+ interface I {
+     void f();
+     void g();
+ }
+ 
+ class A implements I {
+     public void f() { System.out.println("A: doing f()"); }
+     public void g() { System.out.println("A: doing g()"); }
+ }
+ 
+ class B implements I {
+     public void f() { System.out.println("B: doing f()"); }
+     public void g() { System.out.println("B: doing g()"); }
+ }
+ 
+ class C implements I {
+     // delegation
+     I i = new A();
+ 
+     public void f() { i.f(); }
+     public void g() { i.g(); }
+ 
+     // normal attributes
+     public void toA() { i = new A(); }
+     public void toB() { i = new B(); }
+ }
+ 
+ 
+ public class Main {
+     public static void main(String[] args) {
+         C c = new C();
+         c.f();     // output: A: doing f()
+         c.g();     // output: A: doing g()
+         c.toB();
+         c.f();     // output: B: doing f()
+         c.g();     // output: B: doing g()
+     }
+ }
+ 
+ python委托模式详细解释
+2018年01月11日 
+收集了网上的三个例子，然后做了些注释：
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+ 
+ 
+class Wrapper:
+    def __init__(self, obj):
+        self.wrapper = obj
+        print self.wrapper
+        print type(self.wrapper)
+        print"-"*100
+ 
+    def __getattr__(self, item):
+        print("trace:", item)
+        return getattr(self.wrapper, item)
+ 
+ 
+if __name__ == '__main__':
+    x = Wrapper([1, 2, 3, 4])
+    x.append(35)
+    x.remove(2)
+    print(x.wrapper)  # [1,3,4,35]
+ 
+在__init__(self,obj)方法中传入一个被委托对象。
+通过重写__getattr__(self,item)方法，拦截外部对象的属性调用
+在__getattr__(self,item)中，将拦截到的属性，让被委托对象去使用。
+
+python 中的属性概念，和Java中的属性概念是不同的。Java中的属性，就是指类中定义的成员变量，绝对不包含方法。而在python中，任何能以obj.xx形式调用的东西，全部可以称为属性。无论是方法，还是变量，还是对象。
+
+所以上述代码中调用x.append(N)，实际上是让x的属性wrapper去调用append(N)方法。
+
+上面传入的参数是[1,2,3,4]，是一个list类型的对象，该对象自然可以调用append remove这些方法。
+
+这个转载自：
+http://blog.csdn.net/DucklikeJAVA/article/details/73729212
+
+---------------------------------------------------------------------------------------------------------------
+
+#-*- encoding:utf-8 -*-
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+class A:
+    def f_one(self, x):
+        print"here is f_one"
+        print"x=",x
+        print"-"*100
+ 
+    def f_two(self):
+        print"here is f_two"
+        print"-"*100
+ 
+class B(A):
+    def __init__(self):
+        self._a = A()#也就是说在类B中有个成员变量例化了类A，_a是A的对象,不要太在意_a这个奇怪的名字
+    
+    def f_one(self, x):
+        return self._a.f_one(x)
+ 
+    def f_two(self):
+        return self._a.f_two()
+ 
+    def f_three(self):
+        print"Here is B(A)"
+if __name__ == '__main__':
+    b_test=B()
+    x=6
+    b_test.f_one(x)
+    b_test.f_two()
+    
+这就是一个最简单的委托，将A的实例在B类中生成，并且转化为B的一个私有属性，当我们需要访问A的属性的时候，加入我们只暴露B出来，这时候就只能通过B类来访问A类，这就达到了委托的效果。
+
+上面的这种方法使用情景为：有几个方法需要委托，当我们需要大量委托的时候这显然不是一个好办法，这时候还有另一个更巧妙的方法：getattr()方法，下面请看代码：
+
+#-*- encoding:utf-8 -*-
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+class A:
+    def f_one(self, x):
+        print"here is f_one"
+        print"x=",x
+        print"-"*100
+ 
+    def f_two(self):
+        print"here is f_two"
+        print"-"*100
+ 
+class B(A):
+    def __init__(self):
+        self._a = A()
+ 
+    def f_three(self):
+        pass
+ 
+    def __getattr__(self, name):#相当于重写了__getattr__,利用__getattr_来实现委托的效果（其实委托就是甩锅的意思啦，B搞不定，甩锅给A）
+        return getattr(self._a, name)
+if __name__ == '__main__':
+    b_test=B()
+    x=6
+    b_test.f_one(x)
+    b_test.f_two()
+ 
+
+这里要注意一下这个新的方法，这个方法的作用是用来查找所有的属性，放在这里时，如果代码中尝试访问这个类中不存在的属性时，会去调用实例_a中的属性，这样就可以实现大量的代理。
