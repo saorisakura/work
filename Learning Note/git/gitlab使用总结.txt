@@ -1,3 +1,23 @@
+git丢弃本地修改的所有文件（新增、删除、修改）
+2016年05月03日 15:15:34 leedaning 阅读数：124052
+版权声明：本文为博主原创文章，未经博主允许不得转载。	https://blog.csdn.net/leedaning/article/details/51304690
+本地修改了许多文件，其中有些是新增的，因为开发需要这些都不要了，想要丢弃掉，可以使用如下命令：
+
+git checkout . #本地所有修改的。没有的提交的，都返回到原来的状态
+git stash #把所有没有提交的修改暂存到stash里面。可用git stash pop回复。
+git reset --hard HASH #返回到某个节点，不保留修改。
+git reset --soft HASH #返回到某个节点。保留修改
+
+git clean -df #返回到某个节点
+git clean 参数
+    -n 显示 将要 删除的 文件 和  目录
+    -f 删除 文件
+    -df 删除 文件 和 目录
+
+也可以使用：
+
+git checkout . && git clean -xdf
+
 Bug分支
 阅读: 349105
 软件开发中，bug就像家常便饭一样。有了bug就需要修复，在Git中，由于分支是如此的强大，所以，每个bug都可以通过一个新的临时分支来修复，修复后，合并分支，然后将临时分支删除。
