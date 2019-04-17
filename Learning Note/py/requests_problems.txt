@@ -1,0 +1,21 @@
+Max retries exceeded with url
+使用requests库请求url，会出现这个错误，原因是：
+服务器负载过重，无法建立更多的链接，4种可能：
+http连接太多没有关闭导致的。
+机器的内存不够了。
+还有一种可能就是：由于请求频率过快，被目标网站封IP了
+请求的 url 地址错误
+解决办法：
+1. 增加重试连接次数
+requests.adapters.DEFAULT_RETRIES = 5
+2. 关闭多余的连接
+requests使用了urllib3库，默认的http connection是keep-alive的，requests设置False关闭。
+操作方法:
+s = requests.session()
+s.keep_alive = False
+HTTPConnectionPool(host='v.6.cn', port=80): Max retries exceeded with url: /api/liveAudit/postData.php (Caused by <class 'socket.error'>: [Errno 104] Connection reset by peer)
+HTTPConnectionPool(host='v.6.cn', port=80): Max retries exceeded with url: /api/liveAudit/postData.php (Caused by <class 'socket.error'>: [Errno 104] Connection reset by peer)
+HTTPConnectionPool(host='v.6.cn', port=80): Max retries exceeded with url: /api/liveAudit/postData.php (Caused by <class 'socket.error'>: [Errno 104] Connection reset by peer)
+HTTPConnectionPool(host='v.6.cn', port=80): Max retries exceeded with url: /api/liveAudit/postData.php (Caused by <class 'socket.error'>: [Errno 104] Connection reset by peer)
+HTTPConnectionPool(host='v.6.cn', port=80): Max retries exceeded with url: /api/liveAudit/postData.php (Caused by <class 'socket.error'>: [Errno 104] Connection reset by peer)
+Time: 1555473178.33, http://61.54.31.242:7788/v52539824-156231016-2019-04-17-11-49-2.jpg has been reported.
