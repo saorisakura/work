@@ -1,0 +1,213 @@
+Kubernetes 1.14.1已经正式发布，快速升级（含国内镜像快速下载链接）包括升级kubeadm/kubectl/kubelet版本、拉取镜像、升级Kubernetes集群三个主要步骤。参考《Ubuntu上软件锁定版本不更新》安装特定DockerCE版本。
+
+1、升级kubeadm/kubectl/kubelet版本
+sudo apt install kubeadm=1.14.1-00 kubectl=1.14.1-00 kubelet=1.14.1-00
+查看该版本的容器镜像版本：
+
+kubeadm config images list
+输出如下：
+
+~# kubeadm config images list
+
+k8s.gcr.io/kube-apiserver:v1.14.1
+k8s.gcr.io/kube-controller-manager:v1.14.1
+k8s.gcr.io/kube-scheduler:v1.14.1
+k8s.gcr.io/kube-proxy:v1.14.1
+k8s.gcr.io/pause:3.1
+k8s.gcr.io/etcd:3.3.10
+k8s.gcr.io/coredns:1.3.1
+2、拉取容器镜像
+原始的kubernetes镜像文件在gcr上，不能直接下载。我给镜像到了阿里云的杭州机房的容器仓库里，拉取还是比较快的。
+
+echo ""
+echo "=========================================================="
+echo "Pull Kubernetes v1.14.1 Images from aliyuncs.com ......"
+echo "=========================================================="
+echo ""
+
+MY_REGISTRY=registry.cn-hangzhou.aliyuncs.com/openthings
+
+## 拉取镜像
+docker pull ${MY_REGISTRY}/k8s-gcr-io-kube-apiserver:v1.14.1
+docker pull ${MY_REGISTRY}/k8s-gcr-io-kube-controller-manager:v1.14.1
+docker pull ${MY_REGISTRY}/k8s-gcr-io-kube-scheduler:v1.14.1
+docker pull ${MY_REGISTRY}/k8s-gcr-io-kube-proxy:v1.14.1
+docker pull ${MY_REGISTRY}/k8s-gcr-io-etcd:3.3.10
+docker pull ${MY_REGISTRY}/k8s-gcr-io-pause:3.1
+docker pull ${MY_REGISTRY}/k8s-gcr-io-coredns:1.3.1
+
+
+## 添加Tag
+docker tag ${MY_REGISTRY}/k8s-gcr-io-kube-apiserver:v1.14.1 k8s.gcr.io/kube-apiserver:v1.14.1
+docker tag ${MY_REGISTRY}/k8s-gcr-io-kube-scheduler:v1.14.1 k8s.gcr.io/kube-scheduler:v1.14.1
+docker tag ${MY_REGISTRY}/k8s-gcr-io-kube-controller-manager:v1.14.1 k8s.gcr.io/kube-controller-manager:v1.14.1
+docker tag ${MY_REGISTRY}/k8s-gcr-io-kube-proxy:v1.14.1 k8s.gcr.io/kube-proxy:v1.14.1
+docker tag ${MY_REGISTRY}/k8s-gcr-io-etcd:3.3.10 k8s.gcr.io/etcd:3.3.10
+docker tag ${MY_REGISTRY}/k8s-gcr-io-pause:3.1 k8s.gcr.io/pause:3.1
+docker tag ${MY_REGISTRY}/k8s-gcr-io-coredns:1.3.1 k8s.gcr.io/coredns:1.3.1
+
+echo ""
+echo "=========================================================="
+echo "Pull Kubernetes v1.14.1 Images FINISHED."
+echo "into registry.cn-hangzhou.aliyuncs.com/openthings, "
+echo "           by openthings@https://my.oschina.net/u/2306127."
+echo "=========================================================="
+
+echo ""
+保存为shell脚本，然后执行。
+
+或者，下载脚本：https://github.com/openthings/kubernetes-tools/blob/master/kubeadm/2-images/
+3、升级Kubernetes集群
+全新安装：
+
+#指定IP地址，1.14.1版本：
+sudo kubeadm init --kubernetes-version=v1.14.1 --apiserver-advertise-address=10.1.1.199 --pod-network-cidr=10.244.0.0/16
+
+#注意，CoreDNS已经内置，不再需要参数--feature-gates CoreDNS=true
+先查看一下需要升级的各个组件的版本。
+
+使用kubeadm upgrade plan ，输出的版本升级信息如下：
+
+COMPONENT            CURRENT   AVAILABLE
+API Server           v1.14.0   v1.14.1
+Controller Manager   v1.14.0   v1.14.1
+Scheduler            v1.14.0   v1.14.1
+Kube Proxy           v1.14.0   v1.14.1
+CoreDNS              1.3.1     1.3.1
+Etcd                 3.3.10    3.3.10
+确保上面的容器镜像已经下载（如果没有提前下载，可能被网络阻隔导致挂起），然后执行升级：
+
+kubeadm upgrade -y apply v1.14.1
+看到下面信息，就OK了。
+
+[upgrade/successful] SUCCESS! Your cluster was upgraded to "v1.14.1". Enjoy!
+然后，配置当前用户环境：
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+就可以使用 kubectl version 来查看状态和 kubectl cluster-info 查看服务地址。
+
+4、工作节点的升级
+每个工作节点需要拉取上面对应版本的镜像，以及安装kubelet的对应版本。
+
+检查版本：
+
+~$ kubectl version
+查看Pod信息：
+
+kubectl get pod --all-namespaces
+完成。
+
+echo ""
+echo "=========================================================="
+echo "Pull Kubernetes v1.14.1 Images from aliyuncs.com ......"
+echo "=========================================================="
+echo ""
+
+MY_REGISTRY=registry.aliyuncs.com/google_containers
+
+## 拉取镜像
+docker pull ${MY_REGISTRY}/kube-apiserver:v1.14.1
+docker pull ${MY_REGISTRY}/kube-controller-manager:v1.14.1
+docker pull ${MY_REGISTRY}/kube-scheduler:v1.14.1
+docker pull ${MY_REGISTRY}/kube-proxy:v1.14.1
+docker pull ${MY_REGISTRY}/etcd:3.3.10
+docker pull ${MY_REGISTRY}/pause:3.1
+docker pull ${MY_REGISTRY}/coredns:1.3.1
+
+
+## 添加Tag
+docker tag ${MY_REGISTRY}/kube-apiserver:v1.14.1 k8s.gcr.io/kube-apiserver:v1.14.1
+docker tag ${MY_REGISTRY}/kube-scheduler:v1.14.1 k8s.gcr.io/kube-scheduler:v1.14.1
+docker tag ${MY_REGISTRY}/kube-controller-manager:v1.14.1 k8s.gcr.io/kube-controller-manager:v1.14.1
+docker tag ${MY_REGISTRY}/kube-proxy:v1.14.1 k8s.gcr.io/kube-proxy:v1.14.1
+docker tag ${MY_REGISTRY}/etcd:3.3.10 k8s.gcr.io/etcd:3.3.10
+docker tag ${MY_REGISTRY}/pause:3.1 k8s.gcr.io/pause:3.1
+docker tag ${MY_REGISTRY}/coredns:1.3.1 k8s.gcr.io/coredns:1.3.1
+
+echo ""
+echo "=========================================================="
+echo "Pull Kubernetes v1.14.1 Images FINISHED."
+echo "into registry.cn-hangzhou.aliyuncs.com "
+echo "=========================================================="
+
+echo ""
+
+
+
+yum install kubeadm-1.14.1-0 kubectl-1.14.1-0 kubelet-1.14.1-0
+
+yum 安装指定版本
+To see what particular versions are available to you via yum you can use the --showduplicates switch.
+
+$ yum --showduplicates list httpd | expand
+Loaded plugins: fastestmirror, langpacks, refresh-packagekit
+Loading mirror speeds from cached hostfile
+ * fedora: mirror.steadfast.net
+ * rpmfusion-free: csc.mcs.sdsmt.edu
+ * rpmfusion-free-updates: csc.mcs.sdsmt.edu
+ * rpmfusion-nonfree: csc.mcs.sdsmt.edu
+ * rpmfusion-nonfree-updates: csc.mcs.sdsmt.edu
+ * updates: mirror.steadfast.net
+Available Packages
+httpd.x86_64                        2.4.6-6.fc20                         fedora 
+httpd.x86_64                        2.4.10-1.fc20                        updates
+As far as installing a particular version? You can append the version info to the name of the package like so:
+
+$ sudo yum install <package name>-<version info>
+For example in this case if I wanted to install the older version, 2.4.6-6 I'd do the following:
+
+$ sudo yum install httpd-2.4.6-6
+You can also include the release info when specifying a package. In this case since I'm dealing with Fedora 20 (F20) the release info would be "fc20", and the architecture info too.
+
+$ sudo yum install httpd-2.4.6-6.fc20
+$ sudo yum install httpd-2.4.6-6.fc20.x86_64
+repoquery
+If you're ever unsure that you're constructing the arguments right you can consult with repoquery too.
+
+$ sudo yum install yum-utils  # (to get `repoquery`)
+$ repoquery --show-duplicates httpd-2.4*
+httpd-0:2.4.6-6.fc20.x86_64
+httpd-0:2.4.10-1.fc20.x86_64
+downloading & installing
+You can also use one of the following options to download a particular RPM from the web, and then use yum to install it.
+
+$ yum --downloadonly <package>
+-or-
+$ yumdownloader <package>
+And then install it like so:
+
+$ sudo yum localinstall <path to rpm>
+What if I want to download everything that package X requires?
+
+$ yumdownloader --resolve <package>
+Example
+$ yumdownloader --resolve vim-X11
+Loaded plugins: langpacks, presto, refresh-packagekit
+Adding en_US to language list
+--> Running transaction check
+---> Package vim-X11.x86_64 2:7.3.315-1.fc14 set to be reinstalled
+--> Finished Dependency Resolution
+vim-X11-7.3.315-1.fc14.x86_64.rpm                              | 1.1 MB     00:01
+Notice it's doing a dependency check, and then downloading the missing pieces. See my answer that covers it in more details here: How to download a file from repo, and install it later w/o internet connection?.
+
+References
+Get yum to install a specific package version
+shareimprove this answer
+edited Apr 13 '17 at 12:36
+
+Community♦
+1
+answered Aug 22 '14 at 21:04
+
+slm♦
+256k71544690
+1
+I don't think it work for packages between the latest version located @updates and the initial version for the OS located @fedora. For example if you try to install httpd-2.4.8-1, yum would say package not available. – Question Overflow Aug 23 '14 at 8:51 
+@QuestionOverflow - not following. That version doesn't show as being available in the repo. – slm♦ Aug 23 '14 at 12:38
+1
+Let me try again with a real example from my yum log. python-libs-2.7.5-12.fc20.x86_64 was once installed on my computer but has since been replaced. Assuming now I want to install this specific package, yumdownloader python-libs-2.7.5-12* would say No Match for argument python-libs-2.7.5-12* Nothing to download. What I am trying to say is that once a new package arrive, the old one would no longer be accessible from yum. You can only install the latest package or the initial version, but not versions in between. – Question Overflow Aug 24 '14 at 4:13 
+2
+@QuestionOverflow - In that scenario I think you have to use yum downgrade ... if the package was already installed and you're attempting to go back to it later. In my Q I was attempting to show how one would hand select a particular version of a package that hadn't been installed yet. docs.fedoraproject.org/en-US/Fedora/14/html/… – slm♦ Aug 24 '14 at 7:53 
+No, it doesn't work even when upgrading to a specific package. I have experimented this with a fresh installation just a few days ago. You can only yum update to the latest package and not any version you desire. – Question Overflow Aug 24 '14 at 8:05

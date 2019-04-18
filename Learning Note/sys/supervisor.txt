@@ -1,3 +1,151 @@
+问题
+Sorry, supervisord responded but did not recognize the supervisor namespace commands that supervisorctl uses to control it.  Please check that the [rpcinterface:supervisor] section is enabled in the configuration file (see sample.conf).
+
+Add this to your /etc/supervisord.conf:
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+And restart supervisord:
+
+sudo /etc/init.d/supervisord restart
+
+
+脚本
+[root@ySex-manager001 ySex]# cat /etc/init.d/supervisord 
+#!/bin/bash
+#
+# supervisord   This scripts turns supervisord on
+#
+# Author:       Mike McGrath <mmcgrath@redhat.com> (based off yumupdatesd)
+#
+# chkconfig:    - 95 04
+#
+# description:  supervisor is a process control utility.  It has a web based
+#               xmlrpc interface as well as a few other nifty features.
+# processname:  supervisord
+# config: /etc/supervisord.conf
+# pidfile: /var/run/supervisord.pid
+#
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+
+start() {
+        echo -n $"Starting supervisord: "
+        daemon supervisord
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && touch /var/lock/subsys/supervisord
+}
+
+stop() {
+        echo -n $"Stopping supervisord: "
+        killproc supervisord
+        echo
+        [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/supervisord
+}
+
+restart() {
+        stop
+        start
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop) 
+        stop
+        ;;
+  restart|force-reload|reload)
+        restart
+        ;;
+  condrestart)
+        [ -f /var/lock/subsys/supervisord ] && restart
+        ;;
+  status)
+        status supervisord
+        RETVAL=$?
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status|restart|reload|force-reload|condrestart}"
+        exit 1
+esac
+
+exit $RETVAL
+
+(reverse-i-search)`w': du -sh /data/liyang/^Crk/ysex/erotic_consumer_supervisor_stdout.log
+[root@42 ~]# egrep -v "^$|^;" /etc/supervisord.conf               
+[unix_http_server]
+file=/tmp/supervisor.sock   ; the path to the socket file
+[supervisord]
+logfile=/tmp/supervisord.log ; main log file; default $CWD/supervisord.log
+logfile_maxbytes=50MB        ; max main logfile bytes b4 rotation; default 50MB
+logfile_backups=10           ; # of main logfile backups; 0 means none, default 10
+loglevel=info                ; log level; default info; others: debug,warn,trace
+pidfile=/tmp/supervisord.pid ; supervisord pidfile; default supervisord.pid
+nodaemon=false               ; start in foreground if true; default false
+minfds=1024                  ; min. avail startup file descriptors; default 1024
+minprocs=200                 ; min. avail process descriptors;default 200
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+[supervisorctl]
+serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
+[program:cerotic]
+directory=/data/liyang/work/ysex/
+autostart=False
+autorestart=True
+command=python2 minivideo_consumer.py
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=20
+stdout_logfile=/data/liyang/work/ysex/erotic_consumer_supervisor_stdout.log
+[program:myuwsgi]
+directory=/data/liyang/
+autostart=False
+autorestart=True
+command=/usr/local/bin/uwsgi --ini myuwsgi.ini
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=20
+stdout_logfile=/data/liyang/myuwsgi.log
+[root@42 ~]# supervisord -v
+3.3.4
+[root@42 ~]# uname -a
+Linux 42.62.27.78 2.6.32-696.1.1.el6.x86_64 #1 SMP Tue Apr 11 17:13:24 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+
+CentOS7配置Supervisor开机启动
+2017年06月26日
+
+配置Supervisor开机启动：
+
+新建一个“supervisord.service”文件
+
+dservice for systemd (CentOS 7.0+)
+by ET-CS (https://github.com/ET-CS)
+[Unit] 
+Description=Supervisor daemon
+
+[Service] 
+Type=forking 
+ExecStart=/usr/bin/supervisord -c /etc/supervisor/supervisord.conf 
+ExecStop=/usr/bin/supervisorctl shutdown 
+ExecReload=/usr/bin/supervisorctl reload 
+KillMode=process 
+Restart=on-failure 
+RestartSec=42s
+
+[Install] 
+WantedBy=multi-user.target
+
+将文件拷贝至：“/usr/lib/systemd/system/supervisord.service”
+
+配置开机自启 
+systemctl enable supervisord
+
+验证一下是否为开机启动：systemctl is-enabled supervisord
+
+
 supervisor 安装、配置、常用命令
 前言
 在 web 应用部署到线上后，需要保证应用一直处于运行状态，在遇到程序异常、报错等情况，导致 web 应用终止时，需要保证程序可以立刻重启，继续提供服务。
