@@ -1,3 +1,43 @@
+Python之队列queue模块使用 常见问题与用法
+2016年12月09日 11:04:44
+python 中，队列是线程间最常用的交换数据的形式。queue模块是提供队列操作的模块，虽然简单易用，但是不小心的话，还是会出现一些意外。
+
+1. 阻塞模式
+
+import queue
+
+q = queue.Queue(10)  #创建一个队列
+
+......
+       for i in range(10):
+               q.put('A')
+               time.sleep(0.5)
+
+这是一段极其简单的代码（另有两个线程也在操作队列q），我期望每隔0.5秒写一个'A'到队列中，但总是不能如愿：间隔时间有时会远远超过0.5秒。原来，Queue.put（）默认有 block = True 和 timeou 两个参数。当  block = True 时，写入是阻塞式的，阻塞时间由 timeou  确定。当队列q被（其他线程）写满后，这段代码就会阻塞，直至其他线程取走数据。Queue.put（）方法加上 block=False 的参数，即可解决这个隐蔽的问题。但要注意，非阻塞方式写队列，当队列满时会抛出 exception Queue.Full 的异常。
+
+2. 无法捕获 exception Queue.Empty 的异常
+
+while True:
+                ......
+                try:
+                        data = q.get()
+                except Queue.Empty:
+                        break
+
+我的本意是用队列为空时，退出循环，但实际运行起来，却陷入了死循环。这个问题和上面有点类似：Queue.get（）默认的也是阻塞方式读取数据，队列为空时，不会抛出 except Queue.Empty ，而是进入阻塞直至超时。 加上block=False 的参数，问题迎刃而解。
+
+3. Queue常用方法汇总
+
+Queue.Queue(maxsize=0)   FIFO， 如果maxsize小于1就表示队列长度无限
+       Queue.LifoQueue(maxsize=0)   LIFO， 如果maxsize小于1就表示队列长度无限
+       Queue.qsize()   返回队列的大小 
+       Queue.empty()   如果队列为空，返回True,反之False 
+       Queue.full()   如果队列满了，返回True,反之False
+       Queue.get([block[, timeout]])   读队列，timeout等待时间 
+       Queue.put(item, [block[, timeout]])   写队列，timeout等待时间 
+       Queue.queue.clear()   清空队列
+
+
 """A multi-producer, multi-consumer queue."""
 
 from time import time as _time
