@@ -1,3 +1,72 @@
+Redis 5.0 安装
+下载安装RedisServer
+
+mkdir –p /data/download && cd /data/download
+
+wget http://download.redis.io/releases/redis-5.0.0.tar.gz
+
+tar zxvf redis-5.0.0.tar.gz
+
+cd redis-5.0.0
+
+make install
+
+完成上面步骤之后，Redis相关bin文件件就已经安装到/usr/bin/local目录下了
+
+
+
+配置RedisServer
+
+mkdir –p /data/redis
+
+cat > /data/redis/redis.conf << 'EOF'
+port 6379
+bind 0.0.0.0
+#cluster-enabled yes
+#cluster-config-file nodes.conf
+#cluster-node-timeout 5000
+appendonly yes
+EOF
+
+启动RedisServer
+cd /data/redis
+/usr/local/bin/redis-server ./redis.conf
+
+配置守护服务
+cat > /etc/systemd/system/redis-6379.service << ‘EOF’
+[Unit]
+Description=redis service
+
+[Service]
+WorkingDirectory=/data/redis/
+ExecStart=/usr/local/bin/redis-server /data/redis/redis.conf
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=redis-service
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable redis-6379.service 
+>>: Created symlink /etc/systemd/system/multi-user.target.wants/redis-6379.service → /etc/systemd/system/redis-6379.service.
+
+启动服务
+systemctl start redis-6379.service 
+检查服务状态
+systemctl status redis-6379.service
+可以看到
+Active: active (running) since Sun 2018-10-21 03:35:09 EDT; 7s ago
+
+再通过netstat –nltp查看开放的端口，
+tcp        0      0 0.0.0.0:6379            0.0.0.0:*               LISTEN      5687/redis-server 0
+
+至此，Redis Server已经安装配置好，服务器重启之后也会自动启动
+
+
 Redis的过期策略和内存淘汰策略
 ！
 
