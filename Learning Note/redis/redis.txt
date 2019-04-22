@@ -1,3 +1,5 @@
+查看key的类型： type your-key
+
 Redis 5.0 安装
 下载安装RedisServer
 

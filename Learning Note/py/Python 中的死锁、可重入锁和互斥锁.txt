@@ -1,0 +1,42 @@
+举例讲解 Python 中的死锁、可重入锁和互斥锁
+2015/11/13 · 
+简单来说，死锁是一个资源被多次调用，而多次调用方都未能释放该资源就会造成死锁，这里结合例子说明下两种常见的死锁情况。
+1、迭代死锁
+该情况是一个线程“迭代”请求同一个资源，直接就会造成死锁：
+Python
+123456789101112131415161718192021 import threadingimport timeclass MyThread(threading.Thread):  def run(self):    global num    time.sleep(1)    if mutex.acquire(1):      num = num+1      msg = self.name+' set num to '+str(num)      print msg      mutex.acquire()      mutex.release()      mutex.release()num = 0mutex = threading.Lock()def test():  for i in range(5):    t = MyThread()    t.start()if __name__ == '__main__':  test()
+上例中，在run函数的if判断中第一次请求资源，请求后还未 release ，再次acquire，最终无法释放，造成死锁。这里例子中通过将print下面的两行注释掉就可以正常执行了 ，除此之外也可以通过可重入锁解决，后面会提到。
+2、互相调用死锁
+上例中的死锁是在同一个def函数内多次调用造成的，另一种情况是两个函数中都会调用相同的资源，互相等待对方结束的情况。如果两个线程分别占有一部分资源并且同时等待对方的资源，就会造成死锁。
+Python
+123456789101112131415161718192021222324252627282930313233343536 import threadingimport timeclass MyThread(threading.Thread):  def do1(self):    global resA, resB    if mutexA.acquire():       msg = self.name+' got resA'       print msg       if mutexB.acquire(1):         msg = self.name+' got resB'         print msg         mutexB.release()       mutexA.release()  def do2(self):    global resA, resB    if mutexB.acquire():       msg = self.name+' got resB'       print msg       if mutexA.acquire(1):         msg = self.name+' got resA'         print msg         mutexA.release()       mutexB.release()  def run(self):    self.do1()    self.do2()resA = 0resB = 0mutexA = threading.Lock()mutexB = threading.Lock()def test():  for i in range(5):    t = MyThread()    t.start()if __name__ == '__main__':  test()
+这个死锁的示例稍微有点复杂。具体可以理下。
+二、可重入锁
+为了支持在同一线程中多次请求同一资源，python提供了“可重入锁”：threading.RLock。RLock内部维护着一个Lock和一个counter变量，counter记录了acquire的次数，从而使得资源可以被多次require。直到一个线程所有的acquire都被release，其他的线程才能获得资源。这里以例1为例，如果使用RLock代替Lock，则不会发生死锁：
+Python
+123456789101112131415161718192021 import threadingimport timeclass MyThread(threading.Thread):  def run(self):    global num    time.sleep(1)    if mutex.acquire(1):      num = num+1      msg = self.name+' set num to '+str(num)      print msg      mutex.acquire()      mutex.release()      mutex.release()num = 0mutex = threading.RLock()def test():  for i in range(5):    t = MyThread()    t.start()if __name__ == '__main__':  test()
+和上面那个例子的不同之处在于threading.Lock()换成了threading.RLock() 。
+三、互斥锁
+python threading模块有两类锁：互斥锁（threading.Lock ）和可重用锁（threading.RLock）。两者的用法基本相同，具体如下：
+Python
+1234 lock = threading.Lock()lock.acquire()dosomething……lock.release()
+RLock的用法是将threading.Lock()修改为threading.RLock()。便于理解，先来段代码：
+1 [root@361way lock]# cat lock1.py
+Python
+123456789101112131415161718192021 #!/usr/bin/env python# coding=utf-8import threading              # 导入threading模块import time               # 导入time模块class mythread(threading.Thread):    # 通过继承创建类  def __init__(self,threadname):   # 初始化方法    # 调用父类的初始化方法    threading.Thread.__init__(self,name = threadname)  def run(self):             # 重载run方法    global x         # 使用global表明x为全局变量    for i in range(3):      x = x + 1    time.sleep(5)     # 调用sleep函数，让线程休眠5秒    print xtl = []               # 定义列表for i in range(10):  t = mythread(str(i))        # 类实例化  tl.append(t)           # 将类对象添加到列表中x=0                 # 将x赋值为0for i in tl:  i.start()
+这里执行的结果和想想的不同，结果如下：
+1 [root@361way lock]# python lock1.py
+12345678910 30303030303030303030
+为什么结果都是30呢？关键在于global 行和 time.sleep行。
+1、由于x是一个全局变量，所以每次循环后 x 的值都是执行后的结果值；
+2、由于该代码是多线程的操作，所以在sleep 等待的时候，之前已经执行完成的线程会在这等待，而后续的进程在等待的5秒这段时间也执行完成 ，等待print。同样由于global 的原理，x被重新斌值。所以打印出的结果全是30 ；
+3、便于理解，可以尝试将sleep等注释，你再看下结果，就会发现有不同。
+在实际应用中，如抓取程序等，也会出现类似于sleep等待的情况。在前后调用有顺序或打印有输出的时候，就会现并发竞争，造成结果或输出紊乱。这里就引入了锁的概念，上面的代码修改下，如下：
+1 [root@361way lock]# cat lock2.py
+Python
+1234567891011121314151617181920212223 #!/usr/bin/env python# coding=utf-8import threading              # 导入threading模块import time               # 导入time模块class mythread(threading.Thread):          # 通过继承创建类  def __init__(self,threadname):         # 初始化方法    threading.Thread.__init__(self,name = threadname)  def run(self):             # 重载run方法    global x            # 使用global表明x为全局变量    lock.acquire()           # 调用lock的acquire方法    for i in range(3):      x = x + 1    time.sleep(5)      # 调用sleep函数，让线程休眠5秒    print x    lock.release()        # 调用lock的release方法lock = threading.Lock()        # 类实例化tl = []             # 定义列表for i in range(10):  t = mythread(str(i))      # 类实例化  tl.append(t)       # 将类对象添加到列表中x=0            # 将x赋值为0for i in tl:  i.start()           # 依次运行线程
+执行的结果如下：
+1 [root@361way lock]# python lock2.py
+12345678910 36912151821242730
+
+加锁的结果会造成阻塞，而且会造成开锁大。会根据顺序由并发的多线程按顺序输出，如果后面的线程执行过快，需要等待前面的进程结束后其才能结束 －－－ 写的貌似有点像队列的概念了 ，不过在加锁的很多场景下确实可以通过队列去解决。
