@@ -1,3 +1,60 @@
+How to git pull and overwrite file conflicts
+
+I use git for version control. One of the biggest conveniences for me is running “git pull” to download the latest commits. But sometimes, the git pull fails because of a file that changed on the server. That’s usually my fault.
+
+$ git pull
+[...]
+* [new branch] master -> origin/master
+Updating 1e52df0..76637bf
+error: Your local changes to the following files would be overwritten by merge:
+templates/partials/nav.html.twig
+Please, commit your changes or stash them before you can merge.
+Aborting
+So here’s how to go about pulling from git anyways:
+
+From the directory you are trying to “git pull”
+
+git fetch --all
+ 
+Your shell will read “Fetching origin”
+Then execute the git reset command:
+
+git reset --hard origin/master
+ 
+You will see something similar to this output:
+HEAD is now at 76637bf fix truncate issue
+
+Confirmation:
+You can confirm that you’ve been reset by running a git pull:
+
+$ git pull
+Already up-to-date.
+Here was my exact shell session (with a few git pull errors redacted)
+
+$ git pull
+[...]
+* [new branch] master -> origin/master
+Updating 1e52df0..76637bf
+error: Your local changes to the following files would be overwritten by merge:
+templates/partials/nav.html.twig
+Please, commit your changes or stash them before you can merge.
+Aborting
+ 
+$ git fetch --all
+Fetching origin
+$ git reset --hard origin/master
+HEAD is now at 76637bf fix truncate issue
+$ git pull
+Already up-to-date.
+$
+Exception:
+If you want to pull a different branch other than master, you need to define that.
+
+
+1
+2
+git reset --hard origin/my_branch
+
 git丢弃本地修改的所有文件（新增、删除、修改）
 2016年05月03日 15:15:34 leedaning 阅读数：124052
 版权声明：本文为博主原创文章，未经博主允许不得转载。	https://blog.csdn.net/leedaning/article/details/51304690
