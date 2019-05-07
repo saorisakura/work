@@ -1,0 +1,418 @@
+Go语言接口定义
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-25
+
+
+Go语言接口定义
+
+接口介绍
+
+Go 语言中的接口很特别，而且提供了难以置信的一系列灵活性和抽象性。它们指定一个特定类型的值和指针表现为特定的方式。从语言角度看，接口是一种类型，它指定一个方法集，所有方法为接口类型就被认为是该接口。
+
+interface是一种类型，默认是一个指针。interface类型可以定义一组方法，但是这些不需要实现。并且interface不能包含任何变量。
+
+接口定义
+
+第一种，定义一个空接口
+
+空接口 interface{} 没有任何方法签名，也就意味着任何类型都实现了空接口。
+
+var i interface{}
+第二种，定义一个接口，并赋值
+
+var name interface{} = "oldboy"
+第三种，使用interface定义一组方法，方法签名的集合
+
+type I interface {
+    method1()                            // 无参数、无返回值
+    method2(i int)                       // 单参数、无返回值
+    method3(x, y int)                    // 多参数、无返回值
+    method4() (i int)                    // 无参数、单返回值
+    method5(x, y int) (z int, err error) //多参数、多返回值
+}
+类型断言
+
+Go语言类型断言语法为value, ok := em.(T) 如果确保em 是同类型的时候可以直接使用value:=em.(T)一般用于switch语句中。
+
+em ：代表要判断的变量
+
+T ：代表被判断的类型
+
+value：代表返回的值
+
+ok：代表是否为改类型
+
+注意：要判断的变量必须为initerface类型才可以进行类型断言。
+
+package main
+
+import "fmt"
+
+func main() {
+    s := "golang"
+    if v, ok := s.(string); ok {
+        fmt.Println(v)
+    }
+}
+编译错误：
+
+./main.go:7:15: invalid type assertion: s.(string) (non-interface type string on left)
+用 switch 做批量类型判断，不支持 fallthrough，实例如下：
+
+package main
+
+import "fmt"
+
+type User struct {
+    id   int
+    name string
+}
+
+func (self *User) String() string {
+    return fmt.Sprintf("%d, %s", self.id, self.name)
+}
+
+func main() {
+    var i interface{} = &User{18, "oldboy"}
+
+    switch v := i.(type) {
+    case nil:
+        fmt.Println("nil")
+    case fmt.Stringer:
+        fmt.Println(v)
+    case func() string:
+        fmt.Println(v())
+    case *User:
+        fmt.Printf("%d, %s\n", v.id, v.name)
+    default:
+        fmt.Println("unknown")
+    }
+}
+
+Go语言接口规则
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-29
+
+
+Go语言接口规则
+
+接口是一个或多个方法签名的集合。任何类型的方法集中只要拥有该接口对应的全部方法签名。就表示它 "实现" 了该接口，无须在该类型上显式声明实现了哪个接口。对应方法，是指有相同名称、参数列表 (不包括参数名) 以及返回值，该类型也可以有其他方法。
+
+接口赋值
+
+对象赋值给接口时，会发生拷贝，而接口内部存储的是指向这个复制品的指针，既无法修改复制品的状态，也无法获取指针。
+
+package main
+
+import "fmt"
+
+type User struct {
+    id   int
+    name string
+}
+
+func main() {
+    u := User{18, "oldboy"}
+    var i interface{} = u
+
+    u.id = 20
+    u.name = "Golang"
+
+    fmt.Printf("u : %v\n", u)
+    fmt.Printf("i.(User) : %v\n", i.(User))
+}
+运行结果：
+
+u : {20 Golang}
+i.(User) : {18 oldboy}
+接口转型返回临时对象，只有使用指针才能修改其状态。
+
+package main
+
+import "fmt"
+
+type User struct {
+    id   int
+    name string
+}
+
+func main() {
+    u := User{18, "oldboy"}
+    var vi, pi interface{} = u, &u
+
+    // vi.(User).name = "Golang"
+    pi.(*User).name = "Golang"
+
+    fmt.Printf("vi.(User) : %v\n", vi.(User))
+    fmt.Printf("pi.(*User) : %v\n", pi.(*User))
+}
+空接口
+
+只有当接口存储的类型和对象都为nil时，接口才等于nil。
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var i interface{}
+    fmt.Printf("i => %v\n", i)
+    fmt.Printf("(i == nil) => %v\n", i == nil)
+
+    var p *int = nil
+    // i 指向 p，指向的对象是个nil，但是存在类型不是nil，是个指针
+    i = p
+    fmt.Printf("i => %v\n", i)
+    fmt.Printf("(i == nil) => %v\n", i == nil)
+}
+运行结果：
+
+i => <nil>
+(i == nil) => true
+i => <nil>
+(i == nil) => false
+接口实现
+
+接口只有方法声明，没有数据字段，没有实现，也不需要显示的实现。只要一个变量，含有接口类型中的所有方法，那么这个变量就实现这个接口。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Info interface {
+    GetAge() int
+    GetName() string
+}
+
+type User struct {
+    name string
+    age  int
+}
+
+func (u User) GetAge() int {
+    return u.age
+}
+func (u User) GetName() string {
+    return u.name
+}
+
+func main() {
+    var user Info = User{"oldboy", 18}
+    age := user.GetAge()
+    name := user.GetName()
+    fmt.Println(age, name)
+}
+如果一个变量含有了多个interface类型的方法，那么这个变量就实现了多个接口。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Age interface {
+    GetAge() int
+}
+
+type Name interface {
+    GetName() int
+}
+type User struct {
+    name string
+    age  int
+}
+
+func (u User) GetAge() int {
+    return u.age
+}
+
+func (u User) GetName() string {
+    return u.name
+}
+
+func main() {
+    user := User{"oldboy", 18}
+    age := user.GetAge()
+    name := user.GetName()
+    fmt.Println(age, name)
+}
+如果一个变量只含有了一个interface的部分方法，那么这个变量没有实现这个接口。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Info interface {
+    GetAge() int
+    GetName() string
+}
+
+type User struct {
+    name string
+    age  int
+}
+
+func (u User) GetAge() int {
+    return u.age
+}
+
+func main() {
+    var user Info = User{"oldboy", 18}
+    age := user.GetAge()
+    fmt.Println(age)
+}
+编译错误：
+
+./main.go:22:6: cannot use User literal (type User) as type Info in assignment:
+    User does not implement Info (missing GetName method)
+	
+Go语言接口应用
+
+Go程序员开发  2018-11-01
+
+
+Go语言接口应用
+接口嵌套
+
+接口可以匿名嵌入其他接口，或嵌入到结构中。如果一个interface1作为interface2的一个嵌入字段，那么interface2隐式的包含了interface1里面的方法。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Info interface {
+    Age
+    Name
+}
+
+type Age interface {
+    GetAge() int
+}
+
+type Name interface {
+    GetName() string
+}
+type User struct {
+    name string
+    age  int
+}
+
+func (u User) GetAge() int {
+    return u.age
+}
+
+func (u User) GetName() string {
+    return u.name
+}
+
+func main() {
+    user := User{"oldboy", 18}
+    var u Info
+    u = user
+    age := u.GetAge()
+    name := u.GetName()
+    fmt.Println(age, name)
+}
+匿名接口可用作变量类型，或结构成员。
+
+package main
+
+import "fmt"
+
+type Info struct {
+    u interface {
+        GetUser() string
+    }
+}
+
+type User struct {
+    id   int
+    name string
+}
+
+func (self *User) GetUser() string {
+    return fmt.Sprintf("user %d, %s", self.id, self.name)
+}
+
+func main() {
+    t := Info{&User{18, "oldboy"}}
+    fmt.Println(t.u.GetUser())
+}
+接口检查
+
+超集接口对象可转换为子集接口，反之出错。
+
+package main
+
+import "fmt"
+
+type Stringer interface {
+    String() string
+}
+
+type Printer interface {
+    String() string
+    Print()
+}
+
+type User struct {
+    id   int
+    name string
+}
+
+func (self *User) String() string {
+    return fmt.Sprintf("%d, %v", self.id, self.name)
+}
+
+func (self *User) Print() {
+    fmt.Println(self.String())
+}
+
+func main() {
+    var o Printer = &User{18, "oldboy"}
+    var s Stringer = o
+    fmt.Println(s.String())
+}
+接口技巧
+
+让编译器检查，以确保某个类型实现接口。
+
+package main
+
+import "fmt"
+
+type Data struct {
+    id   int
+    name string
+}
+
+func (self *Data) String() string {
+    return fmt.Sprintf("%d, %s", self.id, self.name)
+}
+func main() {
+    var _ fmt.Stringer = (*Data)(nil)
+}
+某些时候，让函数直接 "实现" 接口能省不少事。
+
+package main
+
+type Tester interface {
+    Do()
+}
+
+type FuncDo func()
+
+func (self FuncDo) Do() { self() }
+
+func main() {
+    var t Tester = FuncDo(func() { println("Hello, World!") })
+    t.Do()
+}

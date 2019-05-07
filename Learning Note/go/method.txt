@@ -1,0 +1,492 @@
+Go语言方法定义
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-15
+
+
+Go语言方法定义
+方法介绍
+在 Go 语言中有一个概念和函数极其相似，叫做方法 。Go 语言的方法其实是作用在接收者（receiver）上的一个函数，接收者是某种非内置类型的变量。因此方法是一种特殊类型的函数。
+
+接收者类型可以是（几乎）任何类型，不仅仅是结构体类型：任何类型都可以有方法，甚至可以是函数类型，可以是 int、bool、string 或数组的别名类型。但是接收者不能是接口类型。
+
+方法的声明和普通函数的声明类似，只是在函数名称前面多了一个参数，这个参数把这个方法绑定到这个参数对应的类型上。
+
+方法定义
+首先声明一个自定义类型Test
+
+type Test struct{}
+方法参数 receiver 类型可以是 Test 或 *Test。类型 Test不能是接口或指针。
+
+第一种，定义一个无参数、无返回值的方法
+
+func (t Test) method() {
+}
+func (t *Test) method() {
+
+}
+第二种，定义一个单参数、无返回值的方法
+
+func (t Test) method(i int) {
+}
+func (t *Test) method(i int) {
+
+}
+第三种，定义一个多参数、无返回值的方法
+
+func (t Test) method(x, y int) {
+
+}
+func (t *Test) method(x, y int) {
+
+}
+第四种，定义一个无参数、单返回值的方法
+
+func (t Test) method() (i int) {
+    return
+}
+func (t *Test) method() (i int) {
+    return
+}
+第五种，定义一个多参数、多返回值的方法
+
+func (t Test) method(x, y int) (z int, err error) {
+    return
+}
+func (t *Test) method(x, y int) (z int, err error) {
+    return
+}
+方法和函数的关系
+
+方法是特殊的函数，定义在某一特定的类型上，通过类型的实例来进行调用，这个实例被叫接收者。
+
+接收者必须有一个显式的名字，这个名字必须在方法中被使用。 接收者类型必须在和方法同样的包中被声明。
+
+注意： Go语言不允许为简单的内置类型添加方法，下面定义的方法是非法的。
+
+package main
+
+import (
+    "fmt"
+)
+
+//方法不能是内置数据类型
+func (a int) Add(b int) {
+    fmt.Println(a + b)
+}
+编译错误：
+
+cannot define new methods on non-local type int
+我们可以用Go语言的type，来定义一个和int具有同样功能的类型。这个类型不能看成是int类型的别名，它们属于不同的类型，不能直接相互赋值。
+
+合法的方法定义如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+type myInt int
+
+func (a myInt) Add(b myInt) {
+    fmt.Println(a + b)
+}
+
+func main() {
+    var x, y myInt = 3, 6
+    x.Add(y)
+}
+函数与方法的区别
+
+1、对于普通函数，接收者为值类型时，不能将指针类型的数据直接传递，反之亦然。
+2、对于方法（如struct的方法），接收者为值类型时，可以直接用指针类型的变量调用方法，反过来同样也可以。
+
+Go语言方法规则
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-18
+
+
+Go语言方法规则
+根据调用者不同，方法分为两种表现形式：方法（method value）、方法表达式（method expression）。
+
+两者都可像普通函数那样赋值和传参，区别在于 方法 （method value）绑定了实例，而方法表达式（method expression）必须显式传参。
+
+直接调用
+
+直接调用，类型 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    int
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t1 := T{1}
+    fmt.Printf("t1 is : %v\n", t1)
+    t1.testT()
+    t1.testP()
+
+    t2 := &t1
+    fmt.Printf("t2 is : %v\n", t2)
+    t2.testT()
+    t2.testP()
+}
+直接调用，类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    int
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{1}}
+    st2 := &st1
+    fmt.Printf("st1 is : %v\n", st1)
+    st1.testT()
+    st1.testP()
+    fmt.Printf("st2 is : %v\n", st2)
+    st2.testT()
+    st2.testP()
+
+    sp1 := SP{&T{1}}
+    sp2 := &sp1
+    fmt.Printf("sp1 is : %v\n", sp1)
+    sp1.testT()
+    sp1.testP()
+    fmt.Printf("sp2 is : %v\n", sp2)
+    sp2.testT()
+    sp2.testP()
+}
+隐式传递调用
+
+接受者隐式传递，类型 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t := T{"oldboy"}
+    methodValue1 := t.testT
+    methodValue1()
+    methodValue2 := (&t).testT
+    methodValue2()
+    methodValue3 := t.testP
+    methodValue3()
+    methodValue4 := (&t).testP
+    methodValue4()
+}
+接受者隐式传递，类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{"oldboy"}}
+    methodValue1 := st1.testT
+    methodValue1()
+    methodValue2 := (&st1).testT
+    methodValue2()
+    methodValue3 := st1.testP
+    methodValue3()
+    methodValue4 := (&st1).testP
+    methodValue4()
+
+    sp1 := SP{&T{"oldboy"}}
+    methodValue5 := sp1.testT
+    methodValue5()
+    methodValue6 := (&sp1).testT
+    methodValue6()
+    methodValue7 := sp1.testP
+    methodValue7()
+    methodValue8 := (&sp1).testP
+    methodValue8()
+}
+显式传递调用
+
+接受者显示传值，类型 T 的可调用方法集包含接受者为 T 的所有方法，不包含接受者为 *T 的方法。类型 *T 的可调用方法集包含接受者为 *T 或 T 的所有方法集。
+
+package main
+
+import (
+    "fmt"
+)
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("接受者为 T ")
+}
+
+func (t *T) testP() {
+    fmt.Println("接受者为 *T ")
+}
+
+func main() {
+    t := T{"oldboy"}
+    expression1 := T.testT
+    expression1(t)
+    expression2 := (*T).testT
+    expression2(&t)
+
+    // expression3 := T.testP
+    // expression3(t)
+    expression4 := (*T).testP
+    expression4(&t)
+
+}
+接受者显示传值，类型 S 包含匿名字段 *T ，则 S 和 *S 方法集包含 T 和 *T 上的方法集是互相继承的。
+类型 S 包含匿名字段 T ，类型 S 的可调用方法集包含接受者为 T 的所有方法，不包含接受者为 *T 的方法。类型 *S 的可调用方法集包含接受者为 *T 或 T 的所有方法集。
+
+package main
+
+import (
+    "fmt"
+)
+
+type ST struct {
+    T
+}
+
+type SP struct {
+    *T
+}
+
+type T struct {
+    string
+}
+
+func (t T) testT() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 T 方法")
+}
+func (t *T) testP() {
+    fmt.Println("类型 S 包含匿名字段 *T 或 T ，则 S 和 *S 方法集包含 *T 方法")
+}
+
+func main() {
+    st1 := ST{T{"oldboy"}}
+    expression1 := ST.testT
+    expression1(st1)
+    expression2 := (*ST).testT
+    expression2(&st1)
+    // expression3 := ST.testP
+    // expression3(st1)
+    expression4 := (*ST).testP
+    expression4(&st1)
+
+    sp1 := SP{&T{"oldboy"}}
+    expression5 := SP.testT
+    expression5(sp1)
+    expression6 := (*SP).testT
+    expression6(&sp1)
+    expression7 := SP.testP
+    expression7(sp1)
+    expression8 := (*SP).testP
+    expression8(&sp1)
+}
+
+Go语言方法应用
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-22
+
+
+Go语言方法应用
+
+匿名字段
+
+Go语言支持只提供类型，而不写字段名的方式，也就是匿名字段，也称为嵌入字段。
+
+当匿名字段是一个struct的时候，那么这个struct所拥有的全部字段都被隐式地引入了当前定义的这个struct。
+
+Go语言匿名字段可以像字段成员那样访问匿名字段方法，编译器负责查找。
+
+package main
+
+import "fmt"
+
+type Student struct {
+    id   int
+    name string
+}
+
+type Course struct {
+    Student
+}
+
+func (self *Student) ToString() string {
+    return fmt.Sprintf("Student: %p, %v", self, self)
+}
+
+func main() {
+    c := Course{Student{1, "oldboy"}}
+    fmt.Printf("Course: %p\n", &c)
+    fmt.Println(c.ToString())
+}
+运行结果：
+
+Class: 0xc0420023e0
+User: 0xc0420023e0, &{1 oldboy}
+Go 语言不像其它面相对象语言一样可以写个类，然后在类里面写一堆方法，但其实Go语言的方法很巧妙的实现了这种效果：我们只需要在普通函数前面加个接受者（receiver，写在函数名前面的括号里面），这样编译器就知道这个函数（方法）属于哪个struct了。
+
+继承复用
+
+Go语言中没有继承，但是可以依靠组合来模拟继承和多态。
+
+通过匿名字段，可获得和继承类似的复用能力。依据编译器查找次序，只需在外层定义同名方法，就可以实现。
+
+package main
+
+import "fmt"
+
+type Student struct {
+    id   int
+    name string
+}
+
+type Course struct {
+    Student
+    title string
+}
+
+func (self *Student) ToString() string {
+    return fmt.Sprintf("Student: %p, %v", self, self)
+}
+
+func (self *Course) ToString() string {
+    return fmt.Sprintf("Course: %p, %v", self, self)
+}
+
+func main() {
+    c := Course{Student{1, "oldboy"}, "Golang"}
+
+    fmt.Println(c.ToString())
+
+    fmt.Println(c.Student.ToString())
+}
+运行结果：
+
+Course: 0xc04207e060, &{{1 oldboy} Golang}
+Student: 0xc04207e060, &{1 oldboy}
+自定义ERROR
+错误是可以用字符串描述自己的任何东西。 可以由预定义的内建接口类型 error，和其返回字符串的方法 Error 构成。
+
+type error interface {
+Error() string
+}
+当用 fmt 包的多种不同的打印函数输出一个 error 时，会自动的调用该方法。
+
+package main
+
+import (
+    "fmt"
+    "os"
+    "time"
+)
+
+type PathError struct {
+    path       string
+    op         string
+    createTime string
+    message    string
+}
+
+func (p *PathError) Error() string {
+    return fmt.Sprintf("path=%s \nop=%s \ncreateTime=%s \nmessage=%s", p.path,
+        p.op, p.createTime, p.message)
+}
+
+func Open(filename string) error {
+
+    file, err := os.Open(filename)
+    if err != nil {
+        return &PathError{
+            path:       filename,
+            op:         "read",
+            message:    err.Error(),
+            createTime: fmt.Sprintf("%v", time.Now()),
+        }
+    }
+
+    defer file.Close()
+    return nil
+}
+
+func main() {
+    err := Open("/oldboy/golang.go")
+    switch v := err.(type) {
+    case *PathError:
+        fmt.Println("get path error,", v)
+    default:
+    }
+}

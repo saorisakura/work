@@ -1,0 +1,477 @@
+Go语言函数定义
+
+Go程序员开发  2018-09-17
+
+Go语言函数定义
+函数是基本的代码块，用于执行一个任务。
+
+Go语言函数特点：
+
+1、关键字func用来声明一个函数funcName；
+2、函数可以有一个或者多个参数，每个参数后面带有类型，通过逗号（,）分隔；
+3、函数可以返回多个值；
+4、返回值可以使用声明变量，如果不想声明也可以直接使用返回值的类型；
+5、如果只有一个返回值且不声明返回值变量，那么你可以省略 包括返回值 的括号；
+6、如果没有返回值，可以直接省略最后的返回信息；
+7、如果有返回值， 必须在函数的外层添加return语句，否则会引发编译错误；
+8、函数也是一种类型，一个函数可以赋值给变量，可作为参数传递；
+9、函数不支持嵌套，一个包不能有两个名字一样的函数。不支持重载，不支持 默认参数
+
+函数定义
+
+第一种，定义一个无参数，无返回值的函数
+
+func funcName() {
+
+}
+第二种，定义一个参数，无返回值的函数
+
+func Print(str string) {
+    println(str)
+}
+第三种，定义多个参数的函数，一个返回值的函数
+
+func sum(x, y int) int {
+    return x + y
+}
+第四种，定义一个多返回值的函数
+
+func oldboy(str string) (ret string, err error) {
+    if str == "Go" {
+        return "老男孩IT教育，只培养技术精英。", nil
+    }
+    return "", errors.New("error")
+}
+第五种，返回值只有类型，无变量声明函数
+
+func oldboy(str string) (string, error) {
+    if str == "Go" {
+        return "老男孩IT教育，只培养技术精英。", nil
+    }
+    return "", errors.New("error")
+}
+函数类型
+
+第一种，定义一个无参数，无返回值的函数类型
+
+type funcType func()
+第二种，定义一个参数，无返回值的函数类型
+
+type funcType func(string)
+第三种，定义多个参数的函数，一个返回值的函数类型
+
+type funcType func(x, y int) int
+第四种，定义一个多返回值的函数类型
+
+type funcType func(string) (string, error)
+
+
+Go语言函数参数
+
+Go程序员开发  2018-09-20
+
+Go语言函数参数
+函数参数
+
+实际参数简称“实参”。在调用有参函数时，函数名后面括号中的参数称为“实际参数”，实参可以是常量、变量或表达式。
+
+自定义函数中的“形参”全称为"形式参数" 由于它不是实际存在变量，所以又称虚拟变量。实参和形参可以重名。形参的作用域是整个函数体就像定义在函数体内的局部变量。
+
+参数传递
+
+第一种，值传递：指在调用函数时将实际参数复制一份传递到函数中，这样在函数中如果对参数进行修改，将不会影响到实际参数。
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var x int = 1
+    var y int = 2
+    // 值传递
+    z := sum(x, y)
+    fmt.Println(z)
+}
+
+func sum(x, y int) int {
+    return x + y
+}
+第二种，引用传递：是指在调用函数时将实际参数的地址传递到函数中，那么在函数中对参数所进行的修改，将影响到实际参数。
+
+package main
+import (
+    "fmt"
+)
+
+func swap(x, y *string) {
+    var temp string
+
+    temp = *x
+    *x = *y
+    *y = temp
+
+}
+
+func main() {
+    var course1, course2 string = "Python", "Golang"
+
+    swap(&course1, &course2)
+
+    fmt.Println(course1, course2)
+}
+第三种，固定类型可变参数：就是函数的参数不是固定的，后面的类型是固定的。
+
+package main
+
+import (
+    "fmt"
+)
+
+func variable(name string, course ...string) {
+    fmt.Println("可变参数的长度:", len(course))
+    for _, val := range course {
+        fmt.Println(name, val)
+    }
+}
+
+func main() {
+    variable("oldboy", "linux", "golang", "python", "java")
+}
+第四种，任意类型的不定参数：就是函数的参数和每个参数的类型都不是固定的。形参用interface{}传递任意类型数据。
+
+package main
+
+import (
+    "fmt"
+)
+
+type Person struct {
+    name string
+}
+
+func variable(values ...interface{}) {
+    for _, val := range values {
+        switch v := val.(type) {
+        case int:
+            fmt.Println("val type is int ", v)
+        case float64:
+            fmt.Println("val type is float ", v)
+        case string:
+            fmt.Println("val type is string ", v)
+        case bool:
+            fmt.Println("val type is bool ", v)
+        case Person:
+            fmt.Println("val type is Person ", v.name)
+        case *Person:
+            fmt.Println("val type is *Person ", v.name)
+        default:
+            fmt.Println("val type is unknow ", v)
+        }
+    }
+}
+
+func main() {
+    temp_int := 1
+    temp_float := 5.6
+    temp_string := "hello"
+    temp_bool := true
+    temp_person1 := &Person{name: "jack"}
+    temp_person2 := Person{name: "rose"}
+    var temp_float32 float32 = 6.6
+
+    variable(temp_int, temp_float, temp_string, temp_bool, temp_person1, temp_person2, temp_float32)
+}
+第五种，函数类型参数：就是函数类型赋值给变量，作为参数传递应用。
+
+package main
+
+import "fmt"
+
+// 定义函数类型
+type myfunc func(string, string)
+
+func addperfix(perfix, name string) {
+    fmt.Println(perfix, name)
+}
+
+// 第二个参数用匿名函数当参数
+func sayhello(name string, f myfunc) {
+    f("hello", name)
+}
+
+func main() {
+    sayhello("oldboy", addperfix)
+}
+注意：
+
+1、Go语言函数中的参数不支持默认值。
+
+2、无论是值传递，还是引用传递，传递给函数的都是变量的副本，不过，值传递是值的拷贝。引用传递是地址的拷贝，一般来说，地址拷贝更为高效。而值拷贝取决于拷贝的对象大小，对象越大，则性能越低。
+
+3、map、slice、chan、指针、interface默认以引用的方式传递。
+
+4、函数的可变参数只能有一个，且必须是最后一个。
+
+5、在参数赋值时可以不用用一个一个的赋值，可以直接传递一个数组或者切片，特别注意的是在参数后加上“…”即可。实例如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+func oldboy(name string, c ...string) string {
+    var course string
+    for _, val := range c {
+        course += val
+    }
+
+    return fmt.Sprintf(name, course)
+}
+
+func main() {
+    course := []string{"linux ", "golang ", "python ", "java"}
+    res := oldboy("oldboy: %s", course...) // ... 展开slice
+    fmt.Println(res)
+}
+
+Go语言匿名函数
+
+匿名函数
+
+匿名函数是指不需要定义函数名的一种函数实现方式。1958年LISP首先采用匿名函数。
+
+在Go里面，函数可以像普通变量一样被传递或使用，Go语言支持随时在代码里定义匿名函数。
+
+匿名函数由一个不带函数名的函数声明和函数体组成。匿名函数的优越性在于可以直接使用函数内的变量，不必声明。
+
+匿名函数定义
+
+第一种，先声明一个函数类型的变量，然后定义一个匿名函数
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    var sum func(int, int) int
+    sum = func(x, y int) int {
+        return x + y
+    }
+    fmt.Println(sum(1, 2))
+}
+第二种，使用更简略的 ":=" 方式定义一个匿名函数
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    product := func(x, y int) int {
+        return x * y
+    }
+    fmt.Println(product(3, 3))
+}
+匿名函数应用
+
+1、匿名函数的变量为函数地址
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    sum := func(x, y int) int {
+        return x + y
+    }
+    fmt.Printf("sum -> %v  sum(1,3) = %v\n", sum, sum(1, 3))
+}
+2、直接创建匿名函数执行并返回结果
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    product := func(x, y int) int {
+        return x * y
+    }(3, 3)
+    fmt.Printf("product = %d\n", product)
+}
+
+Go语言闭包函数
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-01
+
+Go语言闭包函数
+
+基本概念
+
+闭包是可以包含自由（未绑定到特定对象）变量的代码块，这些变量不在这个代码块内或者任何全局上下文中定义，而是在定义代码块的环境中定义。要执行的代码块（由于自由变量包含在代码块中，所以这些自由变量以及它们引用的对象没有被释放）为自由变量提供绑定的计算环境（作用域）。
+
+闭包的价值
+
+闭包的价值在于可以作为函数对象或者匿名函数，对于类型系统而言，这意味着不仅要表示数据还要表示代码。支持闭包的多数语言都将函数作为第一级对象，就是说这些函数可以存储到变量中作为参数传递给其他函数，最重要的是能够被函数动态创建和返回。
+
+Go语言闭包
+
+1、Go语言是支持闭包的，实例如下：
+
+package main
+
+import (
+    "fmt"
+)
+
+func a() func() int {
+    i := 0
+    b := func() int {
+        i++
+        fmt.Println(i)
+        return i
+    }
+    return b
+}
+
+func main() {
+    c := a()
+    c()
+    c()
+    c()
+
+    a() 
+
+    fmt.Println("-------")
+
+    d := a()
+    d()
+    d()
+    d()
+}
+运行结果：
+
+1
+2
+3
+-------
+1
+2
+3
+上述代码分析：
+
+函数b嵌套在函数a内部，函数a返回函数b。
+
+代码在执行完 c := a() 后，变量c实际上是指向了函数b()，再执行函数c()后就会显示 i 的值，第一次为1，第二次为2，第三次为3，以此类推。
+其实，这段代码就创建了一个闭包。因为函数 a() 外的变量 c 引用了函数 a() 内的函数 b() ，就是说：
+
+当函数 a() 的内部函数 b() 被函数 a() 外的一个变量引用的时候，就创建了一个闭包。
+在上面的例子中，由于闭包的存在使得函数 a() 返回后，a 中的 i 始终存在，这样每次执行 c() ，i都是自加1后的值。
+从上面可以看出闭包的作用就是在a()执行完并返回后，闭包使得Golang的垃圾回收机制GC不会收回 a() 所占用的资源，因为 a() 的内部函数 b() 的执行需要依赖 a() 中的变量 i 。
+
+在给定函数被多次调用的过程中，这些私有变量能够保持其持久性。变量的作用域仅限于包含它们的函数，因此无法从其它程序代码部分进行访问。不过，变量的生存期是可以很长，在一次函数调用期间所创建所生成的值在下次函数调用时仍然存在。正因为这一特点，闭包可以用来完成信息隐藏，并进而应用于需要状态表达的某些编程范型中。
+
+如果 a() 返回的不是函数 b() ，情况就完全不同了。因为 a() 执行完后，b() 没有被返回给 a() 的外界，只是被 a() 所引用，而此时 a() 也只会被 b() 引 用，因此函数 a() 和 b() 互相引用但又不被外界引用，函数 a 和 函数 b 就会被GC回收。所以直接调用 a() 并没有信息输出。
+
+c() 跟 d() 引用的是不同的环境，在调用 i++ 时修改的不是同一个 i，因此两次的输出都是1。函数 a() 每进入一次，就形成了一个新的环境，对应的闭包中，函数都是同一个函数，环境却是引用不同的环境。这和 c() 和 d() 的调用顺序都是无关的。
+
+2、Go语言闭包复制的是原对象指针，实例如下：
+
+package main
+
+import "fmt"
+
+func oldboy() func() {
+    str := "oldboy"
+    fmt.Printf("str (%p) = %s\n", &str, str)
+
+    return func() {
+        fmt.Printf("str (%p) = %s\n", &str, str)
+    }
+}
+
+func main() {
+    o := oldboy()
+    o()
+}
+运行结果：
+
+str (0xc42000e1d0) = oldboy
+str (0xc42000e1d0) = oldboy
+
+Go语言递归函数
+
+原创： 老男孩IT教育  Go程序员开发  2018-10-08
+
+Go语言递归函数
+递归，就是在运行的过程中调用自己。
+一个函数调用自己，就叫做递归函数。
+
+构成递归需具备的条件：
+1、子问题须与原始问题为同样的事，且更为简单。
+2、不能无限制地调用本身，须有个出口，化简为非递归状况处理。
+
+Go编程语言支持递归，即函数调用函数本身。在使用递归时，需要谨慎确定函数的退出条件，否则会造成无限循环。
+
+递归函数可以解决许多数学问题，如计算给定数字阶乘、产生斐波系列等；
+
+数字阶乘
+
+一个正整数的阶乘（factorial）是所有小于及等于该数的正整数的积，并且0的阶乘为1。自然数n的阶乘写作n!。1808年，基斯顿·卡曼引进这个表示法。
+
+亦即n!=1×2×3×…×n。阶乘亦可以递归方式定义：0!=1，n!=(n-1)!×n。
+
+使用一个递归函数由给定数计算阶乘，实例如下：
+
+package main
+
+import "fmt"
+
+func factorial(i int) int {
+    if i <= 1 {
+        return 1
+    }
+    return i * factorial(i-1)
+}
+
+func main() {
+    var i int = 9
+    fmt.Printf("Factorial of %d is %d\n", i, factorial(i))
+}
+斐波那契数列（Fibonacci）
+
+斐波那契数列（Fibonacci sequence），又称黄金分割数列、因数学家列昂纳多·斐波那契（Leonardoda Fibonacci）以兔子繁殖为例子而引入，故又称为“兔子数列”，指的是这样一个数列：1、1、2、3、5、8、13、21、34、……
+
+这个数列从第3项开始，每一项都等于前两项之和。
+
+使用一个递归函数由给定的一个数产生斐波那契数列，实例如下：
+
+package main
+
+import "fmt"
+
+func fibonaci(i int) int {
+    if i == 0 {
+        return 0
+    }
+    if i == 1 {
+        return 1
+    }
+    return fibonaci(i-1) + fibonaci(i-2)
+}
+
+func main() {
+    var i int
+    for i = 0; i < 10; i++ {
+        fmt.Printf("%d\n", fibonaci(i))
+    }
+}
