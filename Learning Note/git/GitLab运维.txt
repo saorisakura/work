@@ -1,3 +1,19 @@
+Problem
+	Unicorn does not come up (error 502) after hard restart 
+
+	docker exec -it gitlab rm /home/git/gitlab/tmp/pids/unicorn.pid && docker restart gitlab
+	This solved my issue, thanks :-)
+
+	 @fover0932
+	 
+	fover0932 commented on 2 Jun 2018
+	docker exec -it gitlab rm /home/git/gitlab/tmp/pids/unicorn.pid && docker restart gitlab
+
+	This solved my issue, thanks :-)
+
+	-----me too, thanks!!!
+
+
 Command line instructions
 
 Git global setup
