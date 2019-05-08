@@ -55,3 +55,172 @@ func main() {
 进入 main 函数开启一个 goroutine 运行匿名函数函数体内容：fmt.Println("Hello, World!") 。主线程执行 time.Sleep(1 * time.Second) 等待 1 秒。goroutine 执行完毕回到主线程，主线程的sleep 完成结束程序。
 
 注意：若去掉 time.Sleep(1 * time.Second) 这段代码，进入 main 函数开启一个 goroutine，没等 goroutine 运行匿名函数函数体内容，主线程已经完成结束程序。
+
+Go语言Chan应用
+
+原创： 老男孩IT教育  Go程序员开发  2018-11-12
+
+
+Go语言Chan应用
+Channel 是 CSP 模式的具体实现，用于多个 goroutine 通讯。其内部实现了同步，确保并发安全。
+Channel 是先进先出，线程安全的，多个goroutine同时访问，不需要加锁。
+
+chan 阻塞
+
+我们定义的管道 intChan 容量是5，开启 goroutine 写入10条数据，在写满5条数据时会阻塞，而 read() 每秒会从 intChan 中读取一条，然后write() 再会写入一条数据。
+
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func write(ch chan int) {
+    for i := 0; i < 10; i++ {
+        ch <- i
+        fmt.Println("write data:", i)
+    }
+}
+
+func read(ch chan int) {
+    for {
+        i := <-ch
+        fmt.Println("read data:", i)
+        time.Sleep(time.Second)
+    }
+}
+
+func main() {
+    intChan := make(chan int, 5)
+    go write(intChan)
+    go read(intChan)
+
+    time.Sleep(10 * time.Second)
+}
+同步模式
+
+默认为同步模式，需要发送和接收配对。否则会被阻塞，直到另一方准备好后被唤醒。
+
+package main
+
+import "fmt"
+
+func main() {
+    data := make(chan string) // 数据交换队列
+    exit := make(chan bool)   // 退出通知
+
+    go func() {
+        for d := range data { // 从队列迭代接收数据，直到 close 。
+            fmt.Println(d)
+        }
+
+        fmt.Println("received over.")
+        exit <- true // 发出退出通知。
+    }()
+
+    data <- "oldboy" // 发送数据。
+    data <- "Linux"
+    data <- "Golang"
+    data <- "Python"
+    close(data) // 关闭队列。
+    fmt.Println("send over.")
+    <-exit // 等待退出通知。
+}
+异步模式
+
+异步方式通过判断缓冲区来决定是否阻塞。如果缓冲区已满，发送被阻塞;缓冲区为空，接收被阻塞。
+
+通常情况下，异步 channel 可减少排队阻塞，具备更高的效率。但应该考虑使用指针规避大对象拷贝，将多个元素打包，减小缓冲区大小。
+
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    data := make(chan string, 3) // 缓冲区可以存储 3 个元素
+    exit := make(chan bool)
+
+    data <- "oldboy" // 在缓冲区未满前，不会阻塞。
+    data <- "Linux"
+    data <- "Golang"
+
+    go func() {
+        for d := range data { // 在缓冲区未空前，不会阻塞。
+            fmt.Println(d)
+        }
+
+        exit <- true
+    }()
+
+    data <- "Java" // 如果缓冲区已满，阻塞。
+    data <- "DBA"
+    close(data)
+
+    <-exit
+}
+chan 选择
+
+如果需要同时处理多个 channel，可使用 select 语句。它随机选择一个可用 channel 做收发操作，或执行 default case。
+
+用 select 实现超时控制：
+
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    exit := make(chan bool)
+    intChan := make(chan int, 2)
+    strChan := make(chan string, 2)
+
+    go func() {
+        select {
+        case vi := <-intChan:
+            fmt.Println(vi)
+        case vs := <-strChan:
+            fmt.Println(vs)
+        case <-time.After(time.Second * 3):
+            fmt.Println("timeout.")
+        }
+
+        exit <- true
+    }()
+
+    // intChan <- 100 // 注释掉，引发 timeout。
+    // strChan <- "oldboy"
+
+    <-exit
+}
+在循环中使用 select default case 需要小心，避免形成洪水。
+
+简单工厂模式
+
+用简单工厂模式打包并发任务和 channel。
+
+package main
+
+import (
+    "fmt"
+    "math/rand"
+    "time"
+)
+
+func NewTest() chan int {
+    c := make(chan int)
+    rand.Seed(time.Now().UnixNano())
+    go func() {
+        time.Sleep(time.Second)
+        c <- rand.Int()
+    }()
+    return c
+}
+func main() {
+    t := NewTest()
+    fmt.Println(<-t) // 等待 goroutine 结束返回。
+}
