@@ -1,0 +1,242 @@
+Go语言WaitGroup
+WaitGroup能够一直等到所有的goroutine执行完成，并且阻塞主线程的执行，直到所有的goroutine执行完成。
+
+WaitGroup总共有三个方法：Add(delta int)，Done()，Wait()。简单的说一下这三个方法的作用。
+
+Add：添加或者减少等待goroutine的数量；
+
+Done：相当于Add(-1)；
+
+Wait：执行阻塞，直到所有的WaitGroup数量变成 0；
+
+WaitGroup用于线程同步，WaitGroup等待一组线程集合完成，才会继续向下执行。 主线程(goroutine)调用Add来设置等待的线程(goroutine)数量。 然后每个线程(goroutine)运行，并在完成后调用Done。 同时，Wait用来阻塞，直到所有线程(goroutine)完成才会向下执行。
+
+WaitGroup实例如下：
+
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    for i := 0; i < 5; i++ {
+        wg.Add(1)
+        go func(n int) {
+            // defer wg.Done()
+            defer wg.Add(-1)
+            EchoNum(n)
+        }(i)
+    }
+    wg.Wait()
+}
+
+func EchoNum(i int) {
+    time.Sleep(time.Second)
+    fmt.Println(i)
+}
+程序中将每次循环的数量 sleep 1 秒钟后输出。如果程序不使用WaitGroup，将不会输出结果。因为goroutine还没执行完，主线程已经执行完毕。
+注掉的 defer wg.Done() 和 defer wg.Add(-1) 作用一样。
+
+WaitGroup应用
+
+一、用 channel 实现信号量 (semaphore)。
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    wg := sync.WaitGroup{}
+    wg.Add(3)
+    semaphore := make(chan int, 1)
+    for i := 0; i < 3; i++ {
+        go func(id int) {
+            defer wg.Done()
+            semaphore <- 1 // 向 semaphore 发送数据，阻塞或者成功。
+            for x := 0; x < 3; x++ {
+                fmt.Println(id, x)
+            }
+            <-semaphore // 接收数据，使得其他阻塞 goroutine 可以发送数据。
+        }(i)
+    }
+    wg.Wait()
+}
+二、用 closed channel 发出退出通知。
+
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    exit := make(chan bool)
+
+    for i := 0; i < 2; i++ {
+        wg.Add(1)
+        go func(num int) {
+            defer wg.Done()
+            task := func() {
+                fmt.Println(num, time.Now().Nanosecond())
+                time.Sleep(time.Second)
+            }
+            for {
+                select {
+                case <-exit: // closed channel 不会阻塞，因此可用作退出通知。
+                    return
+                default: // 执行正常任务。
+                    task()
+                }
+            }
+        }(i)
+    }
+    time.Sleep(time.Second * 3) // 让测试 goroutine 运行一会。
+    close(exit)                 // 发出退出通知。
+    wg.Wait()
+}
+WaitGroup陷阱
+
+一、add 数量小于done数量导致 WaitGroup数量为负数
+
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    wg.Add(1)
+
+    oldboy := func() {
+        time.Sleep(time.Second)
+        fmt.Println("The old boy welcomes you.")
+        wg.Done()
+    }
+
+    go oldboy()
+    go oldboy()
+    go oldboy()
+
+    time.Sleep(time.Second * 3)
+    wg.Wait()
+}
+运行错误：
+
+panic: sync: negative WaitGroup counter
+二、add 数量大于 done 数量造成 deadlock
+
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    var wg sync.WaitGroup
+    wg.Add(4)
+
+    oldboy := func() {
+        time.Sleep(time.Second)
+        fmt.Println("The old boy welcomes you.")
+        wg.Done()
+    }
+
+    go oldboy()
+    go oldboy()
+    go oldboy()
+
+    time.Sleep(time.Second * 3)
+    wg.Wait()
+}
+运行错误：
+
+fatal error: all goroutines are asleep - deadlock!
+三、跳过 add 和 Done 操作，直接执行 Wait
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    wg := sync.WaitGroup{}
+
+    for i := 0; i < 5; i++ {
+        go func(wg sync.WaitGroup, i int) {
+            wg.Add(1)
+            fmt.Printf("i=>%d\n", i)
+            wg.Done()
+        }(wg, i)
+    }
+    wg.Wait()
+    fmt.Println("exit")
+}
+WaitGroup 同步的是 goroutine, 而上面的代码却在 goroutine 中进行 Add(1) 操作。因此，可能在这些 goroutine 还没来得及 Add(1) 就已经执行 Wait 操作了。
+
+四、WaitGroup 拷贝传值问题
+
+package main
+
+import (
+    "fmt"
+
+    "sync"
+)
+
+func main() {
+    wg := sync.WaitGroup{}
+
+    for i := 0; i < 5; i++ {
+        wg.Add(1)
+        go func(wg sync.WaitGroup, i int) {
+            fmt.Printf("i=>%d\n", i)
+            wg.Done()
+        }(wg, i)
+    }
+    wg.Wait()
+}
+运行错误：
+
+fatal error: all goroutines are asleep - deadlock!
+wg 给拷贝传递到了 goroutine 中，导致只有 Add 操作，其实 Done操作是在 wg 的副本执行的，因此 Wait 就死锁了。
+
+正确代码实例如下：
+
+package main
+
+import (
+    "fmt"
+
+    "sync"
+)
+
+func main() {
+    wg := new(sync.WaitGroup)
+    // wg := &sync.WaitGroup{}
+
+    for i := 0; i < 5; i++ {
+        wg.Add(1)
+        go func(wg *sync.WaitGroup, i int) {
+            fmt.Printf("i=>%d\n", i)
+            wg.Done()
+        }(wg, i)
+    }
+    wg.Wait()
+}

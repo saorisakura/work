@@ -1,0 +1,184 @@
+Go语言runtime
+runtime包提供Go语言运行时的系统交互的操作，例如控制goruntine的功能。
+
+调度器不能保证多个 goroutine 执行次序，且进程退出时不会等待它们结束。
+
+默认情况下，进程启动后仅允许一个系统线程服务于 goroutine。可使用环境变量或标准库函数 runtime.GOMAXPROCS 修改，让调度器用多个线程实现多核并行，而不仅仅是并发。
+
+runtime包常用方法
+
+const GOOS string = theGoos
+GOOS是可执行程序的目标操作系统（将要在该操作系统的机器上执行）：darwin、freebsd、linux等。
+
+func Gosched()
+Gosched使当前go程放弃处理器，以让其它go程运行。它不会挂起当前go程，因此当前go程未来会恢复执行。
+
+func NumCPU() int
+NumCPU返回本地机器的逻辑CPU个数。
+
+func GOROOT() string
+GOROOT返回Go的根目录。如果存在GOROOT环境变量，返回该变量的值；否则，返回创建Go时的根目录。
+
+func GOMAXPROCS(n int) int
+GOMAXPROCS设置可同时执行的最大CPU数，并返回先前的设置。 若 n < 1，它就不会更改当前设置。本地机器的逻辑CPU数可通过 NumCPU 查询。本函数在调度程序优化后会去掉。
+
+func Goexit()
+Goexit终止调用它的go程。其它go程不会受影响。Goexit会在终止该go程前执行所有defer的函数。
+
+在程序的main go程调用本函数，会终结该go程，而不会让main返回。因为main函数没有返回，程序会继续执行其它的go程。如果所有其它go程都退出了，程序就会崩溃。
+
+func NumGoroutine() int
+NumGoroutine返回当前存在的Go程数。
+
+runtime包应用
+
+一、查看机器的逻辑CPU个数、Go的根目录、操作系统
+
+package main
+
+import (
+    "fmt"
+    "runtime"
+)
+
+func main() {
+    fmt.Println("cpus:", runtime.NumCPU())
+    fmt.Println("goroot:", runtime.GOROOT())
+    fmt.Println("os/platform:", runtime.GOOS)
+}
+二、GOMAXPROCS 设置golang运行的cpu核数
+
+Golang 默认所有任务都运行在一个 cpu 核里，如果要在 goroutine 中使用多核，可以使用 runtime.GOMAXPROCS 函数修改，当参数小于 1 时使用默认值。
+
+package main
+
+import (
+    "fmt"
+    "runtime"
+)
+
+var (
+    signal = false
+)
+
+func oldboy() {
+    signal = true
+}
+
+func init() {
+    runtime.GOMAXPROCS(1)
+}
+
+func main() {
+    go oldboy()
+    for {
+        if signal {
+            break
+        }
+    }
+    fmt.Println("end")
+}
+上述代码单核执行如果for前面或者中间不延迟，主线程不会让出CPU，导致异步的线程无法执行，从而无法设置signal的值，从而出现死循环。
+
+运行的cpu核数设置成2核
+
+package main
+
+import (
+    "fmt"
+    "runtime"
+)
+
+var (
+    signal = false
+)
+
+func oldboy() {
+    signal = true
+}
+
+func init() {
+    runtime.GOMAXPROCS(2)
+}
+
+func main() {
+    go oldboy()
+    for {
+        if signal {
+            break
+        }
+    }
+    fmt.Println("end")
+}
+运行结果：
+
+end
+三、Gosched 让当前的 goroutine 让出 CPU
+
+这个函数的作用是让当前 goroutine 让出 CPU，当一个 goroutine 发生阻塞，Go 会自动地把与该 goroutine 处于同一系统线程的其他 goroutine 转移到另一个系统线程上去，以使这些 goroutine 不阻塞。当前的 goroutine 不会挂起，当前的 goroutine 程未来会恢复执行。
+
+runtime.Gosched()用于让出CPU时间片。这就像跑接力赛，A跑了一会碰到代码runtime.Gosched()就把接力棒交给B了，A歇着了，B继续跑。
+
+package main
+
+import (
+    "fmt"
+    "runtime"
+    "sync"
+)
+
+func main() {
+    wg := new(sync.WaitGroup)
+    wg.Add(1)
+
+    go func() {
+        for i := 0; i < 6; i++ {
+            fmt.Println(i)
+            runtime.Gosched()
+        }
+        defer wg.Done()
+    }()
+    for i := 0; i < 6; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            fmt.Println("Hello, Golang!")
+        }()
+    }
+
+    wg.Wait()
+}
+四、Goexit 终止当前 goroutine 执行
+
+调用 runtime.Goexit 将立即终止当前 goroutine 执行，调度器确保所有已注册 defer 延迟调用被执行。
+
+package main
+
+import (
+    "fmt"
+    "runtime"
+    "sync"
+)
+
+func main() {
+    wg := new(sync.WaitGroup)
+    wg.Add(1)
+
+    go func() {
+        defer wg.Done()
+        defer fmt.Println("A.defer")
+        func() {
+            defer fmt.Println("B.defer")
+            runtime.Goexit() // 终止当前 goroutine
+            fmt.Println("B") // 不会执行
+        }()
+
+        fmt.Println("A") // 不会执行
+    }()
+
+    wg.Wait()
+}
+运行结果：
+
+B.defer
+A.defer
