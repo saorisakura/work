@@ -1,0 +1,52 @@
+Linux NAT Using Conntrack and IPtables
+.
+
+Doing the Network Address Translation (NAT) into Linux kernel scales the performance up. This mechanism consists of two parts:
+
+The Connection Tracking/Conntrack Modules
+It is a tracking technique of the connections. It is used to know how the packets that pass through the system are related to their connections. The connection tracking does NOT manipulate the packets and It works independently of the NAT module. The conntrack entry looks like:
+
+udp 17 170 src=192.168.1.2 dst=192.168.1.5 sport=137 dport=1025 src=192.168.1.5 dst=192.168.1.2 sport=1025 dport=137 [ASSURED] use=1
+
+The conntrack entry is stored into two separate tuples (one for the original direction (red) and another for the reply direction (blue)). Tuples could belong to different linked lists/buckets in conntrack hash table. The connection tracking modules is responsible for creating and removing the tuples.
+
+Note: The tracking of the connections is ALSO used by iptables to do packet matching based on the connection state.
+
+The NAT Modules
+The NAT modules do the NATing itself. They use the tuples and modify them based on the NATing rules. In this way the tuples in the connection tracking table remains in consistent state.
+
+nat
+
+If the packet belongs to an existing connection, this means there is already a conntrack entry (two tuples) in the conntrack table. The NAT module knows this by checking a field in the tuple created for the new arrived packet. Then the packet manipulation is done based on the conntrack entry (The manipulation is determined previously).
+
+If the received packet represents a start of a new connection (first packet), the NAT module looks for a rule in the “NAT” table. If a rule is found, the NAT manipulation will be applied based on the rule and the tuples in the conntrack table will be changed. The tuples are created by conntrack at local outtput hook point before NAT for SNAT (Source NAT) so they need to be updated after doing the NAT for the first packet.
+
+Assume the packets are leaving on network interface “eth1″(-o means “output”) to the internet and the interface “eth0” is connected to the local network. To change the source addresses to 1.2.3.4  and the ports 1-1023, you can add this rule:
+
+# iptables -t nat -A POSTROUTING -p tcp -o eth1 -j SNAT –to 1.2.3.4:1-1023
+
+You can specify a range of IP addresses as well (SNAT –to 1.2.3.4-1.2.3.6).
+
+You can also use what is called MASQUERADE where the the sender’s address is replaced by the router’s address.
+
+# iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+
+Note: Here i am doing SNAT (Source NAT). You can also do Destination NAT (DNAT) where the conntrack hooks into pre routing hook point. To write DNAT rules, use the chain  PREROUTING and the target DNAT.
+
+NAT Settings
+You need to load the “nf_conntrack”: # modprobe nf_conntrack
+You need to start iptables service: # systemctl start iptables
+You need to enable IP_Forwarding:
+Temporarily: # echo “1” > /proc/sys/net/ipv4/ip_forward
+Permanently:  Write net.ipv4.ip_forward = 1 in the file “/etc/sysctl.conf ” and reload (# sysctl -p).
+Then set NATing rules as mentioned above.
+Add Forwarding rules to forward packets from one interface to another in both direction:
+From the public (interface:eth1) to private(interface eth0):
+
+# iptables -A FORWARD -i eth1 -o eth0 -m state –state RELATED,ESTABLISHED -j ACCEPT
+
+From private(eth0) to public(eth1):
+
+# iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT
+
+Finally you need to save the IPtables rules to be persistent: # iptables-save
