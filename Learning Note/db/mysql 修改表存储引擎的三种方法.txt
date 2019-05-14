@@ -1,0 +1,21 @@
+mysql 修改表存储引擎的三种方法
+
+1.直接修改
+alert table mytable engine = InnoDB;
+
+优点是简单直接
+缺点是需要执行很长时间，mysql会按行将原数据复制到一张新表中，复制期间会消耗系统所有的IO能力，并且会在原表上加读锁
+2.使用工具
+使用工具将表保存到文件，打开文件修改表的存储引擎以及表名
+
+3.创建与查询
+执行语句
+
+    create table new_table like old_table;
+    alter table new_table engine=InnoDB;
+    insert into new_table select * from old_table
+如果数据量比较大，可以根据主键分批操作,如果有必要可以对原表加锁，保证新表与原表数据一致
+
+    start transaction;
+    insert into new_table select * from old_table where id between x and y;
+    commit;

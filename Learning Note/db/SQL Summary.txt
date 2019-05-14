@@ -158,6 +158,9 @@ mysql>  SELECT CONCAT(table_schema,'.',table_name) AS 'Table Name', CONCAT(ROUND
 +---------------+----------------+-----------+------------+---------+
 4 rows in set (0.13 sec)
 
+# liyang
+/data/soft/mysql/bin/mysqldump -P 13306 -u root ysex tpdb_1 > tpdb_1.txt
+
 MySQL 导出数据
 MySQL中你可以使用SELECT...INTO OUTFILE语句来简单的导出数据到文本文件上。
 --------------------------------------------------------------------------------
