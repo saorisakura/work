@@ -1,0 +1,96 @@
+Installing the Jupyter Notebook
+Get up and running with the Jupyter Notebook on your computer within minutes!
+
+Prerequisite: Python
+While Jupyter runs code in many programming languages, Python is a requirement (Python 3.3 or greater, or Python 2.7) for installing the Jupyter Notebook itself.
+
+Installing Jupyter using Anaconda
+We strongly recommend installing Python and Jupyter using the Anaconda Distribution, which includes Python, the Jupyter Notebook, and other commonly used packages for scientific computing and data science.
+
+First, download Anaconda. We recommend downloading Anaconda’s latest Python 3 version.
+
+Second, install the version of Anaconda which you downloaded, following the instructions on the download page.
+
+Congratulations, you have installed Jupyter Notebook! To run the notebook, run the following command at the Terminal (Mac/Linux) or Command Prompt (Windows):
+
+jupyter notebook
+See Running the Notebook for more details.
+
+Installing Jupyter with pip
+As an existing or experienced Python user, you may wish to install Jupyter using Python’s package manager, pip, instead of Anaconda.
+
+If you have Python 3 installed (which is recommended):
+
+python3 -m pip install --upgrade pip
+python3 -m pip install jupyter
+If you have Python 2 installed:
+
+python -m pip install --upgrade pip
+python -m pip install jupyter
+Congratulations, you have installed Jupyter Notebook! To run the notebook, run the following command at the Terminal (Mac/Linux) or Command Prompt (Windows):
+
+jupyter notebook
+See Running the Notebook for more details.
+
+Running the Notebook
+Contents
+
+Basic Steps
+
+Starting the Notebook Server
+
+Introducing the Notebook Server’s Command Line Options
+
+How do I open a specific Notebook?
+
+How do I start the Notebook using a custom IP or port?
+
+How do I start the Notebook server without opening a browser?
+
+How do I get help about Notebook server options?
+
+Basic Steps
+Start the notebook server from the command line:
+
+jupyter notebook
+You should see the notebook open in your browser.
+
+Starting the Notebook Server
+After you have installed the Jupyter Notebook on your computer, you are ready to run the notebook server. You can start the notebook server from the command line (using Terminal on Mac/Linux, Command Prompt on Windows) by running:
+
+jupyter notebook
+This will print some information about the notebook server in your terminal, including the URL of the web application (by default, http://localhost:8888):
+
+$ jupyter notebook
+[I 08:58:24.417 NotebookApp] Serving notebooks from local directory: /Users/catherine
+[I 08:58:24.417 NotebookApp] 0 active kernels
+[I 08:58:24.417 NotebookApp] The Jupyter Notebook is running at: http://localhost:8888/
+[I 08:58:24.417 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+It will then open your default web browser to this URL.
+
+When the notebook opens in your browser, you will see the Notebook Dashboard, which will show a list of the notebooks, files, and subdirectories in the directory where the notebook server was started. Most of the time, you will wish to start a notebook server in the highest level directory containing notebooks. Often this will be your home directory.
+
+Notebook Dashboard
+
+_images/tryjupyter_file.png
+Introducing the Notebook Server’s Command Line Options
+How do I open a specific Notebook?
+The following code should open the given notebook in the currently running notebook server, starting one if necessary.
+
+jupyter notebook notebook.ipynb
+How do I start the Notebook using a custom IP or port?
+By default, the notebook server starts on port 8888. If port 8888 is unavailable or in use, the notebook server searches the next available port. You may also specify a port manually. In this example, we set the server’s port to 9999:
+
+jupyter notebook --port 9999
+How do I start the Notebook server without opening a browser?
+Start notebook server without opening a web browser:
+
+jupyter notebook --no-browser
+How do I get help about Notebook server options?
+The notebook server provides help messages for other command line arguments using the --help flag:
+
+jupyter notebook --help
+See also
+
+Jupyter Installation, Configuration, and Usage
+Detailed information about command line arguments, configuration, and usage.
