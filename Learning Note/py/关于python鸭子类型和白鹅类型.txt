@@ -1,0 +1,110 @@
+关于python鸭子类型和白鹅类型
+编程教程 2019-01-02
+
+1，白鹅类型
+
+白鹅类型对接口有明确定义，比如不可变序列（Sequence），需要实现__contains__，__iter__，__len__，__getitem__，__reversed__，index，count
+对于其中的抽象方法，子类在继承时必须具体化，其余非抽象方法在继承时可以自动获得，Sequence序列必须具体化的抽象方法是__len__和__getitem__
+
+Python
+from collections import abc
+
+class Foo(abc.Sequence):
+
+    def __init__(self, components):
+        self._components = components
+
+    def __getitem__(self, item):
+        return self._components[item]
+
+    def __len__(self):
+        return len(self._components)
+
+
+f = Foo(list(‘abcde‘))
+# f就是正式的Sequence类了
+print(isinstance(f, abc.Sequence)) # 结果True
+
+# 可以使用自己创建的抽象方法，或者继承来的方法
+print(f[0])   # ‘a‘，__getitem__
+print(len(f))   # 4，__len__
+print(‘b‘ in f)   # True，__contains __
+for i in f:    # __iter__
+　　print(f) 
+print(list(reversed(f)))   # [‘e‘, ‘d‘, ‘c‘, ‘b‘, ‘a‘], __reversed__
+print(f.count(‘a‘))     # 1, count
+print(f.index(‘a‘))   # 0, index
+
+　
+
+ 
+
+2，鸭子类型
+
+鸭子类型没有明确的接口，只是遵循了一定的协议，比如python序列协议只需要实现__len__和__getitem__方法
+对于序列，这点鸭子类型和白鹅类型中Sequence抽象基类的要求完全相同，只是白鹅类型Sequence继承后能够自动获得抽象基类的方法，而鸭子类型没有这些方法，比如不继承abc.Sequence的Foo：
+# 下面2个方法可以使用，因为自己实现了：
+print(f[0]) # ‘a‘，__getitem__
+print(len(f)) # 4，__len__
+
+# 下面2个方法也可以使用，原因是python发现某些特殊方法没有实现时，会自动尝试调用其他特殊方法
+print(‘b‘ in f) # 可以用，in测试会依次尝试调用__contains__，__iter__，__getitem__
+for i in f: # 可以用，迭代会依次尝试调用__iter__，__getitem__
+　　print(i)
+
+#下面3个方法就无法使用了：
+print(list(reversed(f))) 
+print(f.count(‘a‘))
+print(f.index(‘a‘))
+
+# 另外isinstance检测无法通过：
+print(isinstance(f, abc.Sequence)) # 结果False
+
+ 
+
+对于抽象基类，如果子类没有基础Sequence，但是自己实现了Sequence明确要求的接口，可以注册为Sequence的虚拟子类，然后Sequence也能“认出来”，例如：
+
+Python
+from collections import abc
+
+@abc.Sequence.register
+class Foo:
+
+    def __init__(self, components):
+        self._components = components
+
+    def __getitem__(self, item):
+        return self._components[item]
+
+    def __len__(self):
+        return len(self._components)
+
+    def __contains__(self, item):
+        return item in self._components
+
+    def __iter__(self):
+        for i in self._components:
+            yield i
+
+    def __reversed__(self):
+        return reversed(self._components)
+
+    def count(self, v):
+        return self._components.count(v)
+
+    def index(self, v):
+        return self._components.index(v)
+# 所有接口都已经实现，并注册为虚拟子类后，isinstance检测顺利通过：
+
+f = Foo(list(‘abcde‘))
+print(isinstance(f, abc.Sequence))   #  True
+
+如果少了一样，python解释器会提示AttributeError
+
+ 
+
+备注：例子Foo类非常简单，多此一举，只为演示，相关方法全部委托给components序列处理
+
+ 
+
+关于python鸭子类型和白鹅类型
