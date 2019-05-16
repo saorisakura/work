@@ -1,0 +1,166 @@
+Go语言获取命令行参数
+os.Args
+
+os包提供一些函数和变量。
+
+变量os.Args是一个字符串slice。可以理解它是一个动态容量的顺序数组s，可以通过s[i]来访问单个元素，通过s[m:n]来访问一段连续子区间，数组长度用len(s)表示。
+
+在Go语言中，所有的索引使用半开区间，即包含第一个索引，不包含最后一个索引。
+
+os.Args的第一个元素是os.Args[0],它是命令本身的名字；另外的元素是程序开始执行时的参数。表达式s[m:n]表示一个从第m个到第n-1个元素的slice。
+
+package main
+
+import (
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    for k, v := range os.Args {
+        fmt.Println("参数"+strconv.Itoa(k)+":", v)
+    }
+}
+编译并运行，在窗口中输入：
+
+go build main.go 
+
+./main -u oldboy -p 123456
+运行结果：
+
+参数0: ./main
+参数1: -u
+参数2: oldboy
+参数3: -p
+参数4: 123456
+可以看到，命令行参数包括了程序路径本身，以及通常意义上的参数。 
+程序中os.Args的类型是 []string ，也就是字符串切片。所以可以在for循环的range中遍历，还可以用 len(os.Args) 来获取其数量。
+
+flag包
+
+Go 提供了一个 flag 包，支持基本的命令行标志解析。flag包相比单纯的通过os.Args切片分析命令行参数，提供了更强的能力，同时也是复杂的用法。
+
+命令行解析常用函数和方法：
+
+func Parse()
+从os.Args[1:]中解析注册的flag。必须在所有flag都注册好而未访问其值时执行。未注册却使用flag -help时，会返回ErrHelp。
+
+func Int(name string, value int, usage string) *int
+Int用指定的名称、默认值、使用信息注册一个int类型flag。返回一个保存了该flag的值的指针。
+
+func Bool(name string, value bool, usage string) *bool
+Bool用指定的名称、默认值、使用信息注册一个bool类型flag。返回一个保存了该flag的值的指针。
+
+func String(name string, value string, usage string) *string
+String用指定的名称、默认值、使用信息注册一个string类型flag。返回一个保存了该flag的值的指针。
+
+func Args() []string
+返回解析之后剩下的非flag参数。（不包括命令名）
+
+func (f *FlagSet) StringVar(p *string, name string, value string, usage string)
+StringVar用指定的名称、默认值、使用信息注册一个string类型flag，并将flag的值保存到p指向的变量。
+
+程序示例：
+
+package main
+
+import (
+    "flag"
+    "fmt"
+)
+
+var i = flag.Int("i", 0, "int类型参数")
+var b = flag.Bool("b", false, "bool类型参数")
+var s = flag.String("s", "", "string类型参数")
+
+func main() {
+    flag.Parse()
+    fmt.Println("-i:", *i)
+    fmt.Println("-b:", *b)
+    fmt.Println("-s:", *s)
+    fmt.Println("其他参数：", flag.Args())
+}
+编译并运行，在窗口中输入：
+
+go build main.go 
+
+ ./main -i 100 -b -s string hi golang
+运行结果：
+
+-i: 100
+-b: true
+-s: string
+其他参数： [hi golang]
+上述代码在 flag.Prase() 之前，定义了 i、b、s 三个接受参数的变量， i、b、s 是指针类型的变量。flag.String() 方法返回的是保存日后解析出来的对应参数的值的位置，是一个已经分配好的空间，我们可以用这个指针变量来接受这个位置。
+待程序重新进入main函数，执行flag.Parse()函数之后，这三个位置上就出现了我们命令行传入的参数（其实在程序初始化期就有默认值）。
+后续我们可以使用 i、b、*s 来访问具体的内容。
+
+应用示例：
+
+package main
+
+import (
+    "flag"
+    "fmt"
+)
+
+var (
+    confPath string = "./oldboy.conf"
+    logPath  string = "./oldboy.log"
+)
+
+func init() {
+    flag.StringVar(&confPath, "conf", "./oldboy.conf", "set config file path")
+    flag.StringVar(&logPath, "log", "./oldboy.log", "set log file path")
+}
+
+func main() {
+    flag.Parse()
+    fmt.Println("config path : ", confPath)
+    fmt.Println("log path : ", logPath)
+}
+编译并运行，在窗口中输入：
+
+go build main.go 
+
+./main -conf ./oldboy/go.conf -log ./oldboy/go.log
+运行结果：
+
+config path :  ./oldboy/go.conf
+log path :  ./oldboy/go.log
+注意1：如果你省略一个标志，那么这个标志的值自动的设定为他的默认值。
+
+./main -conf ./oldboy/go.conf 
+运行结果：
+
+config path :  ./oldboy/go.conf
+log path :  ./oldboy.log
+注意2：flag 包需要所有的标志出现位置参数之前（否则，这个标志将会被解析为位置参数）。
+
+ ./main go -conf ./oldboy/go.conf -log ./oldboy/go.log
+运行结果：
+
+config path :  ./oldboy.conf
+log path :  ./oldboy.log
+注意3：使用 -h 或者 --help 标志来得到自动生成的这个命令行程序的帮助文本。
+
+./main -h
+运行结果：
+
+Usage of ./main:
+  -conf string
+        set config file path (default "./oldboy.conf")
+  -log string
+        set log file path (default "./oldboy.log")
+注意4：如果你提供一个没有使用 flag 包指定的标志，程序会输出一个错误信息，并再次显示帮助文本。
+
+./main -what
+运行结果：
+
+flag provided but not defined: -what
+Usage of ./main:
+  -conf string
+        set config file path (default "./oldboy.conf")
+  -log string
+        set log file path (default "./oldboy.log")

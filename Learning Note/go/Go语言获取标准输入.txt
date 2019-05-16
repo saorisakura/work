@@ -1,0 +1,123 @@
+Go语言获取标准输入
+Go语言 fmt 包下有 fmt.Scan、fmt.Scanf、fmt.Scanln 三个函数，可以在程序运行过程中获取用户输入。
+
+func Scan(a ...interface{}) (n int, err error)
+Scan从标准输入扫描文本，将成功读取的空白分隔的值保存进成功传递给本函数的参数。换行视为空白。返回成功扫描的条目个数和遇到的任何错误。如果读取的条目比提供的参数少，会返回一个错误报告原因。
+
+func Scanf(format string, a ...interface{}) (n int, err error)
+Scanf从标准输入扫描文本，根据format 参数指定的格式将成功读取的空白分隔的值保存进成功传递给本函数的参数。返回成功扫描的条目个数和遇到的任何错误。
+
+func Scanln(a ...interface{}) (n int, err error)
+Scanln类似Scan，但会在换行时才停止扫描。最后一个条目后必须有换行或者到达结束位置。
+
+获取标准输入示例
+
+示例一：Scan 函数应用
+
+package main
+
+
+import  "fmt"
+
+
+func  main() {
+
+    fmt.Println("Please enter your firstname and lastname ")
+
+    var  firstname, lastname  string
+
+    fmt.Scan(&firstname, &lastname)
+
+    fmt.Println("hello,", firstname, "and", lastname)
+
+}
+编译后运行，在窗口中输入：
+
+oldboy golang
+输出：
+
+hello, oldboy and golang
+可以看出，go把输入的参数按空格分开后，分别赋值给了 firstname 和 lastname 。
+
+整体运行结果（第二行是运行时用户输入的）：
+
+Please enter your firstname and lastname 
+oldboy golang
+hello, oldboy and golang
+再次运行，这次我们输入时换行输入：
+
+Please enter your firstname and lastname 
+oldboy
+golang
+hello, oldboy and golang
+在第二行、第三行 oldboy 和 golang 中间是敲了回车的，这是Scan和Scanln的区别。Scanln只要收到回车就不会继续接收输入了。
+
+示例二：Scanf 函数应用
+
+package main
+
+
+import  "fmt"
+
+
+func  main() {
+
+    fmt.Println("Please enter your names ")
+
+    var  firstname, lastname  string
+
+    fmt.Scanf("%s , %s", &firstname, &lastname)
+
+    fmt.Println("hello,", firstname, "and", lastname)
+
+}
+编译运行：
+
+Please enter your firstname and lastname 
+oldboy , golang
+hello, oldboy and golang
+注意：
+
+1、Scanf中间有一个逗号（,）逗号和%s间有空格，因为Scanf是用空格来区分不同的参数的。
+
+2、输入的参数gates , jobs 格式与 Scanf 中指定的 fmt 要一致。
+
+3、中间的逗号（,）Scanf会自动格式匹配不会添加到变量中。
+
+示例三：Scanln 函数应用
+
+package main
+
+
+import  "fmt"
+
+
+func  main() {
+
+    fmt.Println("Please enter your names ")
+
+    var  firstname, lastname  string
+
+    fmt.Scanln(&firstname, &lastname)
+
+    fmt.Println("hello,", firstname, "and", lastname)
+
+}
+编译运行：
+
+Please enter your firstname and lastname 
+oldboy golang
+hello, oldboy and golang
+Scanln和Scan非常类似，只是Scanln只会接受一个回车，收到回车就扫描结束了。
+
+其它类似函数
+
+func Fscan(r io.Reader, a ...interface{}) (n int, err error)
+func Fscanln(r io.Reader, a ...interface{}) (n int, err error)
+func Fscanf(r io.Reader, format string, a ...interface{}) (n int, err error)
+功能同 fmt.Scan、fmt.Scanf、fmt.Scanln 三个函数，只不过从 r 中读取数据。
+
+func Sscan(str string, a ...interface{}) (n int, err error)
+func Sscanln(str string, a ...interface{}) (n int, err error)
+func Sscanf(str string, format string, a ...interface{}) (n int, err error)
+功能同 fmt.Scan、fmt.Scanf、fmt.Scanln 三个函数，只不过从 str 中读取数据。
