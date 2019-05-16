@@ -1,0 +1,250 @@
+Go语言互斥锁
+Go语言的sync包中实现了两种锁 Mutex (互斥锁)和 RWMutex (读写锁)，其中 RWMutex 是基于 Mutex 实现的，只读锁的实现使用类似引用计数器的功能。
+
+互斥锁
+
+Mutex 是互斥锁，有 Lock()加锁、Unlock()解锁两个方法，使用Lock()加锁后，便不能再次对其进行加锁，直到利用 Unlock()解锁对其解锁后才能再次加锁。适用于读写不确定场景，即读写次数没有明显的区别，并且只允许只有一个读或者写的场景，所以该锁也叫做全局锁。
+
+func (m *Mutex) Lock()
+Lock方法锁住m，如果m已经加锁，则阻塞直到m解锁。
+
+func (m *Mutex) Unlock()
+Unlock方法解锁m，如果m未加锁会导致运行时错误。锁和线程无关，可以由不同的线程加锁和解锁。
+
+互斥锁应用
+
+只要有两个goroutine并发访问同一变量，且至少其中的一个是写操作的时候就会发生数据竞争。数据竞争会在两个以上的goroutine并发访问相同的变量且至少其中一个为写操作时发生。
+
+允许多个goroutine访问变量，但是同一时间只允许一个goroutine访问。我们可以用sync包中的Mutex来实现，保证共享变量不会被并发访问。
+
+实例如下：
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+var (
+    m     = make(map[int]int)
+    Mlock = new(sync.Mutex)
+)
+
+func main() {
+    for i := 0; i < 1000; i++ {
+        go func(i int) {
+            // Mlock.Lock()
+            m[i] = i * i
+            // Mlock.Unlock()
+        }(i)
+    }
+
+    // Mlock.Lock()
+    for k, v := range m {
+        fmt.Printf("%d * %d = %d\n", k, k, v)
+    }
+    // Mlock.Unlock()
+}
+运行错误：
+
+fatal error: concurrent map writes
+将上述代码中的注释打开则程序正常运行。
+
+当Unlock()在Lock()之前使用时便会报错，实例如下：
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var MLock *sync.Mutex
+    MLock = new(sync.Mutex)
+    MLock.Unlock()
+    fmt.Println("hello Mutex")
+    MLock.Lock()
+}
+运行错误：
+
+panic: sync: unlock of unlocked mutex
+当在解锁之前再次进行加锁，便会死锁状态，实例如下：
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var MLock *sync.Mutex
+    MLock = new(sync.Mutex)
+    MLock.Lock()
+    fmt.Println("hello Mutex")
+    MLock.Lock()
+}
+运行错误：
+
+fatal error: all goroutines are asleep - deadlock!
+互斥锁只能锁定一次，当在解锁之前再次进行加锁，便会死锁状态，如果在加锁前解锁，便会报错“panic: sync: unlock of unlocked mutex”。
+
+Go语言读写锁
+RWMutex是一个读写锁，该锁可以加多个读锁或者一个写锁，其经常用于读次数远远多于写次数的场景。
+
+func (rw *RWMutex) Lock()
+Lock方法将rw锁定为写入状态，禁止其他线程读取或者写入。如果在添加写锁之前已经有其他的读锁和写锁，则lock就会阻塞直到该锁可用，为确保该锁最终可用，已阻塞的 Lock 调用会从获得的锁中排除新的读取器，即写锁权限高于读锁，有写锁时优先进行写锁定。
+
+func (rw *RWMutex) Unlock()
+Unlock方法解除rw的写入锁状态，如果m未加写入锁会导致运行时错误。
+
+func (rw *RWMutex) RLock()
+RLock方法将rw锁定为读取状态，禁止其他线程写入，但不禁止读取。
+
+func (rw *RWMutex) RUnlock()
+Runlock方法解除rw的读取锁状态，如果m未加读取锁会导致运行时错误。
+
+读写锁的写锁只能锁定一次，解锁前不能多次锁定，读锁可以多次，但读解锁次数最多只能比读锁次数多一次，一般情况下我们不建议读解锁次数多余读锁
+
+读写锁应用 
+
+读多写少的情况，用读写锁， 协程同时在操作读。
+
+package main
+
+import (
+    "fmt"
+    "math/rand"
+    "sync"
+    "time"
+)
+
+var rwLock sync.RWMutex
+
+func main() {
+    m := make(map[int]int, 5)
+    m[1] = 10
+    m[2] = 10
+    m[3] = 10
+    m[4] = 10
+    m[5] = 10
+    for i := 0; i < 2; i++ {
+        go func() {
+            rwLock.Lock()
+            m[5] = rand.Intn(100)
+            rwLock.Unlock()
+        }()
+    }
+    for i := 0; i < 10; i++ {
+        go func() {
+            rwLock.RLock()
+            fmt.Println(m)
+            rwLock.RUnlock()
+        }()
+    }
+    time.Sleep(time.Second * 2)
+}
+当RUnlock()在RLock()之前使用时便会报错，实例如下：
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    RWLock := new(sync.RWMutex)
+    RWLock.RUnlock()
+    fmt.Println("hello RWMutex")
+    RWLock.RLock()
+}
+运行错误：
+
+fatal error: sync: RUnlock of unlocked RWMutex
+
+Go语言并发安全的map（sync.Map）
+
+sync.Map
+
+在Go 1.6之前，内置的map类型是部分goroutine安全的，并发的读没有问题，并发的写可能有问题。自go 1.6之后，并发地读写map会报错，这在一些知名的开源库中都存在这个问题，所以go 1.9之前的解决方案是额外绑定一个锁，封装成一个新的struct或者单独使用锁都可以。
+
+在Go1.9之前，go自带的map不是并发安全的，也就是说，我们需要自己再封装一层，给map加上把读写锁，比如像下面这样：
+
+type MapWithLock struct {
+    sync.RWMutex
+    M map[string]Kline
+}
+用MapWithLock的读写锁去控制map的并发安全。 
+
+但是到了Go1.9发布，它有了一个新的特性，那就是sync.map，它是原生支持并发安全的map，不过它的用法和以前我们熟悉的map完全不一样，主要还是因为sync.map封装了更为复杂的数据结构，以实现比之前加锁map更优秀的性能。
+
+sync.map就是1.9版本带的线程安全map，主要有如下几种方法：
+
+func (m Map) Load(key interface{}) (value interface{}, ok bool)
+通过提供一个键key，查找对应的值value，如果不存在，则返回nil。ok的结果表示是否在map中找到值
+
+func (m Map) Store(key, value interface{})
+这个相当于是写map（更新或新增），第一个参数是key，第二个参数是value
+
+func (m Map) LoadOrStore(key, value interface{}) (actual interface{}, loaded bool)
+通过提供一个键key，查找对应的值value，如果存在返回键的现有值，否则存储并返回给定的值，如果是读取则返回true，如果是存储返回false
+
+func (m Map) Delete(key interface{})
+通过提供一个键key，删除键对应的值
+
+func (m Map) Range(f func(key, value interface{}) bool)
+循环读取map中的值。
+
+因为for … range map是内置的语言特性，所以没有办法使用for range遍历sync.Map, 但是可以使用它的Range方法，通过回调的方式遍历。
+
+sync.Map应用
+
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+type userInfo struct {
+    Name string
+    Age  int
+}
+
+// 声明 sync.Map
+var m sync.Map
+
+func main() {
+    // 写入
+    m.Store(1, "one")
+    m.Store("oldboy", "Go")
+
+    // 查找
+    val, ok := m.Load(1)
+    fmt.Println("Load : ", val, ok) // one true
+
+    // 查找 or 写入
+    val, ok = m.LoadOrStore("oldboy", "Golang")
+    fmt.Println("LoadOrStore : ", val, ok) // Go true
+    val, ok = m.LoadOrStore("2", "two")
+    fmt.Println("LoadOrStore : ", val, ok) // two false
+
+    // range
+    m.Range(func(k, v interface{}) bool {
+        fmt.Println(k, v)
+        return true
+    })
+
+    // 删除
+    m.Delete(1)
+    m.Delete(2)
+
+    m.Range(func(k, v interface{}) bool {
+        fmt.Println(k, v)
+        return true
+    })
+
+}

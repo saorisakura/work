@@ -159,3 +159,600 @@ func main() {
         fmt.Println("file1 不是普通目录")
     }
 }
+
+Go语言文件写入
+
+文件写入
+
+文件写入常用函数和方法：
+
+func Open(name string) (file *File, err error)
+Open打开一个文件用于读取。如果操作成功，返回的文件对象的方法可用于读取数据；对应的文件描述符具有O_RDONLY模式。如果出错，错误底层类型是*PathError。
+
+func OpenFile(name string, flag int, perm FileMode) (file *File, err error)
+OpenFile是一个更一般性的文件打开函数，大多数调用者都应用Open或Create代替本函数。它会使用指定的选项（如O_RDONLY等）、指定的模式（如0666等）打开指定名称的文件。如果操作成功，返回的文件对象可用于I/O。如果出错，错误底层类型是*PathError。
+
+打开标记：
+
+const (
+    O_RDONLY int = syscall.O_RDONLY // 只读模式打开文件
+    O_WRONLY int = syscall.O_WRONLY // 只写模式打开文件
+    O_RDWR   int = syscall.O_RDWR   // 读写模式打开文件
+    O_APPEND int = syscall.O_APPEND // 写操作时将数据附加到文件尾部
+    O_CREATE int = syscall.O_CREAT  // 如果不存在将创建一个新文件
+    O_EXCL   int = syscall.O_EXCL   // 和O_CREATE配合使用，文件必须不存在
+    O_SYNC   int = syscall.O_SYNC   // 打开文件用于同步I/O
+    O_TRUNC  int = syscall.O_TRUNC  // 如果可能，打开时清空文件
+)
+文件权限（unix权限位）：只有在创建文件时才需要，不需要创建文件可以设置为 0。os库虽然提供常量，但是我一般直接写数字，如0664。
+如果你需要设置多个打开标记和unix权限位，需要使用位操作符"|"
+
+func (f *File) Write(b []byte) (n int, err error)
+Write向文件中写入len(b)字节数据。它返回写入的字节数和可能遇到的任何错误。如果返回值n!=len(b)，本方法会返回一个非nil的错误。
+
+func (f *File) WriteAt(b []byte, off int64) (n int, err error)
+WriteAt在指定的位置（相对于文件开始位置）写入len(b)字节数据。它返回写入的字节数和可能遇到的任何错误。如果返回值n!=len(b)，本方法会返回一个非nil的错误。
+
+func (f *File) WriteString(s string) (ret int, err error)
+WriteString类似Write，但接受一个字符串参数。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    file1, err := os.Open("./file1.txt")
+    if err != nil {
+        fmt.Printf("open file1.txt err : %v\n", err)
+
+    }
+    if file1 != nil {
+        defer func(file *os.File) { file.Close() }(file1)
+    }
+
+    file2, err := os.OpenFile("./file2.txt", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+    if err != nil {
+        fmt.Printf("openfile file2 err : %v\n", err)
+    }
+    if file2 != nil {
+        defer func(file *os.File) { file.Close() }(file2)
+    }
+
+    b1 := []byte("hello world ! hi write test !\n")
+    off, err := file2.Write(b1)
+    if err != nil {
+        fmt.Printf("file2 write err : %v\n", err)
+    }
+    fmt.Printf("file2 write success , off is %v\n", off)
+
+    b2 := []byte("hello golang ! hi writeat test !\n")
+
+    off, err = file2.WriteAt(b2, int64(off))
+    if err != nil {
+        fmt.Printf("file2 writeat err : %v\n", err)
+    }
+    fmt.Printf("file2 writeat success , off is %v\n", off)
+
+    str := "this is write string test .\n"
+    off, err = file2.WriteString(str)
+    if err != nil {
+        fmt.Printf("file2 write string err : %v\n", err)
+    }
+    fmt.Printf("file2 write string success , off is %v\n", off)
+}
+运行结果：
+
+file2 write success , off is 30
+file2 writeat success , off is 33
+file2 write string success , off is 28
+cat file2.txt
+
+hello world ! hi write test !
+hello golang ! hi writeat test !
+this is write string test .
+缓冲写入
+
+bufio包实现了有缓冲的I/O。它包装一个io.Reader或io.Writer接口对象，创建另一个也实现了该接口，且同时还提供了缓冲和一些文本I/O的帮助函数的对象。
+
+缓冲写入常用函数和方法：
+
+func NewWriter(w io.Writer) *Writer
+NewWriter创建一个具有默认大小缓冲、写入w的*Writer。
+
+func NewWriterSize(w io.Writer, size int) *Writer
+NewWriterSize创建一个具有最少有size尺寸的缓冲、写入w的Writer。如果参数w已经是一个具有足够大缓冲的Writer类型值，会返回w。
+
+func (b *Writer) Reset(w io.Writer)
+Reset丢弃缓冲中的数据，清除任何错误，将b重设为将其输出写入w。
+
+func (b *Writer) Write(p []byte) (nn int, err error)
+Write将p的内容写入缓冲。返回写入的字节数。如果返回值nn < len(p)，还会返回一个错误说明原因。
+
+func (b *Writer) WriteString(s string) (int, error)
+WriteString写入一个字符串。返回写入的字节数。如果返回值nn < len(s)，还会返回一个错误说明原因。
+
+func (b *Writer) WriteByte(c byte) error
+WriteByte写入单个字节。
+
+func (b *Writer) WriteRune(r rune) (size int, err error)
+WriteRune写入一个unicode码值（的utf-8编码），返回写入的字节数和可能的错误。
+
+func (b *Writer) Buffered() int
+Buffered返回缓冲中已使用的字节数。
+
+func (b *Writer) Available() int
+Available返回缓冲中还有多少字节未使用。
+
+func (b *Writer) Flush() error
+Flush方法将缓冲中的数据写入下层的io.Writer接口。
+
+代码实现：
+
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    file, err := os.OpenFile("./file.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+    if err != nil {
+        fmt.Printf("open file err : %v\n", err)
+    }
+    if file != nil {
+        defer func(file *os.File) { file.Close() }(file)
+    }
+    fmt.Println("open file success")
+
+    write1 := bufio.NewWriter(file)
+    space1 := write1.Available()
+    fmt.Printf("默认缓冲区有 %d 字节\n", space1)
+
+    insertByte, err := write1.Write([]byte("默认大小缓冲写入\n"))
+    if err != nil {
+        fmt.Printf("write err : %v\n", err)
+    }
+    fmt.Printf("write success , 写入 %d 字节\n", insertByte)
+
+    useSpace1 := write1.Buffered()
+    fmt.Printf("默认缓冲区已经使用 %d 字节\n", useSpace1)
+    //丢弃缓冲中的数据
+    write1.Reset(file)
+
+    write2 := bufio.NewWriterSize(file, 10000)
+    insertByte2, err := write2.WriteString("this is write string test.\n")
+    if err != nil {
+        fmt.Printf("write string err : %v\n", err)
+    }
+    fmt.Printf("write string success , 写入 %d 字节\n", insertByte2)
+
+    err = write2.WriteByte('a')
+    if err != nil {
+        fmt.Printf("write byte err : %v\n", err)
+    }
+
+    insertByte3, err := write2.WriteRune('哈')
+    if err != nil {
+        fmt.Printf("write rune err : %v\n", err)
+    }
+    fmt.Printf("write rune success , 写入 %d 字节\n", insertByte3)
+
+    err = write2.Flush()
+    if err != nil {
+        fmt.Printf("write2 flush err : %v\n", err)
+    }
+    fmt.Println("write2 flush success")
+}
+运行结果：
+
+open file success
+默认缓冲区有 4096 字节
+write success , 写入 25 字节
+默认缓冲区已经使用 25 字节
+write string success , 写入 27 字节
+write rune success , 写入 3 字节
+write2 flush success
+cat file.txt
+
+this is write string test.
+a哈
+指定文件写入
+
+使用 io/ioutil 包向指定的文件中写入数据
+
+指定文件写入常用函数：
+
+func WriteFile(filename string, data []byte, perm os.FileMode) error
+函数向filename指定的文件中写入数据。如果文件不存在将按给出的权限创建文件，否则在写入数据之前清空文件。
+
+os.FileMode 代表文件的模式和权限位。
+
+这些字位在所有的操作系统都有相同的含义，因此文件的信息可以在不同的操作系统之间安全的移植。
+
+不是所有的位都能用于所有的系统，唯一共有的是用于表示目录的ModeDir位。
+
+const (
+    // 单字符是被String方法用于格式化的属性缩写。
+    ModeDir        FileMode = 1 << (32 - 1 - iota) // d: 目录
+    ModeAppend                                     // a: 只能写入，且只能写入到末尾
+    ModeExclusive                                  // l: 用于执行
+    ModeTemporary                                  // T: 临时文件（非备份文件）
+    ModeSymlink                                    // L: 符号链接（不是快捷方式文件）
+    ModeDevice                                     // D: 设备
+    ModeNamedPipe                                  // p: 命名管道（FIFO）
+    ModeSocket                                     // S: Unix域socket
+    ModeSetuid                                     // u: 表示文件具有其创建者用户id权限
+    ModeSetgid                                     // g: 表示文件具有其创建者组id的权限
+    ModeCharDevice                                 // c: 字符设备，需已设置ModeDevice
+    ModeSticky                                     // t: 只有root/创建者能删除/移动文件
+    // 覆盖所有类型位（用于通过&获取类型位），对普通文件，所有这些位都不应被设置
+    ModeType = ModeDir | ModeSymlink | ModeNamedPipe | ModeSocket | ModeDevice
+    ModePerm FileMode = 0777 // 覆盖所有Unix权限位（用于通过&获取类型位）
+)
+这些被定义的位是FileMode最重要的位。
+
+另外9个不重要的位为标准Unix rwxrwxrwx权限（任何人都可读、写、运行）。
+
+这些（重要）位的值应被视为公共API的一部分，可能会用于线路协议或硬盘标识：它们不能被修改，但可以添加新的位。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+    "os"
+)
+
+func main() {
+    str := "this is ioutil.WriteFile() test."
+    err := ioutil.WriteFile("./ioutilWriteFile.txt", []byte(str), os.ModePerm)
+    if err != nil {
+        fmt.Printf("ioutil.WriteFile() write ./ioutilWriteFile.txt err : %v\n", err)
+    }
+    fmt.Println("ioutil.WriteFile() write ./ioutilWriteFile.txt success.")
+}
+
+Go语言文件读取
+文件读取
+
+读取文件内容如下：
+
+cat ./file.txt 
+最近很火的一首小诗：
+
+纽约时间比加州时间早三个小时，
+
+New York is 3 hours ahead of California,
+
+但加州时间并没有变慢。
+
+but it does not make California slow.
+
+有人22岁就毕业了，
+
+Someone graduated at the age of 22,
+
+但等了五年才找到好的工作！
+
+but waited 5 years before securing a good job!
+
+有人25岁就当上CEO，
+
+Someone became a CEO at 25,
+
+却在50岁去世。
+
+and died at 50.
+
+也有人迟到50岁才当上CEO，
+
+While another became a CEO at 50,
+
+然后活到90岁。
+
+and lived to 90 years.
+
+有人依然单身，
+
+Someone is still single,
+
+同时也有人已婚。
+
+while someone else got married.
+
+奥巴马55岁就退休，
+
+Obama retires at 55,
+
+川普70岁才开始当总统。
+
+but Trump starts at 70.
+
+世上每个人本来就有自己的发展时区。
+
+Absolutely everyone in this world works based on their Time Zone.
+
+身边有些人看似走在你前面，
+
+People around you might seem to go ahead of you,
+
+也有人看似走在你后面。
+
+some might seem to be behind you.
+
+但其实每个人在自己的时区有自己的步程。
+
+But everyone is running their own RACE, in their own TIME.
+
+不用嫉妒或嘲笑他们。
+
+Don’t envy them or mock them.
+
+他们都在自己的时区里，你也是！
+
+They are in their TIME ZONE, and you are in yours!
+
+生命就是等待正确的行动时机。
+
+Life is about waiting for the right moment to act.
+
+所以，放轻松。
+
+So, RELAX.
+
+你没有落后。
+
+You’re not LATE.
+
+你没有领先。
+
+You’re not EARLY.
+
+在命运为你安排的属于自己的时区里，一切都准时。
+
+You are very much ON TIME, and in your TIME ZONE Destiny set up for you.
+使用 os包按byte读取文件常用方法：
+
+func (f *File) Read(b []byte) (n int, err error)
+Read方法从f中读取最多len(b)字节数据并写入b。它返回读取的字节数和可能遇到的任何错误。文件终止标志是读取0个字节且返回值err为io.EOF。
+
+func (f *File) ReadAt(b []byte, off int64) (n int, err error)
+ReadAt从指定的位置（相对于文件开始位置）读取len(b)字节数据并写入b。它返回读取的字节数和可能遇到的任何错误。当n<len(b)时，本方法总是会返回错误；如果是因为到达文件结尾，返回值err会是io.EOF。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    file, err := os.Open("./file.txt")
+    if err != nil {
+        fmt.Printf("open ./file.txt err : %v\n", err)
+    }
+    if file != nil {
+        defer func(file *os.File) { file.Close() }(file)
+    }
+
+    var b1 = make([]byte, 102)
+    space1, err := file.Read(b1)
+    if err != nil {
+        fmt.Printf("file read err : %v\n", err)
+    }
+    fmt.Printf("file read success , 读取 %d 字节。\n", space1)
+    fmt.Printf("读取内容：\n%s\n", string(b1))
+
+    b2 := make([]byte, 205)
+    space2, err := file.ReadAt(b2, int64(space1))
+    if err != nil {
+        fmt.Printf("file readat err : %v\n", err)
+    }
+    fmt.Printf("file readat success , 读取 %d 字节。\n", space2)
+    fmt.Printf("读取内容：\n%s\n", string(b2))
+}
+缓冲读取
+
+bufio包实现了有缓冲的I/O。它包装一个io.Reader或io.Writer接口对象，创建另一个也实现了该接口，且同时还提供了缓冲和一些文本I/O的帮助函数的对象。
+
+缓冲读取常用函数和方法：
+
+func NewReader(rd io.Reader) *Reader
+NewReader创建一个具有默认大小缓冲、从r读取的*Reader。
+
+func (b *Reader) Read(p []byte) (n int, err error)
+Read读取数据写入p。本方法返回写入p的字节数。本方法一次调用最多会调用下层Reader接口一次Read方法，因此返回值n可能小于len(p)。读取到达结尾时，返回值n将为0而err将为io.EOF。
+
+func (b *Reader) ReadLine() (line []byte, isPrefix bool, err error)
+ReadLine是一个低水平的行数据读取原语。大多数调用者应使用ReadBytes('\n')或ReadString('\n')代替，或者使用Scanner。
+
+ReadLine尝试返回一行数据，不包括行尾标志的字节。如果行太长超过了缓冲，返回值isPrefix会被设为true，并返回行的前面一部分。该行剩下的部分将在之后的调用中返回。返回值isPrefix会在返回该行最后一个片段时才设为false。返回切片是缓冲的子切片，只在下一次读取操作之前有效。ReadLine要么返回一个非nil的line，要么返回一个非nil的err，两个返回值至少一个非nil。
+
+返回的文本不包含行尾的标志字节（"\r\n"或"\n"）。如果输入流结束时没有行尾标志字节，方法不会出错，也不会指出这一情况。在调用ReadLine之后调用UnreadByte会总是吐出最后一个读取的字节（很可能是该行的行尾标志字节），即使该字节不是ReadLine返回值的一部分。
+
+func (b *Reader) ReadSlice(delim byte) (line []byte, err error)
+ReadSlice读取直到第一次遇到delim字节，返回缓冲里的包含已读取的数据和delim字节的切片。该返回值只在下一次读取操作之前合法。如果ReadSlice放在在读取到delim之前遇到了错误，它会返回在错误之前读取的数据在缓冲中的切片以及该错误（一般是io.EOF）。如果在读取到delim之前缓冲就被写满了，ReadSlice失败并返回ErrBufferFull。因为ReadSlice的返回值会被下一次I/O操作重写，调用者应尽量使用ReadBytes或ReadString替代本法功法。当且仅当ReadBytes方法返回的切片不以delim结尾时，会返回一个非nil的错误。
+
+func (b *Reader) ReadBytes(delim byte) (line []byte, err error)
+ReadBytes读取直到第一次遇到delim字节，返回一个包含已读取的数据和delim字节的切片。如果ReadBytes方法在读取到delim之前遇到了错误，它会返回在错误之前读取的数据以及该错误（一般是io.EOF）。当且仅当ReadBytes方法返回的切片不以delim结尾时，会返回一个非nil的错误。
+
+func (b *Reader) ReadString(delim byte) (line string, err error)
+ReadString读取直到第一次遇到delim字节，返回一个包含已读取的数据和delim字节的字符串。如果ReadString方法在读取到delim之前遇到了错误，它会返回在错误之前读取的数据以及该错误（一般是io.EOF）。当且仅当ReadString方法返回的切片不以delim结尾时，会返回一个非nil的错误。
+
+代码实现：
+
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "io"
+    "os"
+)
+
+func main() {
+    file, err := os.Open("./file.txt")
+    if err != nil {
+        fmt.Printf("os open ./file.txt err : %v\n", err)
+    }
+    if file != nil {
+        defer func(file *os.File) { file.Close() }(file)
+    }
+
+    read1 := bufio.NewReader(file)
+
+    var b1 = make([]byte, 102)
+    readByte1, err := read1.Read(b1)
+    if err != nil {
+        fmt.Printf("read err : %v\n", err)
+    }
+    fmt.Printf("read success , 读取 %d 字节\n读取的内容：\n%s\n", readByte1, string(b1))
+
+    var line []byte
+    for {
+        data, prefix, err := read1.ReadLine()
+        if err == io.EOF {
+            // fmt.Println(err)
+            break
+        }
+
+        line = append(line, data...)
+        if !prefix {
+            // fmt.Printf("data:%s\n", string(line))
+        }
+    }
+    fmt.Println(string(line))
+}
+读取整个文件
+
+使用 io/ioutil 包实现了读取整个文件功能
+
+读取整个文件常用函数：
+
+func ReadAll(r io.Reader) ([]byte, error)
+ReadAll从r读取数据直到EOF或遇到error，返回读取的数据和遇到的错误。成功的调用返回的err为nil而非EOF。因为本函数定义为读取r直到EOF，它不会将读取返回的EOF视为应报告的错误。
+
+func ReadFile(filename string) ([]byte, error)
+ReadFile 从filename指定的文件中读取数据并返回文件的内容。成功的调用返回的err为nil而非EOF。因为本函数定义为读取整个文件，它不会将读取返回的EOF视为应报告的错误。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+    "os"
+)
+
+func main() {
+    file, err := os.Open("./file.txt")
+    if err != nil {
+        fmt.Printf("open ./file.txt err : %v\n", err)
+    }
+    if file != nil {
+        defer func(file *os.File) { file.Close() }(file)
+    }
+
+    data1, err := ioutil.ReadAll(file)
+    if err != nil {
+        fmt.Printf("ioutil read all err : %v\n", err)
+    }
+    fmt.Printf("ioutil read all success.\n内容：\n%s\n", string(data1))
+
+    data2, err := ioutil.ReadFile("./file.txt")
+    if err != nil {
+        fmt.Printf("ioutil read file err : %v\n", err)
+    }
+    fmt.Printf("ioutil read file success.\n内容：\n%s\n", string(data2))
+}
+
+Go语言文件删除
+
+判断文件是否存在
+
+判断文件或目录是否存在常用函数：
+
+func IsExist(err error) bool
+返回一个布尔值说明该错误是否表示一个文件或目录已经存在。ErrExist和一些系统调用错误会使它返回真。
+
+func IsNotExist(err error) bool
+返回一个布尔值说明该错误是否表示一个文件或目录不存在。ErrNotExist和一些系统调用错误会使它返回真。
+
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    path := "./oldboy/golang.go"
+    b, err := PathExists(path)
+    if err != nil {
+        fmt.Printf("PathExists(%s),err(%v)\n", path, err)
+    }
+    if b {
+        fmt.Printf("path %s 存在\n", path)
+    } else {
+        fmt.Printf("path %s 不存在\n", path)
+    }
+}
+
+/*
+   判断文件或文件夹是否存在
+   如果返回的错误为nil,说明文件或文件夹存在
+   如果返回的错误类型使用os.IsNotExist()判断为true,说明文件或文件夹不存在
+   如果返回的错误为其它类型,则不确定是否在存在
+*/
+func PathExists(path string) (bool, error) {
+
+    _, err := os.Stat(path)
+    if err == nil {
+        return true, nil
+    }
+    if os.IsNotExist(err) {
+        return false, nil
+    }
+    return false, err
+}
+文件删除
+
+文件删除常用函数：
+
+func Remove(name string) error
+Remove删除name指定的文件或目录。如果出错，会返回*PathError底层类型的错误。
+
+func RemoveAll(path string) error
+RemoveAll删除path指定的文件，或目录及它包含的任何下级对象。它会尝试删除所有东西，除非遇到错误并返回。如果path指定的对象不存在，RemoveAll会返回nil而不返回错误。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    err := os.Remove("./file1.txt")
+    if err != nil {
+        fmt.Printf("remove ./file1.txt err : %v\n", err)
+    }
+    err = os.RemoveAll("./file2.txt")
+    if err != nil {
+        fmt.Printf("remove all ./file2.txt err : %v\n", err)
+    }
+}
