@@ -1,0 +1,161 @@
+Go语言文件创建
+os包提供了操作系统函数的不依赖平台的接口。设计为Unix风格的，虽然错误处理是go风格的；失败的调用会返回错误值而非错误码。通常错误值里包含更多信息。
+
+创建目录
+
+创建目录操作常用函数：
+
+func Getwd() (dir string, err error)    
+Getwd返回一个对应当前工作目录的根路径。如果当前目录可以经过多条路径抵达（因为硬链接），Getwd会返回其中一个。
+
+func Mkdir(name string, perm FileMode) error　
+Mkdir使用指定的权限和名称创建一个目录。如果出错，会返回*PathError底层类型的错误。
+
+func IsExist(err error) bool
+返回一个布尔值说明该错误是否表示一个文件或目录已经存在。ErrExist和一些系统调用错误会使它返回真。　
+
+func IsNotExist(err error) bool　　
+返回一个布尔值说明该错误是否表示一个文件或目录不存在。ErrNotExist和一些系统调用错误会使它返回真。
+
+func MkdirAll(path string, perm FileMode) error
+MkdirAll使用指定的权限和名称创建一个目录，包括任何必要的上级目录，并返回nil，否则返回错误。权限位perm会应用在每一个被本函数创建的目录上。如果path指定了一个已经存在的目录，MkdirAll不做任何操作并返回nil。
+
+func Rename(oldpath, newpath string) error　
+Rename修改一个文件的名字，移动一个文件。可能会有一些个操作系统特定的限制。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    path, err := os.Getwd()
+    if err != nil {
+        fmt.Printf("get path err : %v\n", err)
+    }
+    fmt.Printf("当前目录 : %v\n", path)
+
+    err = os.Mkdir("./oldboy", 0777)
+    if err != nil {
+        fmt.Printf("mkdir oldboy err : %v\n", err)
+        if os.IsExist(err) {
+            fmt.Println("文件已存在！")
+        }
+        if os.IsNotExist(err) {
+            fmt.Println("文件不存在！")
+        }
+    }
+
+    err = os.MkdirAll("./oldboy/go", 0777)
+    if err != nil {
+        fmt.Println("mkdirall err : %v\n", err)
+    }
+
+    err = os.Rename("./oldboy/go", "./oldboy/golang")
+    if err != nil {
+        fmt.Printf("rename err : %v\n", err)
+    }
+}
+创建文件
+
+创建文件操作常用函数和方法：
+
+func Create(name string) (file *File, err error)
+Create采用模式0666（任何人都可读写，不可执行）创建一个名为name的文件，如果文件已存在会截断它（为空文件）。如果成功，返回的文件对象可用于I/O；对应的文件描述符具有O_RDWR模式。如果出错，错误底层类型是*PathError。
+
+func NewFile(fd uintptr, name string) *File
+NewFile使用给出的Unix文件描述符和名称创建一个文件。
+
+func (f *File) Close() error
+Close关闭文件f，使文件不能用于读写。它返回可能出现的错误。
+
+func (f *File) Name() string
+Name方法返回（提供给Open/Create等方法的）文件名称。
+
+func (f *File) Stat() (fi FileInfo, err error)
+Stat返回描述文件f的FileInfo类型值。如果出错，错误底层类型是*PathError。
+
+func SameFile(fi1, fi2 FileInfo) bool
+SameFile返回fi1和fi2是否在描述同一个文件。例如，在Unix这表示二者底层结构的设备和索引节点是相同的；在其他系统中可能是根据路径名确定的。
+
+SameFile应只使用本包Stat函数返回的FileInfo类型值为参数，其他情况下，它会返回假。
+
+type FileInfo interface {
+    Name() string       // 文件的名字（不含扩展名）
+    Size() int64        // 普通文件返回值表示其大小；其他文件的返回值含义各系统不同
+    Mode() FileMode     // 文件的模式位
+    ModTime() time.Time // 文件的修改时间
+    IsDir() bool        // 等价于Mode().IsDir()
+    Sys() interface{}   // 底层数据来源（可以返回nil）
+}
+func (m FileMode) IsRegular() bool
+IsRegular报告m是否是一个普通文件。
+
+func (m FileMode) IsDir() bool
+IsDir报告m是否是一个目录。
+
+代码实现：
+
+package main
+
+import (
+    "fmt"
+    "os"
+    "syscall"
+)
+
+func main() {
+    file1, err := os.Create("./file1.txt")
+    if err != nil {
+        fmt.Printf("create file1 err : %v\n", err)
+    }
+    if file1 != nil {
+        defer func(file *os.File) { file.Close() }(file1)
+        fmt.Println("create file1 success ")
+    }
+
+    file2 := os.NewFile(uintptr(syscall.Stdin), "./file2.txt")
+    if file2 != nil {
+        defer func(file *os.File) { file.Close() }(file2)
+        fmt.Println("newfile file2 success ")
+    }
+
+    fileName := file1.Name()
+    fmt.Printf("file1 name is %v\n", fileName)
+
+    fileInfo1, err := file1.Stat()
+    if err != nil {
+        fmt.Printf("get file1 info err : %v\n", err)
+    }
+
+    fileInfo2, err := file2.Stat()
+    if err != nil {
+        fmt.Printf("get file2 info err : %v\n", err)
+    }
+
+    b := os.SameFile(fileInfo1, fileInfo2)
+    if b {
+        fmt.Println("file1 与 file2 是同一个文件")
+    } else {
+        fmt.Println("file1 与 file2 不是同一个文件")
+    }
+
+    fileMode1 := fileInfo1.Mode()
+    b = fileMode1.IsRegular()
+    if b {
+        fmt.Println("file1 是普通文件")
+    } else {
+        fmt.Println("file1 不是普通文件")
+    }
+
+    b = fileMode1.IsDir()
+    if b {
+        fmt.Println("file1 是普通目录")
+    } else {
+        fmt.Println("file1 不是普通目录")
+    }
+}
