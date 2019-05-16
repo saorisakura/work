@@ -1,0 +1,183 @@
+Go语言sort包排序
+Go语言 sort包提供了排序切片和用户自定义数据集的函数。
+
+基本类型排序
+
+1、升序排序
+
+对于 int 、 float64 和 string 数组或是分片的排序， go 分别提供了 sort.Ints() 、 sort.Float64s() 和 sort.Strings() 函数， 默认都是从小到大排序。
+
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    intList1 := []int{2, 0, 1, 8, 0, 9, 2, 4, 1, 2}
+    floatList1 := []float64{4.2, 5.9, 12.3, 10.0, 50.4, 99.9, 31.4, 27.81828, 3.14}
+    stringList1 := []string{"o", "l", "d", "b", "o", "y", "g", "o", "l", "a", "n", "g"}
+
+    // 方法一
+    sort.Ints(intList1)
+    sort.Float64s(floatList1)
+    sort.Strings(stringList1)
+    fmt.Printf("方法一：\n%v\n%v\n%v\n", intList1, floatList1, stringList1)
+
+    // 方法二
+    intList2 := []int{2, 0, 1, 8, 0, 9, 2, 4, 1, 2}
+    floatList2 := []float64{4.2, 5.9, 12.3, 10.0, 50.4, 99.9, 31.4, 27.81828, 3.14}
+    stringList2 := []string{"o", "l", "d", "b", "o", "y", "g", "o", "l", "a", "n", "g"}
+    sort.Sort(sort.IntSlice(intList2))
+    sort.Sort(sort.Float64Slice(floatList2))
+    sort.Sort(sort.StringSlice(stringList2))
+    fmt.Printf("方法二：\n%v\n%v\n%v\n", intList2, floatList2, stringList2)
+
+    // 方法三
+    intList3 := []int{2, 0, 1, 8, 0, 9, 2, 4, 1, 2}
+    floatList3 := []float64{4.2, 5.9, 12.3, 10.0, 50.4, 99.9, 31.4, 27.81828, 3.14}
+    stringList3 := []string{"o", "l", "d", "b", "o", "y", "g", "o", "l", "a", "n", "g"}
+    (sort.IntSlice(intList3)).Sort()
+    (sort.Float64Slice(floatList3)).Sort()
+    (sort.StringSlice(stringList3)).Sort()
+    fmt.Printf("方法二：\n%v\n%v\n%v\n", intList3, floatList3, stringList3)
+}
+2、降序排序
+
+sort 包下的三个类型 IntSlice 、 Float64Slice 、 StringSlice 分别实现了这三个方法， 对应排序的是 [] int 、 [] float64 和 [] string 。如果期望逆序排序， 只需要将对应的 Less 函数简单修改一下即可。
+
+go 的 sort 包可以使用 sort.Reverse(slice) 来调换 slice.Interface.Less ，也就是比较函数，所以， int 、 float64 和 string 的逆序排序函数可以这么写：
+
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    intList := []int{2, 0, 1, 8, 0, 9, 2, 4, 1, 2}
+    floatList := []float64{4.2, 5.9, 12.3, 10.0, 50.4, 99.9, 31.4, 27.81828, 3.14}
+    stringList := []string{"o", "l", "d", "b", "o", "y", "g", "o", "l", "a", "n", "g"}
+
+    sort.Sort(sort.Reverse(sort.IntSlice(intList)))
+    sort.Sort(sort.Reverse(sort.Float64Slice(floatList)))
+    sort.Sort(sort.Reverse(sort.StringSlice(stringList)))
+
+    fmt.Printf("%v\n%v\n%v\n", intList, floatList, stringList)
+}
+结构体类型的排序
+
+结构体类型的排序是通过使用 sort.Sort(slice) 实现的， 只要 slice 实现了 sort.Interface 的三个方法就可以。 虽然这么说，但是排序的方法却有那么好几种。首先一种就是模拟排序 [] int 构造对应的 IntSlice 类型，然后对 IntSlice 类型实现 Interface 的三个方法。
+
+1、模拟 IntSlice 排序
+
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+type Student struct {
+    Name string
+    Age  int
+}
+
+// 按照 Student.Age 从大到小排序
+type StudentSlice []Student
+
+// 重写 Len() 方法
+func (a StudentSlice) Len() int {
+    return len(a)
+}
+
+// 重写 Swap() 方法
+func (a StudentSlice) Swap(i, j int) {
+    a[i], a[j] = a[j], a[i]
+}
+
+// 重写 Less() 方法， 从大到小排序
+func (a StudentSlice) Less(i, j int) bool {
+    return a[j].Age < a[i].Age
+}
+
+func main() {
+    stu := []Student{
+        {"zhang san", 18},
+        {"li si", 28},
+        {"wang wu", 25},
+        {"zhao liu", 16},
+        {"oldboy", 20},
+    }
+
+    fmt.Println(stu)
+    // 按照 Age 的降序排序
+    sort.Sort(StudentSlice(stu))
+    fmt.Println(stu)
+    // 按照 Age 的升序排序
+    sort.Sort(sort.Reverse(StudentSlice(stu)))
+    fmt.Println(stu)
+
+}
+这完全是一种模拟的方式，所以如果懂了 IntSlice 自然就理解这里了，反过来，理解了这里那么 IntSlice 那里也就懂了。
+
+2、进一步封装，封装成 SortStudent 方法：
+
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+type Student struct {
+    Name string
+    Age  int
+}
+
+type StudentWrapper struct {
+    stu []Student
+    by  func(p, q *Student) bool
+}
+
+type SortBy func(p, q *Student) bool
+
+func (pw StudentWrapper) Len() int { // 重写 Len() 方法
+    return len(pw.stu)
+}
+func (pw StudentWrapper) Swap(i, j int) { // 重写 Swap() 方法
+    pw.stu[i], pw.stu[j] = pw.stu[j], pw.stu[i]
+}
+func (pw StudentWrapper) Less(i, j int) bool { // 重写 Less() 方法
+    return pw.by(&pw.stu[i], &pw.stu[j])
+}
+
+// 封装成 SortStudent 方法
+func SortStudent(stu []Student, by SortBy) {
+    sort.Sort(StudentWrapper{stu, by})
+}
+
+func main() {
+    stu := []Student{
+        {"zhang san", 18},
+        {"li si", 28},
+        {"wang wu", 25},
+        {"zhao liu", 16},
+        {"oldboy", 20},
+    }
+
+    fmt.Println(stu)
+
+    sort.Sort(StudentWrapper{stu, func(p, q *Student) bool {
+        return q.Age < p.Age // Age 递减排序
+    }})
+
+    fmt.Println(stu)
+
+    SortStudent(stu, func(p, q *Student) bool {
+        return p.Name < q.Name // Name 递增排序
+    })
+    fmt.Println(stu)
+}

@@ -1,0 +1,131 @@
+Go语言常见加密算法
+常用的加密算法有Base64、MD5、AES和DES等等。
+
+Base64
+
+Base64是一种任意二进制到文本字符串的编码方法，常用于在URL、Cookie、网页中传输少量二进制数据。
+
+首先使用Base64编码需要一个含有64个字符的表，这个表由大小写字母、数字、+和/组成。采用Base64编码处理数据时，会把每三个字节共24位作为一个处理单元，再分为四组，每组6位，查表后获得相应的字符即编码后的字符串。编码后的字符串长32位，这样，经Base64编码后，原字符串增长1/3。如果要编码的数据不是3的倍数，最后会剩下一到两个字节，Base64编码中会采用\x00在处理单元后补全，编码后的字符串最后会加上一到两个 = 表示补了几个字节。
+
+Go语言中base64的编码和解码可以用内置库encoding/base64
+
+package main
+
+import (
+    "encoding/base64"
+    "fmt"
+    "log"
+)
+
+func main() {
+
+    str := "hello world , hello golang !"
+    fmt.Printf("string : %v\n", str)
+
+    input := []byte(str)
+    fmt.Printf("[]byte : %v\n", input)
+
+    // 演示base64编码
+    encodeString := base64.StdEncoding.EncodeToString(input)
+    fmt.Printf("encode base64 : %v\n", encodeString)
+
+    // 对上面的编码结果进行base64解码
+    decodeBytes, err := base64.StdEncoding.DecodeString(encodeString)
+    if err != nil {
+        log.Fatalln(err)
+    }
+    fmt.Printf("decode base64 : %v\n", string(decodeBytes))
+
+    // 如果要用在url中，需要使用URLEncoding
+    urlencode := base64.URLEncoding.EncodeToString([]byte(input))
+    fmt.Printf("urlencode : %v\n", urlencode)
+    //URLEncoding
+    urldecode, err := base64.URLEncoding.DecodeString(urlencode)
+    if err != nil {
+        log.Fatalln(err)
+    }
+    fmt.Printf("urldecode : %v\n", string(urldecode))
+}
+MD5
+
+MD5的全称是Message-DigestAlgorithm 5，它可以把一个任意长度的字节数组转换成一个定长的整数，并且这种转换是不可逆的。对于任意长度的数据，转换后的MD5值长度是固定的，而且MD5的转换操作很容易，只要原数据有一点点改动，转换后结果就会有很大的差异。正是由于MD5算法的这些特性，它经常用于对于一段信息产生信息摘要，以防止其被篡改。其还广泛就于操作系统的登录过程中的安全验证，比如Unix操作系统的密码就是经过MD5加密后存储到文件系统中，当用户登录时输入密码后， 对用户输入的数据经过MD5加密后与原来存储的密文信息比对，如果相同说明密码正确，否则输入的密码就是错误的。
+
+MD5以512位为一个计算单位对数据进行分组，每一分组又被划分为16个32位的小组，经过一系列处理后，输出4个32位的小组，最后组成一个128位的哈希值。对处理的数据进行512求余得到N和一个余数，如果余数不为448,填充1和若干个0直到448位为止，最后再加上一个64位用来保存数据的长度，这样经过预处理后，数据变成（N+1）x 512位。
+
+加密。Encode 函数用来加密数据，Check函数传入一个未加密的字符串和与加密后的数据，进行对比，如果正确就返回true。
+
+package main
+
+import (
+    "crypto/md5"
+    "encoding/hex"
+    "fmt"
+    "io"
+)
+
+func main() {
+    str := "hello oldboy, hi golang !"
+
+    //方法一
+    data := []byte(str)
+    has := md5.Sum(data)
+    md5str1 := fmt.Sprintf("%x", has) //将[]byte转成16进制
+
+    fmt.Println(md5str1)
+
+    //方法二
+
+    w := md5.New()
+    io.WriteString(w, str) //将str写入到w中
+    bw := w.Sum(nil)       //w.Sum(nil)将w的hash转成[]byte格式
+
+    // md5str2 := fmt.Sprintf("%x", bw) //将 bw 转成字符串
+    md5str2 := hex.EncodeToString(bw) //将 bw 转成字符串
+    fmt.Println(md5str2)
+}
+高级加解密
+
+Go语言的crypto里面支持对称加密的高级加解密包有：
+
+crypto/aes包：AES(Advanced Encryption Standard)，又称Rijndael加密法，是美国联邦政府采用的一种区块加密标准。
+
+crypto/des包：DES(Data Encryption Standard)，是一种对称加密标准，是目前使用最广泛的密钥系统，特别是在保护金融数据的安全中。曾是美国联邦政府的加密标准，但现已被AES所替代。
+
+因为这两种算法使用方法类似，所以在此，我们仅用aes包为例来讲解它们的使用，请看下面的例子：
+
+package main
+
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "fmt"
+    "os"
+)
+
+var commonIV = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
+
+func main() {
+    // 需要去加密的字符串
+    str := []byte("老男孩IT教育，只培养技术精英。")
+    // aes 的 key
+    key := "oldboy,linux,golang,java,python;"
+    // 创建加密算法aes
+    c, err := aes.NewCipher([]byte(key))
+    if err != nil {
+        fmt.Printf("Error: NewCipher(%d bytes) = %s", len(key), err)
+        os.Exit(-1)
+    }
+
+    //加密字符串
+    cfb := cipher.NewCFBEncrypter(c, commonIV)
+    ciphertext := make([]byte, len(str))
+    cfb.XORKeyStream(ciphertext, str)
+    fmt.Printf("%s=>%x\n", str, ciphertext)
+
+    // 解密字符串
+    cfbdec := cipher.NewCFBDecrypter(c, commonIV)
+    strCopy := make([]byte, len(str))
+    cfbdec.XORKeyStream(strCopy, ciphertext)
+    fmt.Printf("%x=>%s\n", ciphertext, strCopy)
+}
+密钥key只能为16位、24位或32位，分别对应AES-128, AES-192和 AES-256。
