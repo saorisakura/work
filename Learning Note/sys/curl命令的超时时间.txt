@@ -1,0 +1,28 @@
+curl命令的超时时间
+
+今天在一台服务器上突然看到一个curl进程已经运行了28天还木结束，　有点奇怪！　我在使用curl的时候也设置了超时时间， --connect-timeout 5
+curl --connect-timeout 5 --data-binary "set=${L_UPLOAD_DATA_ENCODED}" http://172.88.99.00:8080/xxx.php &>/dev/null
+
+按理来说， 应该是5s就会超时退出了！  纳闷之余想起wget好像对超时时间， 是有分阶段的， 比如说请求的超时， 传输的超时等等， 所以就仔细查看了下curl的手册页：
+
+原来使用curl时，有两个超时时间：一个是连接超时时间，另一个是整个过程允许的最大时间，
+
+--connect-timeout <seconds>
+    Maximum time in seconds that you allow the connection to the server to take.  This only limits the connection phase, once curl has connected this option is of no more use. See also the -m/--max-time option.
+    If this option is used several times, the last one will be used.
+
+这个是指定连接超时时间。 如果出错， 提示形如：curl: (28) connect() timed out!
+
+ 
+
+-m/--max-time <seconds>
+    Maximum  time  in seconds that you allow the whole operation to take.  This is useful for preventing your batch jobs from hanging for hours due to slow networks or links going down.  See also the --connect-timeout option.
+    If this option is used several times, the last one will be used.
+
+这个是指定整个过程最大的允许时间。 出错提示如：curl: (28) Operation timed out after 2000 milliseconds with 0 bytes received
+
+
+ 
+
+还可以这样用： curl -o x.log "http://www.yyyy.com" --speed-time 5 --speed-limit 1
+是说将url内容保存到x.log中, 如果传输速度小于1字节/秒的状态持续5秒,该连接就会终止.
