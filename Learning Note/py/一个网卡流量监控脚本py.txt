@@ -1,0 +1,44 @@
+一个网卡流量监控脚本py
+2016-12-12
+学习python的统性能监控模块psutil，正好练习写个监控网卡流量的脚本。
+
+ import psutil
+import time,sys
+def jisuan(ss,es,sr,er):
+    r = {}
+    sk = float(es-ss)/1024
+    rk = float(er-sr)/1024
+    sm = float(es-ss)/1024/1024
+    rm = float(er-sr)/1024/1024
+    if(sk  < 1000 and rk < 1000):
+        send = str(float('%0.4f'%sk)) + 'Kbs'
+        recv = str(float('%0.4f'%rk)) + 'Kbs'
+    elif(sk < 1000 and rk > 1000):
+        send = str(float('%0.4f'%sk)) + 'Kbs'
+        recv = str(float('%0.4f'%rm)) + 'Mbs'
+    elif (sk > 1000 and rk < 1000):
+        send = str(float('%0.4f'%sm)) + 'Mbs'
+        recv = str(float('%0.4f'%rk)) + 'Kbs'
+    else:
+        send = str(float('%0.4f'%sm)) + 'Mbs'
+        recv = str(float('%0.4f'%rm)) + 'Mbs'
+    r['send'] = send
+    r['recv'] = recv
+    return r
+ss = psutil.net_io_counters().bytes_sent
+sr = psutil.net_io_counters().bytes_recv
+time.sleep(1)
+es = psutil.net_io_counters().bytes_sent
+er = psutil.net_io_counters().bytes_recv
+while 1:
+    aaa = jisuan(ss,es,sr,er)
+    sys.stdout.write("\rSend %s     Recv %s     " % (aaa['send'],aaa['recv']))
+    sys.stdout.flush()
+    ss,sr = es,er
+    time.sleep(1)
+    es = psutil.net_io_counters().bytes_sent
+    er = psutil.net_io_counters().bytes_recv
+具体使用情况是动态实时刷新的显示当前网速:
+
+[root@minion2 project]# python net.py
+Send 2.9404Kbs     Recv 7.9404Kbs
