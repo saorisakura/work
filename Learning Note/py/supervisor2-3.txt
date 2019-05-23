@@ -1,0 +1,131 @@
+[root@ySex-manager001 ySex]# egrep -v "^$|^#|^;" supervisord.conf 
+[unix_http_server]
+file=/tmp/supervisor.sock   ; the path to the socket file
+[supervisord]
+logfile=/tmp/supervisord.log ; main log file; default $CWD/supervisord.log
+logfile_maxbytes=50MB        ; max main logfile bytes b4 rotation; default 50MB
+logfile_backups=10           ; # of main logfile backups; 0 means none, default 10
+loglevel=info                ; log level; default info; others: debug,warn,trace
+pidfile=/tmp/supervisord.pid ; supervisord pidfile; default supervisord.pid
+nodaemon=false               ; start in foreground if true; default false
+minfds=1024                  ; min. avail startup file descriptors; default 1024
+minprocs=200                 ; min. avail process descriptors;default 200
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+[supervisorctl]
+serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
+[program:report_php]
+directory=/usr/local/ySex/
+autostart=true
+autorestart=unexpected
+command=python3 report_ly.py
+stdout_logfile=/var/log/report_php.log
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=10
+stderr_logfile=/var/log/report_php_err.log
+stderr_logfile_maxbytes=50MB
+stderr_logfile_backups=10
+
+
+
+
+[root@ySex-manager001 ySex]# egrep -v "^$|^#|^;" /etc/supervisord.conf 
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+[unix_http_server]
+file=/var/tmp/supervisor.sock   ; the path to the socket file
+[supervisord]
+logfile=/var/log/supervisor/supervisord.log ; (main log file;default $CWD/supervisord.log)
+logfile_maxbytes=50MB       ; (max main logfile bytes b4 rotation;default 50MB)
+logfile_backups=10          ; (num of main logfile rotation backups;default 10)
+loglevel=info               ; (logging level;default info; others: debug,warn)
+pidfile=/var/run/supervisord.pid ; (supervisord pidfile;default supervisord.pid)
+nodaemon=false              ; (start in foreground if true;default false)
+minfds=1024                 ; (min. avail startup file descriptors;default 1024)
+minprocs=200                ; (min. avail process descriptors;default 200)
+[supervisorctl]
+serverurl=unix:///var/tmp/supervisor.sock ; use a unix:// URL  for a unix socket
+[program:report_php]
+directory=/usr/local/ySex/
+autostart=True
+autorestart=True
+command=python27 report_ly.py
+log_stdout=true
+log_stderr=true
+logfile=/var/log/report_php.log
+logfile_maxbytes=50MB
+logfile_backups=10
+
+
+Installing
+Installation instructions depend whether the system on which you’re attempting to install Supervisor has internet access.
+
+Installing to A System With Internet Access
+Internet-Installing With Pip
+Supervisor can be installed with pip install:
+
+pip install supervisor
+Depending on the permissions of your system’s Python, you might need to be the root user to install Supervisor successfully using pip.
+
+You can also install supervisor in a virtualenv via pip.
+
+Internet-Installing Without Pip
+If your system does not have pip installed, you will need to download the Supervisor distribution and install it by hand. Current and previous Supervisor releases may be downloaded from PyPi. After unpacking the software archive, run python setup.py install. This requires internet access. It will download and install all distributions depended upon by Supervisor and finally install Supervisor itself.
+
+Note
+
+Depending on the permissions of your system’s Python, you might need to be the root user to successfully invoke python setup.py install.
+
+Installing To A System Without Internet Access
+If the system that you want to install Supervisor to does not have Internet access, you’ll need to perform installation slightly differently. Since both pip and python setup.py install depend on internet access to perform downloads of dependent software, neither will work on machines without internet access until dependencies are installed. To install to a machine which is not internet-connected, obtain the following dependencies on a machine which is internet-connected:
+
+setuptools (latest) from https://pypi.org/pypi/setuptools/.
+meld3 (latest) from https://pypi.org/pypi/meld3/.
+Copy these files to removable media and put them on the target machine. Install each onto the target machine as per its instructions. This typically just means unpacking each file and invoking python setup.py install in the unpacked directory. Finally, run supervisor’s python setup.py install.
+
+Note
+
+Depending on the permissions of your system’s Python, you might need to be the root user to invoke python setup.py install successfully for each package.
+
+Installing a Distribution Package
+Some Linux distributions offer a version of Supervisor that is installable through the system package manager. These packages are made by third parties, not the Supervisor developers, and often include distribution-specific changes to Supervisor.
+
+Use the package management tools of your distribution to check availability; e.g. on Ubuntu you can run apt-cache show supervisor, and on CentOS you can run yum info supervisor.
+
+A feature of distribution packages of Supervisor is that they will usually include integration into the service management infrastructure of the distribution, e.g. allowing supervisord to automatically start when the system boots.
+
+Note
+
+Distribution packages of Supervisor can lag considerably behind the official Supervisor packages released to PyPI. For example, Ubuntu 12.04 (released April 2012) offered a package based on Supervisor 3.0a8 (released January 2010).
+
+Note
+
+Users reported that the distribution package of Supervisor for Ubuntu 16.04 had different behavior than previous versions. On Ubuntu 10.04, 12.04, and 14.04, installing the package will configure the system to start supervisord when the system boots. On Ubuntu 16.04, this was not done by the initial release of the package. The package was fixed later. See Ubuntu Bug #1594740 for more information.
+
+Creating a Configuration File
+Once the Supervisor installation has completed, run echo_supervisord_conf. This will print a “sample” Supervisor configuration file to your terminal’s stdout.
+
+Once you see the file echoed to your terminal, reinvoke the command as echo_supervisord_conf > /etc/supervisord.conf. This won’t work if you do not have root access.
+
+If you don’t have root access, or you’d rather not put the supervisord.conf file in /etc/supervisord.conf, you can place it in the current directory (echo_supervisord_conf > supervisord.conf) and start supervisord with the -c flag in order to specify the configuration file location.
+
+For example, supervisord -c supervisord.conf. Using the -c flag actually is redundant in this case, because supervisord searches the current directory for a supervisord.conf before it searches any other locations for the file, but it will work. See Running Supervisor for more information about the -c flag.
+
+Once you have a configuration file on your filesystem, you can begin modifying it to your liking.
+
+Upgrading Supervisor 2 to 3
+The following is true when upgrading an installation from Supervisor 2.X to Supervisor 3.X:
+
+In [program:x] sections, the keys logfile, logfile_backups, logfile_maxbytes, log_stderr and log_stdout are no longer valid. Supervisor2 logged both stderr and stdout to a single log file. Supervisor 3 logs stderr and stdout to separate log files. You’ll need to rename logfile to stdout_logfile, logfile_backups to stdout_logfile_backups, and logfile_maxbytes to stdout_logfile_maxbytes at the very least to preserve your configuration. If you created program sections where log_stderr was true, to preserve the behavior of sending stderr output to the stdout log, use the redirect_stderr boolean in the program section instead.
+
+The supervisor configuration file must include the following section verbatim for the XML-RPC interface (and thus the web interface and supervisorctl) to work properly:
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+The semantics of the autorestart parameter within [program:x] sections has changed. This parameter used to accept only true or false. It now accepts an additional value, unexpected, which indicates that the process should restart from the EXITED state only if its exit code does not match any of those represented by the exitcode parameter in the process’ configuration (implying a process crash). In addition, the default for autorestart is now unexpected (it used to be true, which meant restart unconditionally).
+
+We now allow supervisord to listen on both a UNIX domain socket and an inet socket instead of making listening on one mutually exclusive with listening on the other. As a result, the options http_port, http_username, http_password, sockchmod and sockchown are no longer part of the [supervisord] section configuration. These have been supplanted by two other sections: [unix_http_server] and [inet_http_server]. You’ll need to insert one or the other (depending on whether you want to listen on a UNIX domain socket or a TCP socket respectively) or both into your supervisord.conf file. These sections have their own options (where applicable) for port, username, password, chmod, and chown.
+
+All supervisord command-line options related to http_port, http_username, http_password, sockchmod and sockchown have been removed (see above point for rationale).
+
+The option that used to be sockchown within the [supervisord] section (and is now named chown within the [unix_http_server] section) used to accept a dot-separated (user.group) value. The separator now must be a colon, e.g. user:group. Unices allow for dots in usernames, so this change is a bugfix.
