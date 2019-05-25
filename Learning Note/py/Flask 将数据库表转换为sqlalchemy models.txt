@@ -1,0 +1,326 @@
+Flask 将数据库表转换为sqlalchemy models
+2018年02月12日 10:44:18
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/powerccna/article/details/79315156
+在开发Flask web应用的时候，习惯了用mysql workbench 设计数据库表，直接写Python的SQLAlchemy 还是觉得慢。自然会想到有没有工具可以直接从数据库生成Python的SQLAlchemy呢， sqlacodegen 正好满足需求。
+
+使用步骤。
+
+1. 安装sqlacodegen
+
+pip install sqlacodegen
+2. 生成SQLAlchemy 命令
+
+sqlacodegen mysql://root:password@127.0.0.1/crm
+# coding: utf-8
+from sqlalchemy import Column, Float, Integer, SmallInteger,
+from sqlalchemy.ext.declarative import declarative_base
+
+
+Base = declarative_base()
+metadata = Base.metadata
+
+
+class Attribute(Base):
+    __tablename__ = 'attribute'
+
+    id = Column(Integer, primary_key=True)
+    attribute = Column(String(128, u'utf8_unicode_ci'))
+    att_value = Column(String(255, u'utf8_unicode_ci'))
+    serivce_id = Column(Integer)
+    description = Column(String(255, u'utf8_unicode_ci'))
+
+[root@template ~]# pip install sqlacodegen
+Collecting sqlacodegen
+  Downloading https://files.pythonhosted.org/packages/20/50/23bb1df26808f4dacf8387a6098c5a14686ca463e607e93e56f47c07da74/sqlacodegen-2.0.1-py2.py3-none-any.whl
+Requirement already satisfied: SQLAlchemy>=0.8.0 in /usr/lib64/python3.4/site-packages (from sqlacodegen) (1.2.7)
+Collecting inflect>=0.2.0 (from sqlacodegen)
+  Downloading https://files.pythonhosted.org/packages/86/02/e6b11020a9c37d25b4767a1d0af5835629f6e75d6f51553ad07a4c73dc31/inflect-2.1.0-py2.py3-none-any.whl (40kB)
+    100% |████████████████████████████████| 51kB 583kB/s 
+Installing collected packages: inflect, sqlacodegen
+Successfully installed inflect-2.1.0 sqlacodegen-2.0.1
+You are using pip version 10.0.1, however version 19.1.1 is available.
+You should consider upgrading via the 'pip install --upgrade pip' command.
+[root@template ~]# sqlacodegen mysql://root:123456@192.168.21.11/ysex
+# coding: utf-8
+from sqlalchemy import Column, DateTime, String, text
+from sqlalchemy.dialects.mysql import INTEGER
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+metadata = Base.metadata
+
+
+class Tpdb1(Base):
+    __tablename__ = 'tpdb_1'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb10(Base):
+    __tablename__ = 'tpdb_10'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb11(Base):
+    __tablename__ = 'tpdb_11'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb12(Base):
+    __tablename__ = 'tpdb_12'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb2(Base):
+    __tablename__ = 'tpdb_2'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb3(Base):
+    __tablename__ = 'tpdb_3'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb4(Base):
+    __tablename__ = 'tpdb_4'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb5(Base):
+    __tablename__ = 'tpdb_5'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb6(Base):
+    __tablename__ = 'tpdb_6'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb7(Base):
+    __tablename__ = 'tpdb_7'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb8(Base):
+    __tablename__ = 'tpdb_8'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
+
+
+class Tpdb9(Base):
+    __tablename__ = 'tpdb_9'
+
+    id = Column(INTEGER(11), primary_key=True)
+    vname = Column(String(200), index=True)
+    picName = Column(String(200))
+    insert_Time = Column(DateTime, index=True, server_default=text("CURRENT_TIMESTAMP"))
+    result = Column(String(20), index=True)
+    terr_label = Column(String(20), index=True)
+    live_label = Column(String(20), index=True)
+    porn_label = Column(String(20), index=True)
+    exp_label = Column(String(20), index=True)
+    be_label = Column(String(20), index=True)
+    be_ratio = Column(String(20), server_default=text("'1'"))
+    porn_ratio = Column(String(20), server_default=text("'1'"))
+    terr_ratio = Column(String(20), server_default=text("'1'"))
+    col_undefine_1 = Column(String(20))
+    col_undefine_2 = Column(String(20))
+    col_undefine_3 = Column(String(20))
+    col_undefine_4 = Column(String(20))
+    col_undefine_5 = Column(String(20))
