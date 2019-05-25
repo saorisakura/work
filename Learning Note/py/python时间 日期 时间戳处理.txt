@@ -1,0 +1,156 @@
+python时间,日期,时间戳处理
+2013年10月11日 00:42:52 
+1.将字符串的时间转换为时间戳
+    方法:
+        a = "2013-10-10 23:40:00"
+        将其转换为时间数组
+        import time
+        timeArray = time.strptime(a, "%Y-%m-%d %H:%M:%S")
+	转换为时间戳:
+	timeStamp = int(time.mktime(timeArray))
+	timeStamp == 1381419600
+2.字符串格式更改
+	如a = "2013-10-10 23:40:00",想改为 a = "2013/10/10 23:40:00"
+	方法:先转换为时间数组,然后转换为其他格式
+	timeArray = time.strptime(a, "%Y-%m-%d %H:%M:%S")
+	otherStyleTime = time.strftime("%Y/%m/%d %H:%M:%S", timeArray)
+
+
+3.时间戳转换为指定格式日期:
+	方法一:
+		利用localtime()转换为时间数组,然后格式化为需要的格式,如
+		timeStamp = 1381419600
+		timeArray = time.localtime(timeStamp)
+		otherStyleTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+		otherStyletime == "2013-10-10 23:40:00"
+
+	方法二:
+		import datetime
+		timeStamp = 1381419600
+		dateArray = datetime.datetime.utcfromtimestamp(timeStamp)
+		otherStyleTime = dateArray.strftime("%Y-%m-%d %H:%M:%S")
+		otherStyletime == "2013-10-10 23:40:00"
+		注意：使用此方法时必须先设置好时区，否则有时差
+
+4.获取当前时间并转换为指定日期格式
+	方法一:
+		import time
+		获得当前时间时间戳
+		now = int(time.time())  ->这是时间戳
+		转换为其他日期格式,如:"%Y-%m-%d %H:%M:%S"
+		timeArray = time.localtime(timeStamp)
+		otherStyleTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+
+	方法二:
+		import datetime
+		获得当前时间
+		now = datetime.datetime.now()  ->这是时间数组格式
+		转换为指定的格式:
+		otherStyleTime = now.strftime("%Y-%m-%d %H:%M:%S")
+
+5.获得三天前的时间
+	方法:
+		import time
+		import datetime
+		先获得时间数组格式的日期
+		threeDayAgo = (datetime.datetime.now() - datetime.timedelta(days = 3))
+		转换为时间戳:
+			timeStamp = int(time.mktime(threeDayAgo.timetuple()))
+		转换为其他字符串格式:
+			otherStyleTime = threeDayAgo.strftime("%Y-%m-%d %H:%M:%S")
+	注:timedelta()的参数有:days,hours,seconds,microseconds
+
+6.给定时间戳,计算该时间的几天前时间:
+	timeStamp = 1381419600
+	先转换为datetime
+	import datetime
+	import time
+	dateArray = datetime.datetime.utcfromtimestamp(timeStamp)
+	threeDayAgo = dateArray - datetime.timedelta(days = 3)
+	参考5,可以转换为其他的任意格式了	
+	
+7. 给定日期字符串，直接转换为datetime对象
+	dateStr = '2013-10-10 23:40:00'
+	datetimeObj = datetime.datetime.strptime(dateStr, "%Y-%m-%d %H:%M:%S")
+
+        注：将字符串日期转换为datetime后可以很高效的进行统计操作，因为转换为datetime后，
+           可以通过datetime.timedelta()方法来前后移动时间，效率很高，而且可读性很强。
+
+8.计算两个datetime之间的差距
+       a = datetime.datetime(2014,12,4,1,59,59)
+       b = datetime.datetime(2014,12,4,3,59,59)
+diffSeconds = (b-a).total_seconds()
+
+
+python - 获取时间戳（10位和13位）
+2017年09月25日 11:59:19 xuezhangjun 阅读数：52022
+在python 开发web程序时，需要调用第三方的相关接口，在调用时，需要对请求进行签名。需要用到unix时间戳。 
+在python里，在网上介绍的很多方法，得到的时间戳是10位。而java里默认是13位（milliseconds，毫秒级的）。
+
+下面介绍python获得时间戳的方法：
+
+1、10时间戳获取方法：
+
+>>> import time
+>>> t = time.time()
+>>> print t
+1436428326.76
+>>> print int(t)
+1436428326
+>>> 
+1
+2
+3
+4
+5
+6
+7
+强制转换是直接去掉小数位。
+
+2、13位时间戳获取方法：
+
+（1）默认情况下python的时间戳是以秒为单位输出的float
+
+>>> 
+>>> import time
+>>> time.time()
+1436428275.207596
+>>> 
+1
+2
+3
+4
+5
+通过把秒转换毫秒的方法获得13位的时间戳：
+
+import time
+millis = int(round(time.time() * 1000))
+print millis
+1
+2
+3
+round()是四舍五入。
+
+（2）
+
+import time
+
+current_milli_time = lambda: int(round(time.time() * 1000))
+Then:
+
+>>> current_milli_time()
+1378761833768
+1
+2
+3
+4
+5
+6
+7
+13位时间 戳转换成时间：
+
+>>> import time
+>>> now = int(round(time.time()*1000))
+>>> now02 = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now/1000))
+>>> now02
+'2017-11-07 16:47:14'
