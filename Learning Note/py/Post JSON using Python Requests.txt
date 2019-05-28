@@ -1,0 +1,154 @@
+Post JSON using Python Requests
+Ask Question
+
+
+453
+
+
+108
+I need to POST a JSON from a client to a server. I'm using Python 2.7.1 and simplejson. The client is using Requests. The server is CherryPy. I can GET a hard-coded JSON from the server (code not shown), but when I try to POST a JSON to the server, I get "400 Bad Request".
+
+Here is my client code:
+
+data = {'sender':   'Alice',
+    'receiver': 'Bob',
+    'message':  'We did it!'}
+data_json = simplejson.dumps(data)
+payload = {'json_payload': data_json}
+r = requests.post("http://localhost:8080", data=payload)
+Here is the server code.
+
+class Root(object):
+
+    def __init__(self, content):
+        self.content = content
+        print self.content  # this works
+
+    exposed = True
+
+    def GET(self):
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        return simplejson.dumps(self.content)
+
+    def POST(self):
+        self.content = simplejson.loads(cherrypy.request.body.read())
+Any ideas?
+
+python json python-requests cherrypy
+shareimprove this question
+edited Oct 15 '16 at 10:49
+
+Jeril
+3,90722242
+asked Mar 16 '12 at 7:46
+
+Charles R
+6,02851618
+I was using a stripped down version of an example straight out of the documentation. – Charles R Mar 31 '12 at 0:57
+My comment still stands - CherryPy does not call class __init__ methods with a content argument (and does not claim to in the link you supply). In the detailed example they have, the user supplies the code that calls __init__ and provides the arguments, which we have not seen here so I have no idea what state your object is in when your # this works comment is relevant. – Nick Bastin Mar 31 '12 at 2:49 
+1
+Are you asking to see the line where the instance is created? – Charles R Mar 31 '12 at 3:19
+yeah, I was trying to start up your example in order to test it, and I wasn't sure how you were instantiating it. – Nick Bastin Mar 31 '12 at 4:02
+The code has changed. I'm now creating it without the extra argument. cherrypy.quickstart(Root(), '/', conf). – Charles R Apr 1 '12 at 5:39 
+add a comment
+6 Answers
+active oldest votes
+
+732
+
+As of Requests version 2.4.2 and onwards, you can alternatively use 'json' parameter in the call which makes it simpler.
+
+>>> import requests
+>>> r = requests.post('http://httpbin.org/post', json={"key": "value"})
+>>> r.status_code
+200
+>>> r.json()
+{'args': {},
+ 'data': '{"key": "value"}',
+ 'files': {},
+ 'form': {},
+ 'headers': {'Accept': '*/*',
+             'Accept-Encoding': 'gzip, deflate',
+             'Connection': 'close',
+             'Content-Length': '16',
+             'Content-Type': 'application/json',
+             'Host': 'httpbin.org',
+             'User-Agent': 'python-requests/2.4.3 CPython/3.4.0',
+             'X-Request-Id': 'xx-xx-xx'},
+ 'json': {'key': 'value'},
+ 'origin': 'x.x.x.x',
+ 'url': 'http://httpbin.org/post'}
+EDIT: This feature has been added to the official documentation. You can view it here: Requests documentation
+
+shareimprove this answer
+edited May 27 '16 at 9:33
+answered Oct 13 '14 at 16:08
+
+Zeyang Lin
+7,5321910
+71
+I can't believe how much time I wasted before stumbling upon your answer. The requests docs need to be upgraded, there's absolutely nothing on the json parameter. I had to go into Github before I saw any mention of it: github.com/kennethreitz/requests/blob/… – IAmKale Apr 30 '15 at 21:35
+1
+Setting this to the accepted answer since this is more idiomatic as of 2.4.2. Keep in mind, for crazy unicode, this may not work. – Charles R Sep 23 '15 at 23:00
+I was in the same shoes as @IAmKale. This has relieved quite the headache I was having with AWS's API Gateway. It requires the POST data in JSON format by default. – jstudios Jan 7 '16 at 3:26
+This doesn't work implicitly on datetime. – Akash Jobanputra Jul 17 '18 at 10:24
+Like a fool I tried to use the data parameter with application/json the content type :( – Illegal Operator May 6 at 16:34 
+add a comment
+
+ 
+312
+
+It turns out I was missing the header information. The following works:
+
+url = "http://localhost:8080"
+data = {'sender': 'Alice', 'receiver': 'Bob', 'message': 'We did it!'}
+headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+r = requests.post(url, data=json.dumps(data), headers=headers)
+shareimprove this answer
+edited Nov 1 '12 at 18:43
+
+ghickman
+3,48263047
+answered Mar 31 '12 at 3:26
+
+Charles R
+6,02851618
+Good catch - I saw your application/json in GET and somehow missed that you hadn't provided it on the request. You may also need to make sure that you return something from POST or you might get a 500. – Nick Bastin Mar 31 '12 at 4:01
+Doesn't seem to be necessary. When I print r, I get <Response [200]>. – Charles R Apr 1 '12 at 5:36 
+How do I retrieve this json at the server side ? – VaidAbhishek Feb 15 '13 at 12:01
+r = requests.get('localhost:8080') c = r.content result = simplejson.loads(c) – Charles R May 11 '13 at 18:15 
+@CharlesR Thanks. headers did the trick. – kstratis Jun 4 '15 at 8:11
+show 2 more comments
+ 
+51
+
+From requests 2.4.2 (https://pypi.python.org/pypi/requests), the "json" parameter is supported. No need to specify "Content-Type". So the shorter version:
+
+requests.post('http://httpbin.org/post', json={'test': 'cheers'})
+shareimprove this answer
+edited Dec 22 '14 at 3:11
+answered Dec 10 '14 at 10:08
+
+ZZY
+2,6031118
+add a comment
+
+15
+
+The better way is：
+
+url = "http://xxx.xxxx.xx"
+
+datas = {"cardno":"6248889874650987","systemIdentify":"s08","sourceChannel": 12}
+
+headers = {'Content-type': 'application/json'}
+
+rsp = requests.post(url, json=datas, headers=headers)
+shareimprove this answer
+answered May 4 '17 at 7:26
+
+ellen
+16415
+9
+the Content-type: application/json is redundant as the json= already hints that. – Moshe Dec 11 '17 at 14:18
+@Moshe totally agree, but to request newer version Elasticsearch sever require to set Content-type – devesh Apr 12 at 10:32 
