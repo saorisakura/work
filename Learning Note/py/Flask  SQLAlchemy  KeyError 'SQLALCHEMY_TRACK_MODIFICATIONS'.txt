@@ -1,0 +1,77 @@
+Flask, SQLAlchemy : KeyError: 'SQLALCHEMY_TRACK_MODIFICATIONS'
+Ask Question
+
+
+2
+
+
+1
+I am trying to follow the instructions from the following tutorial:
+
+Tutorial
+
+I downloaded the code from the following repo:
+
+Repo
+
+However when I run it locally and try to add something to the database, I get the following error:
+
+builtins.KeyError
+KeyError: 'SQLALCHEMY_TRACK_MODIFICATIONS'
+When I tried to read the traceback, I realised that even if I add a variable SQLALCHEMY_TRACK_MODIFICATIONS to the config file, some python library file is unable to recognise it exists.
+
+Looks like there is another answer to a similar question, but that was more like a quick fix, not why this is happening.
+
+I would like to know why this is happening and how to fix it.Preferably without changing the whole structure.
+
+Thanks a lot in advance.
+
+python amazon-web-services flask runtime-error flask-sqlalchemy
+shareimprove this question
+asked Jul 24 '17 at 6:43
+
+Mahathi Vempati
+328515
+add a comment
+3 Answers
+active oldest votes
+
+7
+
+Having two app = Flask(__name__) in the code can cause this problem.
+
+That was my case, I removed one and kept the one in the app's folder's __init__.py, and it worked
+
+shareimprove this answer
+edited Jan 21 '18 at 0:42
+
+Stephen Rauch
+31.6k154064
+answered Jan 21 '18 at 0:18
+
+Javier PR
+11518
+1
+Another reason for this error is forgetting the db.init_app(app) – zaki Apr 15 at 15:32
+add a comment
+
+ 
+1
+
+@Javier's answer gave me a direction to problem as mentioned reason of error is having multiple flask apps.
+
+Apart from creating app in __init__.py one more solution which worked was to use newly created app's context to run the query and boom!!! error was gone.
+
+Below is code snippet for using newly created app's context:-
+
+app = Flask(__name__)
+app.config.from_pyfile('./config.py')
+init_app(app)
+
+def create():
+    with app.app_context():
+       #Below Tags is model class 
+       tag = Tags(**data)
+       db.session.add(tag)
+       db.session.commit()
+       return from_sql(tag)
