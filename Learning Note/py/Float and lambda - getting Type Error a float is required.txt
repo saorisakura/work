@@ -1,0 +1,110 @@
+Float and lambda - getting Type Error, a float is required
+Ask Question
+
+
+0
+
+
+I'm trying to get Chartit working with my Django project. I found that it doesn't support datetime on the x axies (it returns an error and says "is not JSON serializable".) So to fix this, I tried to work in this hack which uses lambda functions. (I modified the chartit python code as specified there as well.)
+
+This line is giving the error, "TypeError: a float is required."
+
+x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(i).strftime("%H:%M"), False))
+Here's the relevant part of the function:
+
+cht = Chart(
+            datasource = happydata,
+            series_options =
+            [{'options':{
+            'type': 'line',
+            'stacking': False},
+            'terms':{
+            'day': [
+            'rating',]
+            }}],
+            chart_options =
+            {'title': {
+            'text': 'Ratings'},
+            'xAxis': {
+            'title': {
+            'text': 'Time'}}}, 
+        x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(i).strftime("%H:%M"), False))
+I read up on lambda functions, but I'm not sure why I'm getting this error. Any help much appreciated! Thanks.
+
+Traceback, as requested:
+
+    Traceback:
+    File "C:\Python27\lib\site-packages\django\core\handlers\base.py" in get_response
+      111.                     response = wrapped_callback(request, *callback_args, **callback_kwargs)
+    File "C:\Users\MYSTUFF\projects\feels2\feelsapp\views.py" in home
+      82.       x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(i).strftime("%H:%M"), False))
+    File "C:\Python27\lib\site-packages\chartit\charts.py" in __init__
+      25.         self.generate_plot()
+    File "C:\Python27\lib\site-packages\chartit\charts.py" in generate_plot
+      200.                                 data = [(x_mapf(x), y) for (x, y) in data]
+    File "C:\Users\MYSTUFF\projects\feels2\feelsapp\views.py" in <lambda>
+      82.       x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(i).strftime("%H:%M"), False))
+
+Exception Type: TypeError at /
+Exception Value: a float is required
+views.py
+
+def home(request):
+    #Create a DataPool with the data we want to retrieve.
+
+    feels = Feel.objects.all()
+
+    happydata = \
+        DataPool(
+            series=
+            [{'options': {
+            'source': Feel.objects.all()},
+            'terms': [
+            'day',
+            'rating']}
+        ])
+
+
+    cht = Chart(
+            datasource = happydata,
+            series_options =
+            [{'options':{
+            'type': 'line',
+            'stacking': False},
+            'terms':{
+            'day': [
+            'rating',]
+            }}],
+            chart_options =
+            {'title': {
+            'text': 'Your Ratings'},
+            'xAxis': {
+            'title': {
+            'text': 'Time'}}}, 
+        x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(float(i)).strftime("%H:%M"), False))
+
+    return render_to_response('happy.html',{'happychart': cht})
+python django highcharts lambda
+shareimprove this question
+edited Mar 14 '15 at 8:32
+asked Mar 14 '15 at 4:43
+
+cydb
+1716
+plz attach complete error stack-trace ... – kmonsoor Mar 14 '15 at 5:27
+Thanks, added traceback. – cydb Mar 14 '15 at 7:05
+Maybe datetime.fromtimestamp requires a float as the argument, what is being passed to it? – wwii Mar 14 '15 at 7:57
+Like so? x_sortf_mapf_mts=(None, lambda i: datetime.fromtimestamp(float(i)).strftime("%H:%M"), False)) This gives "ValueError: could not convert string to float: ". – cydb Mar 14 '15 at 8:07
+It looks like you are passing in a non-timestamp value somewhere. Could you show us what 'happydata' is? – Titus P Mar 14 '15 at 8:28
+show 7 more comments
+1 Answer
+active oldest votes
+
+2
+
+@wwii is correct, if its the lambda that is giving you the error, you are likely passing in a string. Any int or float should be able to be used, try:
+
+lambda i: datetime.fromtimestamp(float(i)).strftime("%H:%M")
+EDIT: seeing your comment to @wwii, it looks like you are probably not passing in a real number. You should try adding a print statement somewhere in your code and check the value of "i" before you create that chart.
+
+shareimprove this answer
