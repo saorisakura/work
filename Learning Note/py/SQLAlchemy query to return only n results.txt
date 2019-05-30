@@ -1,0 +1,27 @@
+SQLAlchemy query to return only n results?
+Ask Question
+
+
+58
+
+
+6
+I have been googling and reading through the SQLAlchemy documentation but haven't found what I am looking for.
+
+I am looking for a function in SQLAlchemy that limits the number of results returned by a query to a certain number, for example: 5? Something like first() or all().
+
+sqlalchemy
+shareimprove this question
+asked Dec 17 '13 at 19:02
+
+Xar
+2,15673551
+add a comment
+2 Answers
+active oldest votes
+
+102
+
+Use the limit method.
+
+query.(Model).filter(something).limit(5).all()
