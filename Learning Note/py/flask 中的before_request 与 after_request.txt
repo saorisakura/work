@@ -1,0 +1,30 @@
+flask 中的before_request 与 after_request
+2016年11月02日 10:40:29 
+使用before_request 和 after_request的方法都非常简单，使用 @app.before_request  或者@app.after_request  修饰期望在请求前或请求后执行的函数即可
+
+    示例：
+
+
+@app.before_request
+def before_request():
+    if not m_ip_range.is_ip_strict():
+        return
+    ranges = m_ip_range.get_range()
+    ip_int = utils.ip_to_int(request.remote_addr)
+    yes = False
+    for item in ranges:
+        if item['is_used']==0:
+            continue
+        if ip_int >= item['ip_start'] and ip_int <= item['ip_end']:
+            yes = True
+            break
+    if not yes:
+        abort(400)
+    
+    before_request()函数被修饰以后，每一次请求到来后，都会先执行它，如果没问题即没有执行到abort(400)，那么就会进入到正常的被app.route修饰的函数中进行响应，如果有多个函数被app.before_request修饰了，那么这些函数会被依次执行。
+
+    你很关心这个before_request装饰器有什么用，其实它的用处非常大，比如我们希望能对ip地址进行过滤，虽然你可以使用nginx,但我们也可以使用before_request来做，使用nginx，我们不得不手动的进行设置，但如果是用flask自身的before_request机制，我们可以在程序判断出某个ip有恶意访问行为后将其加入到缓存当中（redis）,每次请求到来时，由before_request来判断这个ip是不是合法的。
+
+
+
+    被app.after_request修饰过的函数会在请求得到相应后返回给用户前被调用，也就是说，这个时候，请求已经被app.route装饰的函数响应过了，已经形成了response，我们在这个时候做一些操作，flask有一个插件叫 flask-compress，是对响应结果进行压缩的，它就是用after_request的这个机制，在response返回前对数据进行了压缩，如果你有别的想要操作的事情，同样可以使用after_request来完成。
