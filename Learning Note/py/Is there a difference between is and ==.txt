@@ -1,0 +1,147 @@
+Is there a difference between “==” and “is”?
+Ask Question
+
+
+611
+
+
+218
+My Google-fu has failed me.
+
+In Python, are the following two tests for equality equivalent?
+
+n = 5
+# Test one.
+if n == 5:
+    print 'Yay!'
+
+# Test two.
+if n is 5:
+    print 'Yay!'
+Does this hold true for objects where you would be comparing instances (a list say)?
+
+Okay, so this kind of answers my question:
+
+L = []
+L.append(1)
+if L == [1]:
+    print 'Yay!'
+# Holds true, but...
+
+if L is [1]:
+    print 'Yay!'
+# Doesn't.
+So == tests value where is tests to see if they are the same object?
+
+python reference equality semantics
+shareedit
+edited Jan 15 at 17:51
+
+martineau
+72.3k1094190
+asked Sep 25 '08 at 12:27
+
+Bernard
+22.3k154867
+add a comment
+21 Answers
+active oldest votes
+
+819
+
+is will return True if two variables point to the same object, == if the objects referred to by the variables are equal.
+
+>>> a = [1, 2, 3]
+>>> b = a
+>>> b is a 
+True
+>>> b == a
+True
+>>> b = a[:] # Make a new copy of list `a` via the slice operator, and assign it to variable `b`
+>>> b is a
+False
+>>> b == a
+True
+In your case, the second test only works because Python caches small integer objects, which is an implementation detail. For larger integers, this does not work:
+
+>>> 1000 is 10**3
+False
+>>> 1000 == 10**3
+True
+The same holds true for string literals:
+
+>>> "a" is "a"
+True
+>>> "aa" is "a" * 2
+True
+>>> x = "a"
+>>> "aa" is x * 2
+False
+>>> "aa" is intern(x*2)
+True
+Please see this question as well.
+
+shareedit
+edited Jan 22 at 21:12
+
+Gabriel Staples
+2,65731943
+answered Sep 25 '08 at 12:32
+
+Torsten Marek
+61.3k177995
+1
+I found that: echo 'import sys;tt=sys.argv[1];print(tt is "foo", tt == "foo", id(tt)==id("foo"))'| python3 - foo output: False True False. – ahuigo Jul 23 '18 at 12:38
+You lost me with the b = a[:] slice operator list copy part, so I've edited your answer to have a comment there. Looks like I just reached the threshold to not have to have my edits reviewed before they apply, so hopefully that's cool with you. Regardless, here's a useful reference for how to copy lists that I came across and had to reference to figure out what you were doing: stackoverflow.com/a/2612815/4561887 – Gabriel Staples Jan 22 at 21:14 
+add a comment
+
+ 
+274
+
+There is a simple rule of thumb to tell you when to use == or is.
+
+== is for value equality. Use it when you would like to know if two objects have the same value.
+is is for reference equality. Use it when you would like to know if two references refer to the same object.
+In general, when you are comparing something to a simple type, you are usually checking for value equality, so you should use ==. For example, the intention of your example is probably to check whether x has a value equal to 2 (==), not whether x is literally referring to the same object as 2.
+
+Something else to note: because of the way the CPython reference implementation works, you'll get unexpected and inconsistent results if you mistakenly use is to compare for reference equality on integers:
+
+>>> a = 500
+>>> b = 500
+>>> a == b
+True
+>>> a is b
+False
+That's pretty much what we expected: a and b have the same value, but are distinct entities. But what about this?
+
+>>> c = 200
+>>> d = 200
+>>> c == d
+True
+>>> c is d
+True
+This is inconsistent with the earlier result. What's going on here? It turns out the reference implementation of Python caches integer objects in the range -5..256 as singleton instances for performance reasons. Here's an example demonstrating this:
+
+>>> for i in range(250, 260): a = i; print "%i: %s" % (i, a is int(str(i)));
+... 
+250: True
+251: True
+252: True
+253: True
+254: True
+255: True
+256: True
+257: False
+258: False
+259: False
+This is another obvious reason not to use is: the behavior is left up to implementations when you're erroneously using it for value equality.
+
+shareedit
+edited Jan 3 '10 at 2:09
+answered Jul 6 '09 at 6:22
+
+John Feminella
+246k36306330
+With regards to the first example of a=500 and b=500, just wanted to point out that if you set a and b to an interger between [-5, 256], a is b actually returns True. More information here: stackoverflow.com/q/306313/7571052 – AsheKetchum Jan 30 at 18:01
+@AsheKetchum, yes, note that I wrote "It turns out the reference implementation of Python caches integer objects in the range -5..256 as singleton instances for performance reasons." – John Feminella Jan 31 at 21:38
+Just wanted to link the other question, no harm intended :) – AsheKetchum Jan 31 at 21:41
