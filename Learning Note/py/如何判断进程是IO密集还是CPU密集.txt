@@ -1,0 +1,219 @@
+是IO密集型还是CPU密集型应该是开发人员自己就清楚的，如果你的应用主要是利用cpu计算，也就是更多的是消耗cpu资源的话，那么就是cpu密集型，如果更多的是和IO相关的，比如接收一个前端请求--解析参数--查询数据库--返回给前端这样的，那么就是IO密集型的。
+
+目前已经知道，在需要并发执行任务的时候，需要使用多线程或者多进程;如果是IO密集型任务，使用多线程，如果是CPU密集型任务，使用多进程;但问题是，经常我们会遇到一种情况就是:需要被执行的任务既有IO操作，又有计算操作,那么这种情况下，已经无法 直观的判断任务是IO操作的多还是计算操作的多了;
+
+所以，在开始并发任务之前，可以先进行测试，看看是使用多线程还是多进程所用的时间少，那个少就用那个
+
+python 多进程模块multiprocessing，提供了多进程的进程池和多线程的线程池，辅助我们进行测试,如下:
+
+1
+2
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
+其中第一个pool是多进程的进程池，第二个是线程池，如果查看dummy的源码，可以看到dummy继承自Threading.thread
+
+1
+2
+3
+4
+5
+6
+7
+8
+class DummyProcess(threading.Thread):
+ 
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}):
+        threading.Thread.__init__(self, group, target, name, args, kwargs)
+        self._pid = None
+        self._children = weakref.WeakKeyDictionary()
+        self._start_called = False
+        self._parent = current_process()
+multiprocessing.dummy实际上调用的是多线程的模块，是对多线程模块的进一步封装,使得其和多进程的具有相同的API;
+
+ 
+
+介绍完了模块，我们使用实际的例子来测试任务:
+
+任务:使用urllib请求多个url，并计算返回的字符串的长度;
+
+　　分别使用多进程和多线程去执行该任务
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+#!/usr/bin/env python
+# _*_ coding:utf-8 _*_
+__author__ = 'Charles Chang'
+ 
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing import freeze_support
+ 
+import urllib2
+ 
+urls = [
+  'http://www.python.org',
+  'http://www.python.org/about/',
+  'http://www.onlamp.com/pub/a/python/2003/04/17/metaclasses.html',
+  'http://www.python.org/doc/',
+  'http://www.python.org/download/',
+  'http://www.python.org/getit/',
+  'http://www.python.org/community/',
+  'https://wiki.python.org/moin/',
+  'http://planet.python.org/',
+  'https://wiki.python.org/moin/LocalUserGroups',
+  'http://www.python.org/psf/',
+  'http://docs.python.org/devguide/',
+  'http://www.python.org/community/awards/'
+  ]
+ 
+ 
+import time
+ 
+def w1(func):
+    def inner(*args,**kwargs):
+        past = time.time()
+        func(*args,**kwargs)
+        now = time.time()
+        cost_time = now - past
+        print "The function <%s> cost time: <%s>"%(func.func_name,cost_time)
+    return inner
+ 
+ 
+def test(n):
+    print len(urllib2.urlopen(n).read())
+ 
+ppool = Pool(4)
+@w1
+def MulProcess():
+    for n in urls:
+        ppool.apply(func=test,args=(n,))
+    ppool.close()
+    ppool.join()
+MulProcess()
+tpool = ThreadPool(4)
+@w1
+def MulThreading():
+    for n in urls:
+        tpool.apply(func=test,args=(n,))
+    tpool.close()
+    tpool.join()
+MulThreading()
+ 
+
+运行结果:
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+[root@linux-node1 ~]# python m1.py
+47436
+40307
+34778
+38780
+94856
+94767
+33406
+22916
+277026
+108358
+42671
+66493
+32669
+The function <MulProcess> cost time: <55.7311470509>
+47436
+40307
+34778
+38780
+94856
+94767
+33406
+22916
+277026
+108358
+42671
+66493
+32669
+The function <MulThreading> cost time: <93.1050798893>
+可以看到:使用多进程耗时短

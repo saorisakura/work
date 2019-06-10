@@ -1,0 +1,118 @@
+json flask post
+
+How to get POSTed json in Flask?
+Ask Question
+243
+I'm trying to build a simple API using Flask, in which I now want to read some POSTed JSON. I do the post with the PostMan Chrome extension, and the JSON I post is simply {"text":"lalala"}. I try to read the JSON using the following method:
+@app.route('/api/add_message/<uuid>', methods=['GET', 'POST'])
+def add_message(uuid):
+    content = request.json
+    print content
+    return uuid
+On the browser it correctly returns the uuid I put in the GET, but on the console, it just prints out None(where I expect it to print out the {"text":"lalala"}. Does anybody know how I can get the posted JSON from within the Flask method?
+python json post flask
+shareedit
+edited Mar 3 '15 at 14:26
+
+Martijn Pieters♦
+738k15026082385
+asked Nov 15 '13 at 12:35
+
+kramer65
+10.5k64193339
+add a comment
+5 Answers
+activeoldestvotes
+334
+First of all, the .json attribute is a property that delegates to the request.get_json() method, which documents why you see None here.
+You need to set the request content type to application/json for the .json property and .get_json() method (with no arguments) to work as either will produce None otherwise. See the Flask Request documentation:
+This will contain the parsed JSON data if the mimetype indicates JSON (application/json, see is_json()), otherwise it will be None.
+You can tell request.get_json() to skip the content type requirement by passing it the force=Truekeyword argument.
+Note that if an exception is raised at this point (possibly resulting in a 400 Bad Request response), your JSON data is invalid. It is in some way malformed; you may want to check it with a JSON validator.
+shareedit
+edited May 20 at 23:32
+answered Nov 15 '13 at 12:38
+
+Martijn Pieters♦
+738k15026082385
+add a comment
+64
+For reference, here's complete code for how to send json from a Python client:
+import requests
+res = requests.post('http://localhost:5000/api/add_message/1234', json={"mytext":"lalala"})
+if res.ok:
+    print res.json()
+The "json=" input will automatically set the content-type, as discussed here: Post JSON using Python Requests
+And the above client will work with this server-side code:
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+
+@app.route('/api/add_message/<uuid>', methods=['GET', 'POST'])
+def add_message(uuid):
+    content = request.json
+    print content['mytext']
+    return jsonify({"uuid":uuid})
+
+if __name__ == '__main__':
+    app.run(host= '0.0.0.0',debug=True)
+shareedit
+edited May 23 '17 at 12:10
+
+Community♦
+11
+answered Feb 24 '16 at 22:15
+
+Luke
+2,4281824
+add a comment
+55
+This is the way I would do it and it should be
+@app.route('/api/add_message/<uuid>', methods=['GET', 'POST'])
+def add_message(uuid):
+    content = request.get_json(silent=True)
+    # print(content) # Do your processing
+    return uuid
+With silent=True set, the get_json function will fail silently when trying to retrieve the json body. By default this is set to False.
+Setting force=True will ignore the request.headers.get('Content-Type') == 'application/json'check that flask does for you. By default this is also set to False.
+See flask documentation.
+I would strongly recommend leaving force=False and make the client send the Content-Typeheader to make it more explicit.
+Hope this helps!
+shareedit
+edited Dec 3 '18 at 6:55
+
+cricket_007
+87k1154125
+answered Oct 27 '15 at 22:11
+
+radtek
+17k69079
+6
+Isn't it better to fail on errors?? – vidstige Oct 4 '16 at 9:02
+2
+Depends if the json body is optional or not, so depends on your case – radtek Oct 5 '16 at 18:37
+1
+I cannot see any case where it would make sense to some times post valid json and other times invalid json. Sounds like two different end points – vidstige Oct 5 '16 at 18:39
+1
+Like I said, if an endpoint takes "optional" json body, you can use silent=True. Yes this is possible, and I do use it. Its really based on how you design your API to be consumed. If there is no case like that for your endpoint, just remove silent=True or explicitly set it to False. – radtek Oct 5 '16 at 18:57 
+For clarity, the print(content) after content = request.get_json() prints the object... but as a valid Python object (and not as a valid JSON object). For example, it uses single quotes while JSON strictly requires double quotes for both the key values (strings) as string values. If you want the JSON representation, use json.dumps() with the object. – Jochem Schulenklopper Nov 12 '18 at 15:59
+add a comment
+15
+This solution works:
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+
+@app.route('/hello', methods=['POST'])
+def hello():
+   return jsonify(request.json)
+shareedit
+answered Feb 28 '17 at 15:40
+
+trojek
+93411035
+3
+To add to this answer the request you could send to this endpoint could be response = request.post('http://127.0.0.1:5000/hello', json={"foo": "bar"}). Following this running response.json() should return {'foo': 'bar'} – ScottMcC Jun 11 '17 at 8:54 
+It could be noted that {'foo': 'bar'} isn't valid JSON though. It could be a valid Python object representation that looks a lot like JSON, but valid JSON strictly uses double quotes. – Jochem SchulenklopperNov 12 '18 at 15:42
+@JochemSchulenklopper the request get_json() method decodes from JSON to Python objects, yes. Where you expecting it to produce a valid JSON document? – Martijn Pieters♦ May 20 at 23:36
+@MartijnPieters, I was just making a statement about a peculiarity that bit me at least twice :-) But yes, normally I expect a function called .json() or .get_json() to return a valid JSON object representation, not a Python dict. I'm just looking at the name, and infer what might come out of it. – Jochem Schulenklopper May 22 at 19:01

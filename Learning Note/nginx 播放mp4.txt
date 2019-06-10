@@ -1,0 +1,54 @@
+nginx 播放mp4
+96  CbdFocus 
+2016.05.03 16:42* 字数 62 阅读 1773评论 0喜欢 2
+系统依赖
+sudo apt-get install libpcre3 libpcre3-dev
+sudo apt-get install zlib1g zlib1g.dev
+sudo apt-get install openssl libssl-dev
+安装Nginx
+### 开启MP4模块,注意: 一定要开启ssl模块
+./configure --prefix=/usr/local/mNginx --with-http_ssl_module --with-http_mp4_module
+make && sudo make install
+
+### 配置rtmp
+./configure --add-module=/home/focus/live_streaming/nginx-rtmp-module
+make && sudo make install
+
+### 配置h264
+./configure --add-module=/home/focus/live_streaming/nginx_mod_h264_streaming-2.2.7
+make && sudo make install
+不出意外的话, make会报两个 error
+在文件: h264源码目录/src/ngx_http_streaming_module.c
+将如下部分注释掉:
+
+/* TODO: Win32 */
+
+if (r->zero_in_uri)
+{
+return NGX_DECLINED;
+}
+在文件: nginx源码目录/objs/Makefile
+删除参数 -Werror
+
+前端页面测试
+<head>
+  <link href="http://vjs.zencdn.net/5.9.2/video-js.css" rel="stylesheet">
+
+  <!-- If you'd like to support IE8 -->
+  <script src="http://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script>
+</head>
+
+<body>
+  <video id="my-video" class="video-js" controls preload="auto" width="640" height="264"
+  poster="视频预览图.jpg" data-setup="{}">
+
+    <source src=“我的测试视频.mp4" type='video/mp4'>
+
+    <p class="vjs-no-js">
+      To view this video please enable JavaScript, and consider upgrading to a web browser that
+      <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+    </p>
+  </video>
+
+  <script src="http://vjs.zencdn.net/5.9.2/video.js"></script>
+</body>
