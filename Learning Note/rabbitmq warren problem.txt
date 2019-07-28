@@ -1,0 +1,50 @@
+Jul 16 10:16:56 [5410] controller-vm1        cib:     info: cib_perform_op:     Diff: --- 0.149.89 2
+Jul 16 10:16:56 [5410] controller-vm1        cib:     info: cib_perform_op:     Diff: +++ 0.149.90 (null)
+Jul 16 10:16:56 [5410] controller-vm1        cib:     info: cib_perform_op:     +  /cib:  @num_updates=90
+Jul 16 10:16:56 [5410] controller-vm1        cib:     info: cib_perform_op:     +  /cib/status/node_state[@id='3']/lrm[@id='3']/lrm_resources/lrm_resource[@id='rabbitmq-cluster']/lrm_rsc_op[@id='rabbitmq-cluster_last_0']:  @operation_key=rabbitmq-cluster_start_0, @operation=start, @transition-key=83:385:0:69005631-b6f8-4a15-bab1-259236d59a0f, @transition-magic=-1:193;83:385:0:69005631-b6f8-4a15-bab1-259236d59a0f, @call-id=-1, @rc-code=193, @op-status=-1, @last-run=1563243416, @last-rc-change=1563243416, @exec-
+Jul 16 10:16:56 [5410] controller-vm1        cib:     info: cib_process_request: Completed cib_modify operation for section status: OK (rc=0, origin=controller-vm3/crmd/547, version=0.149.90)
+Jul 16 10:16:56 [5411] controller-vm1 stonith-ng:     info: update_cib_stonith_devices_v2:        Updating device list from the cib: modify lrm_rsc_op[@id='rabbitmq-cluster_last_0']
+Jul 16 10:16:56 [5411] controller-vm1 stonith-ng:     info: cib_devices_update: Updating devices to version 0.149.90
+Jul 16 10:16:57  lrmd:    INFO: rabbitmq-cluster[26700]: start: action begin.
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: get_status(): failed with code 69. Command output: Error: unable to connect to node 'rabbit@controller-vm1': nodedown
+
+DIAGNOSTICS
+===========
+
+attempted to contact: ['rabbit@controller-vm1']
+
+rabbit@controller-vm1:
+  * connected to epmd (port 4369) on controller-vm1
+  * epmd reports: node 'rabbit' not running at all
+                  no other nodes on controller-vm1
+  * suggestion: start the node
+
+current node details:
+- node name: 'rabbitmq-cli-33@controller-vm1'
+- home dir: /var/lib/rabbitmq
+- cookie hash: aJ1q/oUyuFO1z/BAWIA3Fg==
+Jul 16 10:16:58 [5413] controller-vm1      attrd:     info: attrd_peer_update:  Setting rabbit-start-phase-1-time[controller-vm3]: 1563243179 -> 1563243418 from controller-vm3
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: start: Setting phase 1 one start time to 1563243418
+Jul 16 10:16:58 [5413] controller-vm1      attrd:     info: attrd_peer_update:  Setting rabbit-start-phase-1-time[controller-vm1]: 1563243179 -> 1563243418 from controller-vm1
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: start: Deleting start time attribute
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: start: Deleting master attribute
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: start: RMQ going to start.
+Jul 16 10:16:58  lrmd:    INFO: rabbitmq-cluster[26700]: start_rmq_server_app(): begin.
+Jul 16 10:17:00  lrmd:    INFO: rabbitmq-cluster[26700]: start_rmq_server_app(): blocked access to RMQ port
+Jul 16 10:17:01  lrmd:    INFO: rabbitmq-cluster[26700]: get_status(): failed with code 69. Command output: Error: unable to connect to node 'rabbit@controller-vm1': nodedown
+
+DIAGNOSTICS
+===========
+
+attempted to contact: ['rabbit@controller-vm1']
+
+rabbit@controller-vm1:
+  * connected to epmd (port 4369) on controller-vm1
+  * epmd reports: node 'rabbit' not running at all
+                  no other nodes on controller-vm1
+  * suggestion: start the node
+
+current node details:
+- node name: 'rabbitmq-cli-59@controller-vm1'
+- home dir: /var/lib/rabbitmq
+- cookie hash: aJ1q/oUyuFO1z/BAWIA3Fg==
