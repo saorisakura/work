@@ -1,0 +1,13 @@
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-go:v1
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-go:v2
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-lua:v1
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-lua:v2
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-node:v2
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-node:v1
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-python:v1
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-python:v2
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-js:v2
+docker pull registry.cn-shanghai.aliyuncs.com/istio-lab/service-js:v1
+
+
+

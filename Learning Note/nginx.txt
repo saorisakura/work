@@ -1,0 +1,25 @@
+nginx.org doc
+
+nginx 
+	-s stop|quit|reload|reopen
+
+	静态资源服务器
+	log_format main
+	server
+		access_log XXX main
+	location
+		alias dlib/
+		set $limit_rate 1K(B)
+		autoindex on
+
+具备缓存功能的反向代理服务器
+	http
+		proxy_cache_path /tmp/nginxcache levels=1:2 keys_zone=my_cahce:10m max_size=10g inactive=60m use_temp_path=off;
+	
+	server 
+		proxy_cache my_cache
+		proxy_cache_key 
+		proxy_cache_valid
+
+https
+	ssl-->tls

@@ -1,0 +1,78 @@
+sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational EventCode=1 NOT Image="C:\\Windows\\System32*" NOT Image="C:\\Windows\\SysWOW64*" 
+| rex field=Image .*\\\(?<filename>\S+)\s?$     把image路径下的文件名复制给filename备用
+| lookup update=true isWindowsSystemFile_lookup filename as process OUTPUT systemFile 
+| search systemFile=true 
+| rename Image as process 
+| table _time, dest, user, process, process_id, parent_process
+从edr 日志中，搜索event code=1 的日志，
+
+| tstats count values(Processes.dest) as dest values(Processes.user) as user min(_time) as firstTime max(_time) as lastTime from datamodel=Endpoint.Processes by Processes.process_name 
+| rename Processes.process_name as process 
+| rex field=user "(?<user_domain>.*)\\\\(?<user_name>.*)"   把用户进程的user_domain和user_name两个字段组合
+| convert timeformat="%m/%d/%Y %H:%M:%S" ctime(firstTime)   转换时间格式
+| convert timeformat="%m/%d/%Y %H:%M:%S" ctime(lastTime) 
+| search NOT ()
+
+除此以外 还有几个问题：
+1.类似于windows里面cmd的进程 在linux里面叫什么进程名称，父进程是什么？
+	shell, 父进程要看谁调用的【谁调用是正常的一般？】  比如sh ***.sh 这是的父进程就是这个【不要比如，你就告诉调用的父进程都是什么？还有除了shell之外还有别的可以进行命令执行的进程吗？他们的合法父进程都有什么？】
+	调用的父进程就是任何能创建新进程的进程，(程序类)bash、python、go、java、c都可以创建新的进程， (命令类)ls cut  grep awk sed 等，能创建新进程的都是合法的哟
+	这就是个进程树
+systemd─┬─agetty
+        ├─automount───5*[{automount}]
+        ├─crond
+        ├─dbus-daemon
+        ├─dockerd─┬─docker-containe─┬─9*[docker-containe─┬─pause]
+        │         │                 │                    └─6*[{docker-containe}]]
+        │         │                 ├─docker-containe─┬─etcd───49*[{etcd}]
+        │         │                 │                 └─8*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─kube-apiserver───39*[{kube-apiserver}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─kube-proxy───24*[{kube-proxy}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─kube-controller───37*[{kube-controller}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─kube-scheduler───29*[{kube-scheduler}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─runsvdir─┬─runsv───calico-node───42*[{calico-n+
+        │         │                 │                 │          ├─runsv───bird
+        │         │                 │                 │          ├─runsv───bird6
+        │         │                 │                 │          └─runsv───calico-node───36*[{calico-n+
+        │         │                 │                 └─8*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─kube-controller───35*[{kube-controller}]
+        │         │                 │                 └─7*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─coredns───44*[{coredns}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 ├─docker-containe─┬─coredns───43*[{coredns}]
+        │         │                 │                 └─6*[{docker-containe}]
+        │         │                 └─54*[{docker-containe}]
+        │         └─39*[{dockerd}]
+        ├─gssproxy───5*[{gssproxy}]
+        ├─irqbalance
+        ├─kubelet───43*[{kubelet}]
+        ├─lvmetad
+        ├─nslcd───5*[{nslcd}]
+        ├─polkitd───5*[{polkitd}]
+        ├─rpc.idmapd
+        ├─rpc.mountd
+        ├─rpc.statd
+        ├─rpcbind
+        ├─rsyslogd───2*[{rsyslogd}]
+        ├─snmpd
+        ├─sshd───sshd───sshd───sh───sudo───su───bash───pstree
+        ├─systemd-journal
+        ├─systemd-logind
+        ├─systemd-udevd
+        └─zabbix_agentd───12*[zabbix_agentd]
+	
+	
+2.如果要监测linux的异常进程，都有哪些维度可以去监测？
+	存在【需要有一个白名单基线或者黑名单或者DMZ区的基线】，进程占用的资源是否一致
+3.依据你的运维经验，进程黑白名单你能大概给一个吗？
+	内核进程和操作系统的进程是白名单，其余都放dmz区吧（这里主要是把系统进程摘出来【我看不懂的是括号里的这半句话】）dmz就是比黑名单稍为轻量一些的级别
+	
+	这里的意思就是把系统进程（包括内核进程和操作系统的进程）都摘出来放进白名单，其余进程依据情况而定
+
+4.依据你的经验，除了黑白名单外，什么场景下可以判断为是异常进程？
+	进程占用的资源不一致（也就是不按照预期的返回结果，比如端口占用不对，或者占用cpu、内存资源过多，频繁重启之类的	
+

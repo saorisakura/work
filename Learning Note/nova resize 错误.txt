@@ -1,0 +1,164 @@
+2019-11-25 11:13:48.429 26434 WARNING nova.compute.manager [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] While synchronizing instance power states, found 14 instances in the database and 12 instances on the hypervisor.
+2019-11-25 11:14:09.705 26434 INFO nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Auditing locally available compute resources for node compute12
+2019-11-25 11:14:12.032 26434 ERROR nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Migration for instance 9ad55985-3319-4f6e-b01c-d40e9341f782 refers to another host's instance!
+2019-11-25 11:14:12.082 26434 INFO nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Updating from migration 9ad55985-3319-4f6e-b01c-d40e9341f782
+2019-11-25 11:14:12.163 26434 INFO nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Total usable vcpus: 32, total allocated vcpus: 111
+2019-11-25 11:14:12.164 26434 INFO nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Final resource view: name=compute12 phys_ram=131044MB used_ram=128128MB phys_disk=149010GB used_disk=7397GB total_vcpus=32 used_vcpus=111 pci_stats=[]
+2019-11-25 11:14:12.187 26434 INFO nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Compute_service record updated for compute12:compute12
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Setting instance vm_state to ERROR
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Traceback (most recent call last):
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 4042, in finish_resize
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     disk_info, image_meta)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 3979, in _finish_resize
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     migration_p)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1560, in migrate_instance_finish
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     migration['dest_compute'])
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1852, in _update_port_binding_for_instance
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     if not self._has_port_binding_extension(context, refresh_cache=True):
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 699, in _has_port_binding_extension
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     self._refresh_neutron_extensions_cache(context, neutron=neutron)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 691, in _refresh_neutron_extensions_cache
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     extensions_list = neutron.list_extensions()['extensions']
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 97, in with_params
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     ret = self.function(instance, *args, **kwargs)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 632, in list_extensions
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     return self.get(self.extensions_path, params=_params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 358, in get
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     headers=headers, params=params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 335, in retry_request
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     headers=headers, params=params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 298, in do_request
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     self._handle_fault_response(status_code, replybody, resp)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 273, in _handle_fault_response
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     exception_handler_v20(status_code, error_body)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 84, in exception_handler_v20
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     request_ids=request_ids)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Unauthorized: Authentication required
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Neutron server returns request_ids: ['req-9e7e618d-9675-4378-a810-c4e252a9f615']
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] 
+2019-11-25 11:14:42.055 26434 INFO nova.compute.manager [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Successfully reverted task state from resize_migrated on failure for instance.
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] Exception during message handling: Authentication required
+Neutron server returns request_ids: ['req-9e7e618d-9675-4378-a810-c4e252a9f615']
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher Traceback (most recent call last):
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 138, in _dispatch_and_reply
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     incoming.message))
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 183, in _dispatch
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return self._do_dispatch(endpoint, method, ctxt, args)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 127, in _do_dispatch
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     result = func(ctxt, **new_args)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/exception.py", line 110, in wrapped
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     payload)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+[root@compute12 ~]# 
+[root@compute12 ~]# tailf -200 /var/log/nova/nova-compute.log
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Setting instance vm_state to ERROR
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Traceback (most recent call last):
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 4042, in finish_resize
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     disk_info, image_meta)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 3979, in _finish_resize
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     migration_p)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1560, in migrate_instance_finish
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     migration['dest_compute'])
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1852, in _update_port_binding_for_instance
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     if not self._has_port_binding_extension(context, refresh_cache=True):
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 699, in _has_port_binding_extension
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     self._refresh_neutron_extensions_cache(context, neutron=neutron)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 691, in _refresh_neutron_extensions_cache
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     extensions_list = neutron.list_extensions()['extensions']
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 97, in with_params
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     ret = self.function(instance, *args, **kwargs)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 632, in list_extensions
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     return self.get(self.extensions_path, params=_params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 358, in get
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     headers=headers, params=params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 335, in retry_request
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     headers=headers, params=params)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 298, in do_request
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     self._handle_fault_response(status_code, replybody, resp)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 273, in _handle_fault_response
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     exception_handler_v20(status_code, error_body)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 84, in exception_handler_v20
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782]     request_ids=request_ids)
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Unauthorized: Authentication required
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Neutron server returns request_ids: ['req-9e7e618d-9675-4378-a810-c4e252a9f615']
+2019-11-25 11:14:41.780 26434 ERROR nova.compute.manager [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] 
+2019-11-25 11:14:42.055 26434 INFO nova.compute.manager [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] [instance: 9ad55985-3319-4f6e-b01c-d40e9341f782] Successfully reverted task state from resize_migrated on failure for instance.
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher [req-320cd876-ead7-426a-8791-a7da73db834c 7e784132e2914eb594762bef0172342d 1aebb360bb7f49c6bce8eced0ed8b167 - - -] Exception during message handling: Authentication required
+Neutron server returns request_ids: ['req-9e7e618d-9675-4378-a810-c4e252a9f615']
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher Traceback (most recent call last):
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 138, in _dispatch_and_reply
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     incoming.message))
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 183, in _dispatch
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return self._do_dispatch(endpoint, method, ctxt, args)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 127, in _do_dispatch
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     result = func(ctxt, **new_args)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/exception.py", line 110, in wrapped
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     payload)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     six.reraise(self.type_, self.value, self.tb)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/exception.py", line 89, in wrapped
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return f(self, context, *args, **kw)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 359, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     LOG.warning(msg, e, instance=instance)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     six.reraise(self.type_, self.value, self.tb)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 328, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return function(self, context, *args, **kwargs)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 409, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return function(self, context, *args, **kwargs)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 316, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     migration.instance_uuid, exc_info=True)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     six.reraise(self.type_, self.value, self.tb)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 293, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return function(self, context, *args, **kwargs)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 387, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     kwargs['instance'], e, sys.exc_info())
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     six.reraise(self.type_, self.value, self.tb)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 375, in decorated_function
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return function(self, context, *args, **kwargs)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 4054, in finish_resize
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self._set_instance_obj_error_state(context, instance)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self.force_reraise()
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     six.reraise(self.type_, self.value, self.tb)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 4042, in finish_resize
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     disk_info, image_meta)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 3979, in _finish_resize
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     migration_p)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1560, in migrate_instance_finish
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     migration['dest_compute'])
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 1852, in _update_port_binding_for_instance
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     if not self._has_port_binding_extension(context, refresh_cache=True):
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 699, in _has_port_binding_extension
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self._refresh_neutron_extensions_cache(context, neutron=neutron)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/nova/network/neutronv2/api.py", line 691, in _refresh_neutron_extensions_cache
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     extensions_list = neutron.list_extensions()['extensions']
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 97, in with_params
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     ret = self.function(instance, *args, **kwargs)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 632, in list_extensions
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     return self.get(self.extensions_path, params=_params)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 358, in get
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     headers=headers, params=params)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 335, in retry_request
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     headers=headers, params=params)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 298, in do_request
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     self._handle_fault_response(status_code, replybody, resp)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 273, in _handle_fault_response
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     exception_handler_v20(status_code, error_body)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher   File "/usr/lib/python2.7/site-packages/neutronclient/v2_0/client.py", line 84, in exception_handler_v20
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher     request_ids=request_ids)
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher Unauthorized: Authentication required
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher Neutron server returns request_ids: ['req-9e7e618d-9675-4378-a810-c4e252a9f615']
+2019-11-25 11:14:42.060 26434 ERROR oslo_messaging.rpc.dispatcher 

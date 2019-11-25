@@ -1,0 +1,75 @@
+ERROR nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Migration for instance 9ad55985-3319-4f6e-b01c-d40e9341f782 refers to another host's instance!
+
+    <channel type='unix'>
+      <source mode='bind' path='/var/lib/libvirt/qemu/org.qemu.guest_agent.0.instance-00000025.sock'/>
+      <target type='virtio' name='org.qemu.guest_agent.0' state='disconnected'/>
+      <alias name='channel0'/>
+      <address type='virtio-serial' controller='0' bus='0' port='1'/>
+    </channel>
+
+为解决
+
+
+
+2019-11-22 13:02:55.037 21160 INFO nova.api.openstack.wsgi [req-283ae40c-d29b-499d-84fd-87ff11eadc8b 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] HTTP exception thrown: Image b351c511-b6e5-4777-bae4-006047c7149f is unacceptable: Unable to rebuild with a different image for a volume-backed server.
+2019-11-22 13:02:55.039 21160 INFO nova.osapi_compute.wsgi.server [req-283ae40c-d29b-499d-84fd-87ff11eadc8b 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "POST /v2.1/servers/3578bb0a-b8a7-4c53-96d9-96fa1f8816a5/action HTTP/1.1" status: 400 len: 595 time: 0.2873561
+2019-11-22 13:02:55.110 21160 INFO nova.osapi_compute.wsgi.server [req-23c5ea93-56fe-42be-8c0f-27a26c719418 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1/flavors/detail HTTP/1.1" status: 200 len: 2282 time: 0.0331519
+2019-11-22 13:02:55.149 21160 INFO nova.osapi_compute.wsgi.server [req-ee420e5e-8195-45da-b7dc-9959870985c1 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1 HTTP/1.1" status: 302 len: 319 time: 0.0054340
+2019-11-22 13:02:55.158 21160 INFO nova.osapi_compute.wsgi.server [req-f9c957ac-f6f7-4711-b90f-75baea5e794e 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1/ HTTP/1.1" status: 200 len: 790 time: 0.0055900
+2019-11-22 13:02:56.772 21177 INFO nova.osapi_compute.wsgi.server [req-6bb16cdf-833e-4497-976a-97bea76b49b6 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.80.167 "POST /v2.1/fa689ffe41cb46fb9a039bff9102debf/servers/115b717a-b965-4b60-946d-746e98f85797/action HTTP/1.1" status: 200 len: 24836 time: 0.1290369
+2019-11-22 13:02:56.833 21162 INFO nova.osapi_compute.wsgi.server [req-7a7be5e8-74d5-4e91-aaa8-d86456b751d7 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1/servers/detail?limit=21&project_id=fa689ffe41cb46fb9a039bff9102debf HTTP/1.1" status: 200 len: 15391 time: 1.3117881
+2019-11-22 13:02:57.464 21160 INFO nova.osapi_compute.wsgi.server [req-d19696ce-92c1-4d69-be73-48ad8ed513ee 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1/limits?reserved=1 HTTP/1.1" status: 200 len: 915 time: 0.0761569
+2019-11-22 13:02:57.841 21160 INFO nova.osapi_compute.wsgi.server [req-93bf7a0a-8d5c-40f0-b165-4e4221088223 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] 192.168.110.72 "GET /v2.1/limits?reserved=1 HTTP/1.1" status: 200 len: 915 time: 0.0729160
+
+S版解决
+
+
+
+2019-11-22 11:11:13.953 12946 WARNING nova.compute.manager [req-16dbfdc5-ed2b-4184-b2d9-b9a522e16cf5 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] [instance: 629a1603-6cd3-45a9-988c-c4a9939715c8] set_admin_password is not implemented by this driver or guest instance.: NotImplementedError
+2019-11-22 11:11:14.401 12946 INFO nova.compute.manager [req-16dbfdc5-ed2b-4184-b2d9-b9a522e16cf5 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] [instance: 629a1603-6cd3-45a9-988c-c4a9939715c8] Successfully reverted task state from None on failure for instance.
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server [req-16dbfdc5-ed2b-4184-b2d9-b9a522e16cf5 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] Exception during message handling: NotImplementedError: set_admin_password is not implemented by this driver or guest instance.
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server Traceback (most recent call last):
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/server.py", line 166, in _process_incoming
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     res = self.dispatcher.dispatch(message)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 220, in dispatch
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     return self._do_dispatch(endpoint, method, ctxt, args)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_messaging/rpc/dispatcher.py", line 190, in _do_dispatch
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     result = func(ctxt, **new_args)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/exception_wrapper.py", line 76, in wrapped
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     function_name, call_dict, binary)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     self.force_reraise()
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     six.reraise(self.type_, self.value, self.tb)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/exception_wrapper.py", line 67, in wrapped
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     return f(self, context, *args, **kw)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 187, in decorated_function
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     "Error: %s", e, instance=instance)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     self.force_reraise()
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     six.reraise(self.type_, self.value, self.tb)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 157, in decorated_function
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     return function(self, context, *args, **kwargs)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/utils.py", line 1000, in decorated_function
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     return function(self, context, *args, **kwargs)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 215, in decorated_function
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     kwargs['instance'], e, sys.exc_info())
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 220, in __exit__
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     self.force_reraise()
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/oslo_utils/excutils.py", line 196, in force_reraise
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     six.reraise(self.type_, self.value, self.tb)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 203, in decorated_function
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     return function(self, context, *args, **kwargs)
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server   File "/usr/lib/python2.7/site-packages/nova/compute/manager.py", line 3540, in set_admin_password
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server     raise NotImplementedError(_('set_admin_password is not '
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server NotImplementedError: set_admin_password is not implemented by this driver or guest instance.
+2019-11-22 11:11:14.412 12946 ERROR oslo_messaging.rpc.server
+2019-11-22 11:12:01.240 12946 INFO nova.compute.resource_tracker [req-c6cc6fa0-c30e-4fa8-bd12-ca75d9162e7a - - - - -] Final resource view: name=k8s-node-2 phys_ram=32759MB used_ram=2560MB phys_disk=5585GB used_disk=100GB total_vcpus=16 used_vcpus=2 pci_stats=[]
+2019-11-22 11:13:01.265 12946 INFO nova.compute.resource_tracker [req-c6cc6fa0-c30e-4fa8-bd12-ca75d9162e7a - - - - -] Final resource view: name=k8s-node-2 phys_ram=32759MB used_ram=2560MB phys_disk=5585GB used_disk=100GB total_vcpus=16 used_vcpus=2 pci_stats=[]
+2019-11-22 11:14:03.248 12946 INFO nova.compute.resource_tracker [req-c6cc6fa0-c30e-4fa8-bd12-ca75d9162e7a - - - - -] Final resource view: name=k8s-node-2 phys_ram=32759MB used_ram=2560MB phys_disk=5585GB used_disk=100GB total_vcpus=16 used_vcpus=2 pci_stats=[]
+2019-11-22 11:15:05.243 12946 INFO nova.compute.resource_tracker [req-c6cc6fa0-c30e-4fa8-bd12-ca75d9162e7a - - - - -] Final resource view: name=k8s-node-2 phys_ram=32759MB used_ram=2560MB phys_disk=5585GB used_disk=100GB total_vcpus=16 used_vcpus=2 pci_stats=[]
+2019-11-22 11:15:17.100 12946 INFO nova.compute.manager [req-40511df5-a6ee-4479-b0bd-b08ee9ecbbee 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] [instance: 629a1603-6cd3-45a9-988c-c4a9939715c8] Get console output
+2019-11-22 11:15:17.105 13856 INFO nova.privsep.libvirt [-] Ignored error while reading from instance console pty: [Errno 11] Resource temporarily unavailable
+2019-11-22 11:15:57.921 12946 INFO nova.compute.manager [req-ef85edc7-6449-4a1c-bee2-0212add04ee5 4a44f9caaf2045d691354dce782ddb3e fa689ffe41cb46fb9a039bff9102debf - default default] [instance: 629a1603-6cd3-45a9-988c-c4a9939715c8] Get console output
+2019-11-22 11:15:57.925 13856 INFO nova.privsep.libvirt [-] Ignored error while reading from instance console pty: [Errno 11] Resource temporarily unavailable

@@ -1,0 +1,214 @@
+audit
+　　在Who sends a SIGKILL to my process mysteriously on ubuntu server中，提到了另外一个更加简单的方法，那就是使用audit
+
+　　安装很简单：sudo apt-get install auditd
+
+　　启动服务并查看状态： service auditd start & service auditd status
+
+　　然后通过auditctrl添加规则： auditctl -a exit,always -F arch=b64 -S kill -F a1=9
+
+　　启动然后kill掉Python程序
+
+$ python run_forever.py &
+[1] 24067
+$ kill -9 24067
+
+　　使用ausearch搜索结果： ausearch -sc kill。结果如下　
+
+time->Mon Dec 25 19:52:55 2017
+type=PROCTITLE msg=audit(1514202775.088:351): proctitle="bash"
+type=OBJ_PID msg=audit(1514202775.088:351): opid=24067 日uid=-1 ouid=3010 oses=-1 ocomm="python"
+type=SYSCALL msg=audit(1514202775.088:351): arch=c000003e syscall=62 success=yes exit=0 a0=5e03 a1=9 a2=0 a3=7ffc0d9f7b90 items=0 ppid=1349 pid=1350  uid=3010 gid=3010 euid=3010 suid=3010 fsuid=3010 egid=3010 sgid=3010 fsgid=3010 tty=pts0 comm="bash" exe="/bin/bash" key=(null)
+
+
+Nov 20 07:30:05 LIVE-CUC-WATCH1-HBHENGS dbus[5101]: [system] Activating via systemd: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service'
+Nov 20 07:30:05 LIVE-CUC-WATCH1-HBHENGS systemd: Starting Hostname Service...
+Nov 20 07:30:05 LIVE-CUC-WATCH1-HBHENGS dbus[5101]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Nov 20 07:30:05 LIVE-CUC-WATCH1-HBHENGS systemd: Started Hostname Service.
+Nov 20 07:30:33 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29287]: Engine init initialised! 0x22f6d20
+Nov 20 07:30:50 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29395]: Engine init initialised! 0x28f7060
+Nov 20 07:31:00 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29427]: Engine init initialised! 0x28fa8f0
+Nov 20 07:31:01 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884653 of user root.
+Nov 20 07:31:01 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884652 of user root.
+Nov 20 07:31:01 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884654 of user root.
+Nov 20 07:31:01 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884655 of user root.
+Nov 20 07:31:01 LIVE-CUC-WATCH1-HBHENGS crond: postdrop: warning: unable to look up public/pickup: No such file or directory
+Nov 20 07:31:13 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29496]: Engine init initialised! 0x2344040
+Nov 20 07:31:19 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29515]: Engine init initialised! 0x21fb940
+Nov 20 07:31:22 LIVE-CUC-WATCH1-HBHENGS REALRELAY-SERVER[29537]: Engine init initialised! 0x2094970
+Nov 20 07:32:02 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884657 of user root.
+Nov 20 07:32:02 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884659 of user root.
+Nov 20 07:32:02 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884656 of user root.
+Nov 20 07:32:02 LIVE-CUC-WATCH1-HBHENGS systemd: Started Session 884658 of user root.
+Nov 20 07:32:02 LIVE-CUC-WATCH1-HBHENGS crond: postdrop: warning: unable to look up public/pickup: No such file or directory
+Nov 20 07:32:05 LIVE-CUC-WATCH1-HBHENGS systemd: salt-minion.service stop-sigterm timed out. Killing.
+Nov 20 07:32:05 LIVE-CUC-WATCH1-HBHENGS systemd: salt-minion.service: main process exited, code=killed, status=9/KILL
+Nov 20 07:32:05 LIVE-CUC-WATCH1-HBHENGS systemd: Unit salt-minion.service entered failed state.
+Nov 20 07:32:05 LIVE-CUC-WATCH1-HBHENGS systemd: salt-minion.service failed.
+Nov 20 07:32:07 LIVE-CUC-WATCH1-HBHENGS salt-minion: [ERROR   ] Minion process encountered exception: [Errno 3] No such process
+
+
+2019-11-20 04:30:04,578 [salt.minion      :1594][INFO    ][13803] Starting a new job 20191120043004556938 with PID 13803
+2019-11-20 04:30:04,639 [salt.minion      :1893][INFO    ][13803] Returning information for job: 20191120043004556938
+2019-11-20 05:00:04,212 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120050004162115
+2019-11-20 05:00:04,232 [salt.minion      :1594][INFO    ][21611] Starting a new job 20191120050004162115 with PID 21611
+2019-11-20 05:00:04,293 [salt.minion      :1893][INFO    ][21611] Returning information for job: 20191120050004162115
+2019-11-20 05:25:31,029 [salt.utils.schedule:1437][INFO    ][14723] Running scheduled job: __mine_interval
+2019-11-20 05:30:04,468 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120053004372864
+2019-11-20 05:30:04,488 [salt.minion      :1594][INFO    ][29735] Starting a new job 20191120053004372864 with PID 29735
+2019-11-20 05:30:04,549 [salt.minion      :1893][INFO    ][29735] Returning information for job: 20191120053004372864
+2019-11-20 06:00:04,154 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120060004011831
+2019-11-20 06:00:04,175 [salt.minion      :1594][INFO    ][4896] Starting a new job 20191120060004011831 with PID 4896
+2019-11-20 06:00:04,236 [salt.minion      :1893][INFO    ][4896] Returning information for job: 20191120060004011831
+2019-11-20 06:25:31,028 [salt.utils.schedule:1437][INFO    ][14723] Running scheduled job: __mine_interval
+2019-11-20 06:30:04,316 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120063004320259
+2019-11-20 06:30:04,337 [salt.minion      :1594][INFO    ][13038] Starting a new job 20191120063004320259 with PID 13038
+2019-11-20 06:30:04,398 [salt.minion      :1893][INFO    ][13038] Returning information for job: 20191120063004320259
+2019-11-20 07:00:04,434 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120070004391356
+2019-11-20 07:00:04,455 [salt.minion      :1594][INFO    ][20753] Starting a new job 20191120070004391356 with PID 20753
+2019-11-20 07:00:04,515 [salt.minion      :1893][INFO    ][20753] Returning information for job: 20191120070004391356
+2019-11-20 07:25:31,028 [salt.utils.schedule:1437][INFO    ][14723] Running scheduled job: __mine_interval
+2019-11-20 07:30:03,877 [salt.minion      :1459][INFO    ][14723] User salt-api Executing command test.ping with jid 20191120073003784137
+2019-11-20 07:30:03,898 [salt.minion      :1594][INFO    ][29134] Starting a new job 20191120073003784137 with PID 29134
+2019-11-20 07:30:03,960 [salt.minion      :1893][INFO    ][29134] Returning information for job: 20191120073003784137
+2019-11-20 07:32:07,613 [salt.scripts     :134 ][ERROR   ][14723] Minion process encountered exception: [Errno 3] No such process
+
+
+def minion_process():
+    '''
+    Start a minion process
+    '''
+    import salt.utils.platform
+    import salt.utils.process
+    import salt.cli.daemons
+
+    # salt_minion spawns this function in a new process
+
+    salt.utils.process.appendproctitle('KeepAlive')
+
+    def handle_hup(manager, sig, frame):
+        manager.minion.reload()
+
+    lock = threading.RLock()
+
+    def suicide_when_without_parent(parent_pid):
+        '''
+        Have the minion suicide if the parent process is gone
+
+        NOTE: small race issue where the parent PID could be replace
+        with another process with same PID!
+        '''
+        while lock.acquire(blocking=False):
+            lock.release()
+            time.sleep(5)
+            try:
+                # check pid alive (Unix only trick!)
+                if os.getuid() == 0 and not salt.utils.platform.is_windows():
+                    os.kill(parent_pid, 0)
+            except OSError as exc:
+                # forcibly exit, regular sys.exit raises an exception-- which
+                # isn't sufficient in a thread
+                log.error('Minion process encountered exception: %s', exc)
+                os._exit(salt.defaults.exitcodes.EX_GENERIC)
+
+    try:
+        if not salt.utils.platform.is_windows():
+            thread = threading.Thread(target=suicide_when_without_parent, args=(os.getppid(),))
+            thread.start()
+
+        minion = salt.cli.daemons.Minion()
+        signal.signal(signal.SIGHUP,
+                      functools.partial(handle_hup,
+                                        minion))
+        minion.start()
+    except (SaltClientError, SaltReqTimeoutError, SaltSystemExit) as exc:
+        lock.acquire(blocking=True)
+        log.warning('Fatal functionality error caught by minion handler:\n', exc_info=True)
+        log.warning('** Restarting minion **')
+        delay = 60
+        if minion is not None and hasattr(minion, 'config'):
+            delay = minion.config.get('random_reauth_delay', 60)
+        delay = randint(1, delay)
+        log.info('waiting random_reauth_delay %ss', delay)
+        time.sleep(delay)
+        sys.exit(salt.defaults.exitcodes.SALT_KEEPALIVE)
+    finally:
+        lock.acquire(blocking=True)
+
+
+def salt_minion():
+    '''
+    Start the salt minion in a subprocess.
+    Auto restart minion on error.
+    '''
+    import signal
+
+    import salt.utils.platform
+    import salt.utils.process
+    salt.utils.process.notify_systemd()
+
+    import salt.cli.daemons
+    import multiprocessing
+    if '' in sys.path:
+        sys.path.remove('')
+
+    if salt.utils.platform.is_windows():
+        minion = salt.cli.daemons.Minion()
+        minion.start()
+        return
+
+    if '--disable-keepalive' in sys.argv:
+        sys.argv.remove('--disable-keepalive')
+        minion = salt.cli.daemons.Minion()
+        minion.start()
+        return
+
+    def escalate_signal_to_process(pid, signum, sigframe):  # pylint: disable=unused-argument
+        '''
+        Escalate the signal received to the multiprocessing process that
+        is actually running the minion
+        '''
+        # escalate signal
+        os.kill(pid, signum)
+
+    # keep one minion subprocess running
+    prev_sigint_handler = signal.getsignal(signal.SIGINT)
+    prev_sigterm_handler = signal.getsignal(signal.SIGTERM)
+    while True:
+        try:
+            process = multiprocessing.Process(target=minion_process)
+            process.start()
+            signal.signal(signal.SIGTERM,
+                          functools.partial(escalate_signal_to_process,
+                                            process.pid))
+            signal.signal(signal.SIGINT,
+                          functools.partial(escalate_signal_to_process,
+                                            process.pid))
+            signal.signal(signal.SIGHUP,
+                          functools.partial(escalate_signal_to_process,
+                                            process.pid))
+        except Exception:  # pylint: disable=broad-except
+            # if multiprocessing does not work
+            minion = salt.cli.daemons.Minion()
+            minion.start()
+            break
+
+        process.join()
+
+        # Process exited or was terminated. Since we're going to try to restart
+        # it, we MUST, reset signal handling to the previous handlers
+        signal.signal(signal.SIGINT, prev_sigint_handler)
+        signal.signal(signal.SIGTERM, prev_sigterm_handler)
+
+        if not process.exitcode == salt.defaults.exitcodes.SALT_KEEPALIVE:
+            sys.exit(process.exitcode)
+        # ontop of the random_reauth_delay already preformed
+        # delay extra to reduce flooding and free resources
+        # NOTE: values are static but should be fine.
+        time.sleep(2 + randint(1, 10))
+        # need to reset logging because new minion objects
+        # cause extra log handlers to accumulate
+        rlogger = logging.getLogger()
+        for handler in rlogger.handlers:
+            rlogger.removeHandler(handler)
+        logging.basicConfig()
