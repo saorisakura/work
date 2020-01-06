@@ -1,3 +1,19 @@
+源码
+[root@k8s-master-1 ~]# grep compute_driver /etc/nova/nova.conf
+#compute_driver=libvirt.LibvirtDriver
+# * ``compute_driver``: Only the libvirt driver uses this option.
+# * ``compute_driver``: Must be hyperv.
+# * compute_driver: Must use vmwareapi.VMwareVCDriver.
+# * ``compute_driver`` (libvirt)
+# * ``compute_driver``: Only the libvirt driver is affected.
+# XenServer options are used when the compute_driver is set to use
+# XenServer (compute_driver=xenapi.XenAPIDriver).
+# use compute_driver=xenapi.XenAPIDriver.
+# * ``compute_driver`` should be set to ``xenapi.XenAPIDriver``
+
+
+
+问题
 ERROR nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - - - - -] Migration for instance 9ad55985-3319-4f6e-b01c-d40e9341f782 refers to another host's instance!
 
     <channel type='unix'>
@@ -8,6 +24,83 @@ ERROR nova.compute.resource_tracker [req-153f4f0b-b2d4-428c-8306-43f84ebf1e08 - 
     </channel>
 
 为解决
+
+
+
+
+
+
+
+
+[Thu Nov 28 19:45:32.799537 2019] [:error] [pid 14021] INFO openstack_auth.plugin.base Attempted scope to domain default failed, will attemptto scope to another domain.
+[Thu Nov 28 19:45:33.027968 2019] [:error] [pid 14021] INFO openstack_auth.forms Login successful for user "admin" using domain "default", remote address 192.168.80.67.
+[Thu Nov 28 19:45:34.917370 2019] [:error] [pid 14021] ERROR django.request Internal Server Error: /dashboard/auth/login/
+[Thu Nov 28 19:45:34.917410 2019] [:error] [pid 14021] Traceback (most recent call last):
+[Thu Nov 28 19:45:34.917412 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/core/handlers/exception.py", line 41, in inner
+[Thu Nov 28 19:45:34.917414 2019] [:error] [pid 14021]     response = get_response(request)
+[Thu Nov 28 19:45:34.917416 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/core/handlers/base.py", line 249, in _legacy_get_response
+[Thu Nov 28 19:45:34.917420 2019] [:error] [pid 14021]     response = self._get_response(request)
+[Thu Nov 28 19:45:34.917421 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/core/handlers/base.py", line 187, in _get_response
+[Thu Nov 28 19:45:34.917423 2019] [:error] [pid 14021]     response = self.process_exception_by_middleware(e, request)
+[Thu Nov 28 19:45:34.917424 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/core/handlers/base.py", line 185, in _get_response
+[Thu Nov 28 19:45:34.917427 2019] [:error] [pid 14021]     response = wrapped_callback(request, *callback_args, **callback_kwargs)
+[Thu Nov 28 19:45:34.917429 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/decorators/debug.py", line 76, in sensitive_post_parameters_wrapper
+[Thu Nov 28 19:45:34.917440 2019] [:error] [pid 14021]     return view(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917442 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 149, in _wrapped_view
+[Thu Nov 28 19:45:34.917444 2019] [:error] [pid 14021]     response = view_func(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917445 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/decorators/cache.py", line 57, in _wrapped_view_func
+[Thu Nov 28 19:45:34.917447 2019] [:error] [pid 14021]     response = view_func(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917448 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/openstack_auth/views.py", line 106, in login
+[Thu Nov 28 19:45:34.917450 2019] [:error] [pid 14021]     **kwargs)
+[Thu Nov 28 19:45:34.917451 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/auth/views.py", line 54, in inner
+[Thu Nov 28 19:45:34.917452 2019] [:error] [pid 14021]     return func(*args, **kwargs)
+[Thu Nov 28 19:45:34.917454 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/auth/views.py", line 150, in login
+[Thu Nov 28 19:45:34.917456 2019] [:error] [pid 14021]     )(request)
+[Thu Nov 28 19:45:34.917457 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/generic/base.py", line 68, in view
+[Thu Nov 28 19:45:34.917463 2019] [:error] [pid 14021]     return self.dispatch(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917465 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 67, in _wrapper
+[Thu Nov 28 19:45:34.917467 2019] [:error] [pid 14021]     return bound_func(*args, **kwargs)
+[Thu Nov 28 19:45:34.917484 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/decorators/debug.py", line 76, in sensitive_post_parameters_wrapper
+[Thu Nov 28 19:45:34.917504 2019] [:error] [pid 14021]     return view(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917507 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 63, in bound_func
+[Thu Nov 28 19:45:34.917509 2019] [:error] [pid 14021]     return func.__get__(self, type(self))(*args2, **kwargs2)
+[Thu Nov 28 19:45:34.917511 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 67, in _wrapper
+[Thu Nov 28 19:45:34.917513 2019] [:error] [pid 14021]     return bound_func(*args, **kwargs)
+[Thu Nov 28 19:45:34.917515 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 149, in _wrapped_view
+[Thu Nov 28 19:45:34.917517 2019] [:error] [pid 14021]     response = view_func(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917519 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 63, in bound_func
+[Thu Nov 28 19:45:34.917521 2019] [:error] [pid 14021]     return func.__get__(self, type(self))(*args2, **kwargs2)
+[Thu Nov 28 19:45:34.917522 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 67, in _wrapper
+[Thu Nov 28 19:45:34.917524 2019] [:error] [pid 14021]     return bound_func(*args, **kwargs)
+[Thu Nov 28 19:45:34.917526 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/decorators/cache.py", line 57, in _wrapped_view_func
+[Thu Nov 28 19:45:34.917528 2019] [:error] [pid 14021]     response = view_func(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917530 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/utils/decorators.py", line 63, in bound_func
+[Thu Nov 28 19:45:34.917532 2019] [:error] [pid 14021]     return func.__get__(self, type(self))(*args2, **kwargs2)
+[Thu Nov 28 19:45:34.917534 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/auth/views.py", line 90, in dispatch
+[Thu Nov 28 19:45:34.917541 2019] [:error] [pid 14021]     return super(LoginView, self).dispatch(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917543 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/generic/base.py", line 88, in dispatch
+[Thu Nov 28 19:45:34.917545 2019] [:error] [pid 14021]     return handler(request, *args, **kwargs)
+[Thu Nov 28 19:45:34.917547 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/views/generic/edit.py", line 183, in post
+[Thu Nov 28 19:45:34.917549 2019] [:error] [pid 14021]     return self.form_valid(form)
+[Thu Nov 28 19:45:34.917551 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/auth/views.py", line 119, in form_valid
+[Thu Nov 28 19:45:34.917553 2019] [:error] [pid 14021]     auth_login(self.request, form.get_user())
+[Thu Nov 28 19:45:34.917555 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/auth/__init__.py", line 140, in login
+[Thu Nov 28 19:45:34.917557 2019] [:error] [pid 14021]     request.session.cycle_key()
+[Thu Nov 28 19:45:34.917559 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/sessions/backends/base.py", line 311, in cycle_key
+[Thu Nov 28 19:45:34.917561 2019] [:error] [pid 14021]     self.create()
+[Thu Nov 28 19:45:34.917562 2019] [:error] [pid 14021]   File "/usr/lib/python2.7/site-packages/django/contrib/sessions/backends/cache.py", line 52, in create
+[Thu Nov 28 19:45:34.917564 2019] [:error] [pid 14021]     "Unable to create a new session key. "
+[Thu Nov 28 19:45:34.917566 2019] [:error] [pid 14021] RuntimeError: Unable to create a new session key. It is likely that the cache is unavailable.
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,109 @@
+Nov 28 18:33:23 ops-t3-controller systemd[1]: Starting OpenStack Neutron Linux Bridge Agent...
+Nov 28 18:33:23 ops-t3-controller neutron-enable-bridge-firewall.sh[35622]: net.bridge.bridge-nf-call-iptables = 1
+Nov 28 18:33:23 ops-t3-controller neutron-enable-bridge-firewall.sh[35622]: net.bridge.bridge-nf-call-ip6tables = 1
+Nov 28 18:33:23 ops-t3-controller systemd[1]: Started OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: Traceback (most recent call last):
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: File "/usr/bin/neutron-linuxbridge-agent", line 6, in <module>
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: from neutron.cmd.eventlet.plugins.linuxbridge_neutron_agent import main
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/linuxbridge_neutron_agent.py", line 15, in <module>
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: import \
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py", line 48, in <module>
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: from neutron.plugins.ml2.drivers.linuxbridge.agent import arp_protect
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/arp_protect.py", line 229, in <module>
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: def ebtables(comm, table='nat'):
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: File "/usr/lib/python2.7/site-packages/tenacity/__init__.py", line 98, in wrap
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: elif tornado and tornado.gen.is_coroutine_function(f):
+Nov 28 18:33:24 ops-t3-controller neutron-linuxbridge-agent[35629]: AttributeError: 'module' object has no attribute 'is_coroutine_function'
+Nov 28 18:33:24 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service: main process exited, code=exited, status=1/FAILURE
+Nov 28 18:33:24 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:24 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.
+Nov 28 18:33:25 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service holdoff time over, scheduling restart.
+Nov 28 18:33:25 ops-t3-controller systemd[1]: Stopped OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:25 ops-t3-controller systemd[1]: Starting OpenStack Neutron Linux Bridge Agent...
+Nov 28 18:33:25 ops-t3-controller neutron-enable-bridge-firewall.sh[35646]: net.bridge.bridge-nf-call-iptables = 1
+Nov 28 18:33:25 ops-t3-controller neutron-enable-bridge-firewall.sh[35646]: net.bridge.bridge-nf-call-ip6tables = 1
+Nov 28 18:33:25 ops-t3-controller systemd[1]: Started OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: Traceback (most recent call last):
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: File "/usr/bin/neutron-linuxbridge-agent", line 6, in <module>
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: from neutron.cmd.eventlet.plugins.linuxbridge_neutron_agent import main
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/linuxbridge_neutron_agent.py", line 15, in <module>
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: import \
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py", line 48, in <module>
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: from neutron.plugins.ml2.drivers.linuxbridge.agent import arp_protect
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/arp_protect.py", line 229, in <module>
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: def ebtables(comm, table='nat'):
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: File "/usr/lib/python2.7/site-packages/tenacity/__init__.py", line 98, in wrap
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: elif tornado and tornado.gen.is_coroutine_function(f):
+Nov 28 18:33:26 ops-t3-controller neutron-linuxbridge-agent[35653]: AttributeError: 'module' object has no attribute 'is_coroutine_function'
+Nov 28 18:33:26 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service: main process exited, code=exited, status=1/FAILURE
+Nov 28 18:33:26 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:26 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.
+Nov 28 18:33:27 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service holdoff time over, scheduling restart.
+Nov 28 18:33:27 ops-t3-controller systemd[1]: Stopped OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:27 ops-t3-controller systemd[1]: Starting OpenStack Neutron Linux Bridge Agent...
+Nov 28 18:33:27 ops-t3-controller neutron-enable-bridge-firewall.sh[35671]: net.bridge.bridge-nf-call-iptables = 1
+Nov 28 18:33:27 ops-t3-controller neutron-enable-bridge-firewall.sh[35671]: net.bridge.bridge-nf-call-ip6tables = 1
+Nov 28 18:33:27 ops-t3-controller systemd[1]: Started OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: Traceback (most recent call last):
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: File "/usr/bin/neutron-linuxbridge-agent", line 6, in <module>
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: from neutron.cmd.eventlet.plugins.linuxbridge_neutron_agent import main
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/linuxbridge_neutron_agent.py", line 15, in <module>
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: import \
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py", line 48, in <module>
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: from neutron.plugins.ml2.drivers.linuxbridge.agent import arp_protect
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/arp_protect.py", line 229, in <module>
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: def ebtables(comm, table='nat'):
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: File "/usr/lib/python2.7/site-packages/tenacity/__init__.py", line 98, in wrap
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: elif tornado and tornado.gen.is_coroutine_function(f):
+Nov 28 18:33:28 ops-t3-controller neutron-linuxbridge-agent[35677]: AttributeError: 'module' object has no attribute 'is_coroutine_function'
+Nov 28 18:33:28 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service: main process exited, code=exited, status=1/FAILURE
+Nov 28 18:33:28 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:28 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.
+Nov 28 18:33:29 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service holdoff time over, scheduling restart.
+Nov 28 18:33:29 ops-t3-controller systemd[1]: Stopped OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:29 ops-t3-controller systemd[1]: Starting OpenStack Neutron Linux Bridge Agent...
+Nov 28 18:33:29 ops-t3-controller neutron-enable-bridge-firewall.sh[35696]: net.bridge.bridge-nf-call-iptables = 1
+Nov 28 18:33:29 ops-t3-controller neutron-enable-bridge-firewall.sh[35696]: net.bridge.bridge-nf-call-ip6tables = 1
+Nov 28 18:33:29 ops-t3-controller systemd[1]: Started OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: Traceback (most recent call last):
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: File "/usr/bin/neutron-linuxbridge-agent", line 6, in <module>
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: from neutron.cmd.eventlet.plugins.linuxbridge_neutron_agent import main
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/linuxbridge_neutron_agent.py", line 15, in <module>
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: import \
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py", line 48, in <module>
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: from neutron.plugins.ml2.drivers.linuxbridge.agent import arp_protect
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/arp_protect.py", line 229, in <module>
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: def ebtables(comm, table='nat'):
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: File "/usr/lib/python2.7/site-packages/tenacity/__init__.py", line 98, in wrap
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: elif tornado and tornado.gen.is_coroutine_function(f):
+Nov 28 18:33:30 ops-t3-controller neutron-linuxbridge-agent[35703]: AttributeError: 'module' object has no attribute 'is_coroutine_function'
+Nov 28 18:33:30 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service: main process exited, code=exited, status=1/FAILURE
+Nov 28 18:33:30 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:30 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.
+Nov 28 18:33:31 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service holdoff time over, scheduling restart.
+Nov 28 18:33:31 ops-t3-controller systemd[1]: Stopped OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:31 ops-t3-controller systemd[1]: Starting OpenStack Neutron Linux Bridge Agent...
+Nov 28 18:33:31 ops-t3-controller neutron-enable-bridge-firewall.sh[35723]: net.bridge.bridge-nf-call-iptables = 1
+Nov 28 18:33:31 ops-t3-controller neutron-enable-bridge-firewall.sh[35723]: net.bridge.bridge-nf-call-ip6tables = 1
+Nov 28 18:33:31 ops-t3-controller systemd[1]: Started OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: Traceback (most recent call last):
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: File "/usr/bin/neutron-linuxbridge-agent", line 6, in <module>
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: from neutron.cmd.eventlet.plugins.linuxbridge_neutron_agent import main
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/linuxbridge_neutron_agent.py", line 15, in <module>
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: import \
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py", line 48, in <module>
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: from neutron.plugins.ml2.drivers.linuxbridge.agent import arp_protect
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/linuxbridge/agent/arp_protect.py", line 229, in <module>
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: def ebtables(comm, table='nat'):
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: File "/usr/lib/python2.7/site-packages/tenacity/__init__.py", line 98, in wrap
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: elif tornado and tornado.gen.is_coroutine_function(f):
+Nov 28 18:33:32 ops-t3-controller neutron-linuxbridge-agent[35730]: AttributeError: 'module' object has no attribute 'is_coroutine_function'
+Nov 28 18:33:32 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service: main process exited, code=exited, status=1/FAILURE
+Nov 28 18:33:32 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:32 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.
+Nov 28 18:33:33 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service holdoff time over, scheduling restart.
+Nov 28 18:33:33 ops-t3-controller systemd[1]: Stopped OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:33 ops-t3-controller systemd[1]: start request repeated too quickly for neutron-linuxbridge-agent.service
+Nov 28 18:33:33 ops-t3-controller systemd[1]: Failed to start OpenStack Neutron Linux Bridge Agent.
+Nov 28 18:33:33 ops-t3-controller systemd[1]: Unit neutron-linuxbridge-agent.service entered failed state.
+Nov 28 18:33:33 ops-t3-controller systemd[1]: neutron-linuxbridge-agent.service failed.

@@ -1,0 +1,90 @@
+[root@sixrooms-122-70-146-244 ~]# iptables -vnL --line-numbers
+Chain INPUT (policy ACCEPT 113 packets, 24156 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:32000
+2     497K 1011M ACCEPT     all  --  *      *       192.168.56.0/24      0.0.0.0/0           
+3      794 51024 ACCEPT     all  --  *      *       122.70.146.0/24      0.0.0.0/0           
+4        1    52 ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:31000
+5     669K  758M ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:7710
+6    12901   94M ACCEPT     all  --  *      *       172.16.0.0/12        0.0.0.0/0           
+7    2102K 4628M ACCEPT     all  --  *      *       192.168.0.0/16       0.0.0.0/0           
+8        0     0 ACCEPT     all  --  *      *       61.237.235.0/27      0.0.0.0/0           
+9        0     0 ACCEPT     all  --  *      *       122.70.135.0/25      0.0.0.0/0           
+10       0     0 ACCEPT     all  --  *      *       122.70.137.192/26    0.0.0.0/0           
+11       0     0 ACCEPT     all  --  *      *       122.70.141.0/24      0.0.0.0/0           
+12   1407K 1583M ACCEPT     all  --  *      *       222.35.74.0/23       0.0.0.0/0           
+13       0     0 ACCEPT     all  --  *      *       218.205.214.128/25   0.0.0.0/0           
+14       0     0 ACCEPT     all  --  *      *       221.179.202.0/24     0.0.0.0/0           
+15       0     0 ACCEPT     all  --  *      *       221.179.203.0/25     0.0.0.0/0           
+16   11662 2988K ACCEPT     all  --  *      *       125.208.4.0/24       0.0.0.0/0           
+17    1799  245K ACCEPT     udp  --  *      *       0.0.0.0/0            0.0.0.0/0            udp spt:53
+18     397 12704 ACCEPT     udp  --  *      *       0.0.0.0/0            0.0.0.0/0            udp spt:123
+19       0     0 ACCEPT     udp  --  *      *       0.0.0.0/0            0.0.0.0/0            multiport ports 4257
+20       0     0 ACCEPT     tcp  --  *      *       172.16.0.0/12        0.0.0.0/0           
+21       0     0 ACCEPT     udp  --  *      *       172.16.0.0/12        0.0.0.0/0           
+22       0     0 ACCEPT     all  --  lo     *       0.0.0.0/0            0.0.0.0/0           
+23       0     0 ACCEPT     all  --  veth0  *       0.0.0.0/0            0.0.0.0/0           
+24   2098K 1192M DROP       udp  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+Chain FORWARD (policy ACCEPT 48 packets, 3155 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1    83196  142M DOCKER-USER  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+2    83196  142M DOCKER-ISOLATION-STAGE-1  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+3      222 14782 ACCEPT     all  --  *      br-07fc551b905d  0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+4        0     0 DOCKER     all  --  *      br-07fc551b905d  0.0.0.0/0            0.0.0.0/0           
+5      221 15509 ACCEPT     all  --  br-07fc551b905d !br-07fc551b905d  0.0.0.0/0            0.0.0.0/0           
+6        0     0 ACCEPT     all  --  br-07fc551b905d br-07fc551b905d  0.0.0.0/0            0.0.0.0/0           
+7     102K  387M ACCEPT     all  --  *      docker0  0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+8        0     0 DOCKER     all  --  *      docker0  0.0.0.0/0            0.0.0.0/0           
+9    54930 3390K ACCEPT     all  --  docker0 !docker0  0.0.0.0/0            0.0.0.0/0           
+10       0     0 ACCEPT     all  --  docker0 docker0  0.0.0.0/0            0.0.0.0/0           
+
+Chain OUTPUT (policy ACCEPT 594 packets, 111K bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain DOCKER (2 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 ACCEPT     tcp  --  !br-07fc551b905d br-07fc551b905d  0.0.0.0/0            172.20.0.4           tcp dpt:80
+2        0     0 ACCEPT     tcp  --  !br-07fc551b905d br-07fc551b905d  0.0.0.0/0            172.20.0.5           tcp dpt:6379
+
+Chain DOCKER-ISOLATION-STAGE-1 (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1      221 15509 DOCKER-ISOLATION-STAGE-2  all  --  br-07fc551b905d !br-07fc551b905d  0.0.0.0/0            0.0.0.0/0           
+2    54930 3390K DOCKER-ISOLATION-STAGE-2  all  --  docker0 !docker0  0.0.0.0/0            0.0.0.0/0           
+3    1107K 3217M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER-ISOLATION-STAGE-2 (2 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 DROP       all  --  *      br-07fc551b905d  0.0.0.0/0            0.0.0.0/0           
+2        0     0 DROP       all  --  *      docker0  0.0.0.0/0            0.0.0.0/0           
+3    92679   18M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER-USER (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1    1107K 3217M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+[root@sixrooms-122-70-146-244 ~]# iptables -vnL --line-numbers -t nat
+Chain PREROUTING (policy ACCEPT 66843 packets, 37M bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1    11781  752K DOCKER     all  --  *      *       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT 101 packets, 8044 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 194 packets, 13231 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1      894 46520 DOCKER     all  --  *      *       0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT 224 packets, 14975 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1       13   676 MASQUERADE  all  --  *      !br-07fc551b905d  172.20.0.0/16        0.0.0.0/0           
+2       91  5417 MASQUERADE  all  --  *      !docker0  172.17.0.0/16        0.0.0.0/0           
+3        0     0 MASQUERADE  tcp  --  *      *       172.20.0.4           172.20.0.4           tcp dpt:80
+4        0     0 MASQUERADE  tcp  --  *      *       172.20.0.5           172.20.0.5           tcp dpt:6379
+
+Chain DOCKER (2 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 RETURN     all  --  br-07fc551b905d *       0.0.0.0/0            0.0.0.0/0           
+2        0     0 RETURN     all  --  docker0 *       0.0.0.0/0            0.0.0.0/0           
+3       42  2288 DNAT       tcp  --  !br-07fc551b905d *       0.0.0.0/0            192.168.56.245       tcp dpt:32000 to:172.20.0.4:80
+4        0     0 DNAT       tcp  --  !br-07fc551b905d *       0.0.0.0/0            192.168.56.245       tcp dpt:32002 to:172.20.0.5:6379
+[root@sixrooms-122-70-146-244 ~]# 

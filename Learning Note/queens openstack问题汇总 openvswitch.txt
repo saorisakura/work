@@ -1,0 +1,204 @@
+net_mlx5: cannot load glue library: libibverbs.so.1: cannot open shared object file: No such file or directory
+
+
+
+2019-10-22 21:24:59.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:01.082 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:03.077 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:05.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:07.070 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:09.074 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:11.072 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:13.073 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:15.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:17.072 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:19.072 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:21.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:22.481 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:25:22.482 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:25:23.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:25.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:27.081 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:29.067 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:31.075 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:33.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:35.095 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:37.077 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:39.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:41.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:43.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:45.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:47.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:49.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:51.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:52.585 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:25:52.586 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:25:53.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:55.093 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:57.088 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:25:59.078 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:01.075 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:03.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:05.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:07.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:09.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:11.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:13.088 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:15.076 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:17.076 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:19.076 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:21.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:22.686 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:26:22.687 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:26:23.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:25.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:27.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:29.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:31.100 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:33.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:35.082 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:37.082 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:39.097 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:41.079 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:43.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:45.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:47.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:49.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:51.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:52.792 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:26:52.793 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:26:53.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:55.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:57.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:26:59.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:01.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:03.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:05.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:07.081 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:09.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:11.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:13.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:15.077 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:17.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:19.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:21.099 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:22.889 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:27:22.890 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:27:23.088 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:25.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:27.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:29.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:31.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:33.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:35.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:37.087 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:39.100 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:41.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:43.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:45.081 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:47.074 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:49.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:51.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:52.981 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:27:52.981 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:27:53.070 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:55.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:57.092 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:27:59.102 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:01.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:03.071 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:05.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:07.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:09.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:11.080 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:13.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:15.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:17.082 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:19.085 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:21.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:23.074 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:28:23.074 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:28:23.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:25.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:27.097 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:29.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:31.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:33.096 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:35.088 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:37.088 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:39.100 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:41.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:43.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:45.092 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:47.099 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:49.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:51.084 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:53.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:53.176 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:28:53.177 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:28:55.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:57.089 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:28:59.087 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:01.104 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:03.092 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:05.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:07.090 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:09.086 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:11.091 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:13.087 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:15.083 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:17.096 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:19.097 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:21.094 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:23.103 3933 ERROR neutron.agent.linux.ovsdb_monitor [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Interface monitor is not active
+2019-10-22 21:29:23.277 3933 ERROR neutron.agent.linux.async_process [-] Error received from [ovsdb-client monitor Interface name,ofport,external_ids --format=json]: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:29:23.278 3933 ERROR neutron.agent.linux.async_process [-] Process [ovsdb-client monitor Interface name,ofport,external_ids --format=json] dies due to the error: sudo: unknown defaults entry `match_group_by_gid'
+2019-10-22 21:29:25.030 3933 CRITICAL neutron [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] OSError: [Errno 24] Too many open files
+2019-10-22 21:29:25.030 3933 ERROR neutron Traceback (most recent call last):
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/bin/neutron-openvswitch-agent", line 10, in <module>
+2019-10-22 21:29:25.030 3933 ERROR neutron     sys.exit(main())
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/cmd/eventlet/plugins/ovs_neutron_agent.py", line 20, in main
+2019-10-22 21:29:25.030 3933 ERROR neutron     agent_main.main()
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/main.py", line 49, in main
+2019-10-22 21:29:25.030 3933 ERROR neutron     mod.main()
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/ovs_ofctl/main.py", line 36, in main
+2019-10-22 21:29:25.030 3933 ERROR neutron     ovs_neutron_agent.main(bridge_classes)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py", line 2164, in main
+2019-10-22 21:29:25.030 3933 ERROR neutron     agent.daemon_loop()
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py", line 2087, in daemon_loop
+2019-10-22 21:29:25.030 3933 ERROR neutron     self.rpc_loop(polling_manager=pm)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py", line 2000, in rpc_loop
+2019-10-22 21:29:25.030 3933 ERROR neutron     if (self._agent_has_updates(polling_manager) or sync
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py", line 1752, in _agent_has_updates
+2019-10-22 21:29:25.030 3933 ERROR neutron     return (polling_manager.is_polling_required or
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/common/base_polling.py", line 35, in is_polling_required
+2019-10-22 21:29:25.030 3933 ERROR neutron     polling_required = self._is_polling_required()
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/polling.py", line 69, in _is_polling_required
+2019-10-22 21:29:25.030 3933 ERROR neutron     return self._monitor.has_updates
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/ovsdb_monitor.py", line 74, in has_updates
+2019-10-22 21:29:25.030 3933 ERROR neutron     if not self.is_active():
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/async_process.py", line 100, in is_active
+2019-10-22 21:29:25.030 3933 ERROR neutron     self.pid, self.cmd_without_namespace)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/async_process.py", line 159, in pid
+2019-10-22 21:29:25.030 3933 ERROR neutron     run_as_root=self.run_as_root)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/utils.py", line 267, in get_root_helper_child_pid
+2019-10-22 21:29:25.030 3933 ERROR neutron     pid = find_child_pids(pid)[0]
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/utils.py", line 194, in find_child_pids
+2019-10-22 21:29:25.030 3933 ERROR neutron     log_fail_as_error=False)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/utils.py", line 125, in execute
+2019-10-22 21:29:25.030 3933 ERROR neutron     addl_env=addl_env)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/agent/linux/utils.py", line 94, in create_process
+2019-10-22 21:29:25.030 3933 ERROR neutron     stderr=subprocess.PIPE)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/neutron/common/utils.py", line 214, in subprocess_popen
+2019-10-22 21:29:25.030 3933 ERROR neutron     close_fds=close_fds, env=env)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib/python2.7/site-packages/eventlet/green/subprocess.py", line 54, in __init__
+2019-10-22 21:29:25.030 3933 ERROR neutron     subprocess_orig.Popen.__init__(self, args, 0, *argss, **kwds)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib64/python2.7/subprocess.py", line 711, in __init__
+2019-10-22 21:29:25.030 3933 ERROR neutron     errread, errwrite)
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib64/python2.7/subprocess.py", line 1216, in _execute_child
+2019-10-22 21:29:25.030 3933 ERROR neutron     errpipe_read, errpipe_write = self.pipe_cloexec()
+2019-10-22 21:29:25.030 3933 ERROR neutron   File "/usr/lib64/python2.7/subprocess.py", line 1168, in pipe_cloexec
+2019-10-22 21:29:25.030 3933 ERROR neutron     r, w = os.pipe()
+2019-10-22 21:29:25.030 3933 ERROR neutron OSError: [Errno 24] Too many open files
+2019-10-22 21:29:25.030 3933 ERROR neutron 
+2019-10-22 21:29:25.036 3933 INFO oslo_rootwrap.client [req-c6585b3f-6212-41e2-932f-ea57a73e55c0 - - - - -] Stopping rootwrap daemon process with pid=4040
